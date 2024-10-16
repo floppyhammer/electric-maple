@@ -7,6 +7,10 @@ Copyright 2023-2024, Collabora, Ltd.
 SPDX-License-Identifier: CC-BY-4.0
 -->
 
+## Description
+
+Electric-maple is an open-source OpenXR-compatible XR Remote Rendering framework that provides a free and extensible alternative to remote XR streaming solutions like CloudXR and more local PCVR streaming solutions like Meta Quest Link. Its server counterpart builds and runs on Linux and Windows and its device counterpart includes OpenXR demo receiver applications for Linux and Android (Tested on Debian, Quest2 and Quest3). Built on top of [Monado](https://gitlab.freedesktop.org/monado/electric-maple-monado) for OpenXR compatibility and [GStreamer](https://github.com/GStreamer/gstreamer) for (hardware-accelerated) codecs and streaming/thetering, electric-Maple facilitates real-time delivery of XR applications from powerful servers to lightweight client devices such as AR/VR headsets and smart XR glasses.
+
 ## Structure
 
 This repo has _two_ main projects:
