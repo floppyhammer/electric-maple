@@ -19,7 +19,7 @@
 #include "util/u_trace_marker.h"
 
 
-#include "main/comp_main_interface.h"
+#include "../compositor/main/comp_main_interface.h"
 
 #include "ems_server_internal.h"
 
