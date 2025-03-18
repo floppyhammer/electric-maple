@@ -90,7 +90,7 @@ To run an OpenXR app, use the build-tree OpenXR runtime manifest at
 using something like XR Picker to do that for you, or:
 
 ```sh
-env XR_RUNTIME_JSON=$HOME/src/linux-streaming/server/build/openxr_electricmaple-dev.json hello_xr -G vulkan2
+env XR_RUNTIME_JSON=$HOME/src/electric-maple/server/build/openxr_electricmaple-dev.json hello_xr -G vulkan2
 ```
 
 to apply the active runtime just for a single command. (Change the path to the

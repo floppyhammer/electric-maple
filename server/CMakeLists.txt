@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSL-1.0
 
 cmake_minimum_required(VERSION 3.10.2)
-project(linux-streaming VERSION 0.0.1)
+project(electric-maple VERSION 0.0.1)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
