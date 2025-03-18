@@ -25,7 +25,7 @@ ninja -C build
 - libgstreamer1.0-dev
 - glslang-tools
 - libbsd-dev
-- libgl1-dev
+- libgl1-mesa-dev
 - libsystemd-dev
 - libvulkan-dev
 - libx11-dev
@@ -42,7 +42,7 @@ sudo apt install libeigen3-dev \
     libgstreamer1.0-dev \
     glslang-tools \
     libbsd-dev \
-    libgl1-dev \
+    libgl1-mesa-dev \
     libsystemd-dev \
     libvulkan-dev \
     libx11-dev \

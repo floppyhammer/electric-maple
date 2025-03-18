@@ -43,7 +43,6 @@ target_link_libraries(
 		aux_util_debug_gui
 		st_prober
 		ipc_server
-		comp_main
 		drv_ems
 		em_proto
 		comp_ems
