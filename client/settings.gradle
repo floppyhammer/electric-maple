@@ -13,4 +13,4 @@ pluginManagement {
 
 include ':gstreamer_java'
 include ':app'
-rootProject.name = "linux-streaming-client"
+rootProject.name = "electric-maple-client"
