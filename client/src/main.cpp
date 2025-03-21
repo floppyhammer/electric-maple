@@ -77,18 +77,18 @@ void
 onAppCmd(struct android_app *app, int32_t cmd)
 {
 	switch (cmd) {
-	case APP_CMD_START: ALOGE("APP_CMD_START"); break;
-	case APP_CMD_RESUME: ALOGE("APP_CMD_RESUME"); break;
-	case APP_CMD_PAUSE: ALOGE("APP_CMD_PAUSE"); break;
+	case APP_CMD_START: ALOGI("APP_CMD_START"); break;
+	case APP_CMD_RESUME: ALOGI("APP_CMD_RESUME"); break;
+	case APP_CMD_PAUSE: ALOGI("APP_CMD_PAUSE"); break;
 	case APP_CMD_STOP:
 		ALOGE("APP_CMD_STOP - shutting down connection");
 		em_connection_disconnect(state.connection);
 		state.connected = false;
 		break;
-	case APP_CMD_DESTROY: ALOGE("APP_CMD_DESTROY"); break;
-	case APP_CMD_INIT_WINDOW: ALOGE("APP_CMD_INIT_WINDOW"); break;
+	case APP_CMD_DESTROY: ALOGI("APP_CMD_DESTROY"); break;
+	case APP_CMD_INIT_WINDOW: ALOGI("APP_CMD_INIT_WINDOW"); break;
 	case APP_CMD_TERM_WINDOW:
-		ALOGE("APP_CMD_TERM_WINDOW - shutting down connection");
+        ALOGI("APP_CMD_TERM_WINDOW - shutting down connection");
 		em_connection_disconnect(state.connection);
 		state.connected = false;
 		break;

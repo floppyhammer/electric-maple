@@ -363,7 +363,7 @@ pack_blit_and_encode(struct ems_compositor *c,
 		return;
 	}
 
-	// Usefull.
+	// Target frame that we're about to draw on.
 	xrt_frame *frame = &wrap->base_frame;
 
 	const VkCommandBufferUsageFlags flags = 0;
@@ -375,11 +375,12 @@ pack_blit_and_encode(struct ems_compositor *c,
 	ret = vk_cmd_pool_create_and_begin_cmd_buffer_locked(vk, &c->cmd_pool, flags, &cmd);
 	if (ret != VK_SUCCESS) {
 		EMS_COMP_ERROR(c, "vk_cmd_pool_create_and_begin_cmd_buffer_locked: %s", vk_result_string(ret));
+		// Error, unref the frame and return.
 		xrt_frame_reference(&frame, NULL);
 		return;
 	}
 
-	// Blit images side-by-side (does scaling).
+	// Blit two views side-by-side onto c->bounce.image (does scaling).
 	{
 		struct vk_cmd_blit_images_side_by_side_info info = {};
 
@@ -410,7 +411,7 @@ pack_blit_and_encode(struct ems_compositor *c,
 		vk_cmd_blit_images_side_by_side_locked(vk, cmd, &info);
 	}
 
-	// Copy bounce to destination.
+	// Copy bounce (c->bounce.image) to destination (wrap->image).
 	{
 		struct vk_cmd_copy_image_info info = {};
 
@@ -435,7 +436,7 @@ pack_blit_and_encode(struct ems_compositor *c,
 
 	// Barrier images back, or make ready for read.
 	{
-		// Copy views into bounce.
+		// Bring views from TRANSFER ready to COMPUTE ready.
 		for (int view = 0; view < 2; view++) {
 
 			const xrt_layer_projection_view_data *data = (view == 0) ? lvd : rvd;
@@ -455,7 +456,7 @@ pack_blit_and_encode(struct ems_compositor *c,
 			// Barrier to make source back what it was before
 			vk_cmd_image_barrier_locked(              //
 			    vk,                                   // vk_bundle
-			    cmd,                                  // cmdbuffer
+			    cmd,                                  // cmd_buffer
 			    srcImage,                             // image
 			    VK_ACCESS_TRANSFER_READ_BIT,          // srcAccessMask
 			    VK_ACCESS_SHADER_READ_BIT,            // dstAccessMask
@@ -477,7 +478,7 @@ pack_blit_and_encode(struct ems_compositor *c,
 		// Barrier transfer image to host so we can safely read back.
 		vk_cmd_image_barrier_locked(              //
 		    vk,                                   // vk_bundle
-		    cmd,                                  // cmdbuffer
+		    cmd,                                  // cmd_buffer
 		    wrap->image,                          // image
 		    VK_ACCESS_TRANSFER_WRITE_BIT,         // srcAccessMask
 		    VK_ACCESS_HOST_READ_BIT,              // dstAccessMask

@@ -46,7 +46,6 @@ struct _EmRemoteExperience
 
 	XrExtent2Di eye_extents;
 
-
 	PFN_xrConvertTimespecTimeToTimeKHR convertTimespecTimeToTime;
 
 	struct
@@ -54,7 +53,6 @@ struct _EmRemoteExperience
 		XrInstance instance{XR_NULL_HANDLE};
 		// XrSystemId system;
 		XrSession session{XR_NULL_HANDLE};
-
 	} xr_not_owned;
 
 	struct
@@ -89,12 +87,13 @@ em_remote_experience_emit_upmessage(EmRemoteExperience *exp, em_proto_UpMessage 
 	return bResult;
 }
 
+/// Send pose data back to server.
 static void
 em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDisplayTime)
 {
 	XrResult result = XR_SUCCESS;
 
-
+    // Get HMD location.
 	XrSpaceLocation hmdLocalLocation = {};
 	hmdLocalLocation.type = XR_TYPE_SPACE_LOCATION;
 	hmdLocalLocation.next = NULL;
@@ -107,7 +106,9 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 
 	XrPosef hmdLocalPose = hmdLocalLocation.pose;
 
-	em_proto_TrackingMessage tracking = em_proto_TrackingMessage_init_default;
+    ALOGI("hmdLocalPose orientation: %f %f %f %f", hmdLocalPose.orientation.w, hmdLocalPose.orientation.x, hmdLocalPose.orientation.y, hmdLocalPose.orientation.z);
+
+    em_proto_TrackingMessage tracking = em_proto_TrackingMessage_init_default;
 
 	tracking.has_P_localSpace_viewSpace = true;
 	tracking.P_localSpace_viewSpace.has_position = true;
@@ -125,6 +126,7 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 	upMessage.has_tracking = true;
 	upMessage.tracking = tracking;
 
+    // Send message.
 	if (!em_remote_experience_emit_upmessage(exp, &upMessage)) {
 		ALOGE("RYLIE: Could not queue HMD pose message!");
 	}
@@ -163,6 +165,7 @@ em_remote_experience_dispose(EmRemoteExperience *exp)
 		exp->renderer = nullptr;
 	}
 }
+
 static void
 em_remote_experience_finalize(EmRemoteExperience *exp)
 {
@@ -315,7 +318,6 @@ em_remote_experience_destroy(EmRemoteExperience **ptr_exp)
 EmPollRenderResult
 em_remote_experience_poll_and_render_frame(EmRemoteExperience *exp)
 {
-
 	XrFrameState frameState = {.type = XR_TYPE_FRAME_STATE};
 	XrSession session = exp->xr_not_owned.session;
 	XrResult result = xrWaitFrame(session, NULL, &frameState);
@@ -339,7 +341,6 @@ em_remote_experience_poll_and_render_frame(EmRemoteExperience *exp)
 		// TODO how to handle this?
 		return EM_POLL_RENDER_RESULT_SHOULD_NOT_RENDER;
 	}
-
 
 	XrViewLocateInfo locateInfo = {.type = XR_TYPE_VIEW_LOCATE_INFO,
 	                               .viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
@@ -369,7 +370,6 @@ em_remote_experience_poll_and_render_frame(EmRemoteExperience *exp)
 	// TODO use multiview/array swapchain instead of two draw calls for side by side?
 	XrCompositionLayerProjectionView projectionViews[2] = {};
 	projectionViews[0].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
-
 	projectionViews[1].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
 
 	layer.views = projectionViews;
@@ -380,6 +380,7 @@ em_remote_experience_poll_and_render_frame(EmRemoteExperience *exp)
 		ALOGE("FRED: mainloop_one: Failed make egl context current");
 		return EM_POLL_RENDER_RESULT_ERROR_EGL;
 	}
+
 	bool shouldRender = frameState.shouldRender == XR_TRUE;
 	EmPollRenderResult prResult = EM_POLL_RENDER_RESULT_SHOULD_NOT_RENDER;
 	if (shouldRender) {
@@ -395,11 +396,16 @@ em_remote_experience_poll_and_render_frame(EmRemoteExperience *exp)
 	endInfo.layerCount = em_poll_render_result_include_layer(prResult) ? 1 : 0;
 	endInfo.layers = (const XrCompositionLayerBaseHeader *[1]){(XrCompositionLayerBaseHeader *)&layer};
 
-	xrEndFrame(session, &endInfo);
+    result = xrEndFrame(session, &endInfo);
+    if (XR_FAILED(result)) {
+        ALOGE("Failed to end frame");
+        return EM_POLL_RENDER_RESULT_ERROR_ENDFRAME;
+    }
 
 	em_stream_client_egl_end(exp->stream_client);
 
 	em_remote_experience_report_pose(exp, frameState.predictedDisplayTime);
+
 	return prResult;
 }
 
@@ -484,8 +490,9 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 		return EM_POLL_RENDER_RESULT_NO_SAMPLE_AVAILABLE;
 	}
 
+    XrSwapchainImageAcquireInfo acquireInfo{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
 	uint32_t imageIndex;
-	result = xrAcquireSwapchainImage(exp->xr_owned.swapchain, NULL, &imageIndex);
+	result = xrAcquireSwapchainImage(exp->xr_owned.swapchain, &acquireInfo, &imageIndex);
 
 	if (XR_FAILED(result)) {
 		ALOGE("Failed to acquire swapchain image (%d)", result);
@@ -518,7 +525,6 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 	xrReleaseSwapchainImage(exp->xr_owned.swapchain, NULL);
 
 	// TODO check here to see if we already overshot the predicted display time, maybe?
-
 
 	if (exp->prev_sample != NULL) {
 		em_stream_client_release_sample(exp->stream_client, exp->prev_sample);

@@ -380,12 +380,26 @@ on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc)
 		return;
 	}
 
+//    GList *decoders = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DECODABLE,
+//                                                            GST_RANK_MARGINAL);
+//
+//    // Iterate through the list
+//    for (GList *iter = decoders; iter != NULL; iter = iter->next) {
+//        GstElementFactory *factory = (GstElementFactory *) iter->data;
+//
+//        // Get the factory name suitable for use in a string pipeline
+//        const gchar *name = gst_element_get_name(factory);
+//
+//        // Print the factory name
+//        g_print("Decoder: %s\n", name);
+//    }
+
 	gchar *pipeline_string = g_strdup_printf(
 	    "webrtcbin name=webrtc bundle-policy=max-bundle latency=0 ! "
 	    "rtph264depay ! "
 	    "h264parse ! "
-	    "video/x-h264,stream-format=(string)byte-stream, alignment=(string)au,parsed=(boolean)true !"
-	    "amcviddec-omxqcomvideodecoderavc ! "
+	    "video/x-h264,stream-format=(string)byte-stream, alignment=(string)au,parsed=(boolean)true ! "
+	    "amcviddec-omxgoogleh264decoder ! "
 	    "glsinkbin name=glsink");
 
 	sc->pipeline = gst_object_ref_sink(gst_parse_launch(pipeline_string, &error));
@@ -393,6 +407,10 @@ on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc)
 		ALOGE("FRED: Failed creating pipeline : Bad source: %s", error->message);
 		abort();
 	}
+    if (error) {
+        ALOGE ("Error creating a pipeline from string: %s",
+                   error ? error->message : "Unknown");
+    }
 
 	// Un-current the EGL context
 	em_stream_client_egl_end(sc);

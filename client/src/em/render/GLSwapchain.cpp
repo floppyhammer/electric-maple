@@ -50,15 +50,25 @@ GLSwapchain::enumerateAndGenerateFramebuffers(XrSwapchain swapchain)
 	framebuffers_.resize(n);
 	glGenFramebuffers(n, framebuffers_.data());
 
+//            // Allocate and initialize the buffer of image structs (must be sequential in memory for xrEnumerateSwapchainImages).
+//            // Return back an array of pointers to each swapchain image struct so the consumer doesn't need to know the type/size.
+//            std::vector<XrSwapchainImageOpenGLESKHR> swapchainImageBuffer(countOutput, {XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_ES_KHR});
+//            std::vector<XrSwapchainImageBaseHeader*> swapchainImageBase;
+//            for (XrSwapchainImageOpenGLESKHR& image : swapchainImageBuffer) {
+//                swapchainImageBase.push_back(reinterpret_cast<XrSwapchainImageBaseHeader*>(&image));
+//            }
+
 	bool success = true;
 	for (GLsizei i = 0; i < n; ++i) {
 		ALOGI("%s: Index %d: Binding framebuffer name %d to texture ID %d", __FUNCTION__, i, framebuffers_[i],
 		      swapchainImages_[i].image);
+
 		// bind this name as the active framebuffer
 		glBindFramebuffer(GL_FRAMEBUFFER, framebuffers_[i]);
 		// associate a swapchain image as the texture object/image for this framebuffer
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, swapchainImages_[i].image,
 		                       0);
+
 		// check to make sure we can actually render to this.
 		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 

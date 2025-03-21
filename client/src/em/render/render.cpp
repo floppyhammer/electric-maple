@@ -23,8 +23,7 @@
 #include <stdexcept>
 
 // Vertex shader source code
-static constexpr const GLchar *vertexShaderSource = R"(
-    #version 300 es
+static constexpr const GLchar *vertexShaderSource = R"(#version 300 es
     in vec3 position;
     in vec2 uv;
     out vec2 frag_uv;
@@ -36,9 +35,7 @@ static constexpr const GLchar *vertexShaderSource = R"(
 )";
 
 // Fragment shader source code
-static constexpr const GLchar *fragmentShaderSource = R"(
-    #version 300 es
-    #extension GL_OES_EGL_image_external : require
+static constexpr const GLchar *fragmentShaderSource = R"(#version 300 es
     #extension GL_OES_EGL_image_external_essl3 : require
     precision mediump float;
 
