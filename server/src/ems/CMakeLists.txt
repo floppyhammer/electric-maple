@@ -49,6 +49,6 @@ target_link_libraries(
 		ems_callbacks
 	)
 
-target_link_libraries(ems_streaming_server PRIVATE st_gui xrt-external-imgui-sdl2 aux_ogl)
+target_link_libraries(ems_streaming_server PRIVATE st_gui aux_ogl)
 
 install(TARGETS ems_streaming_server RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
