@@ -4,7 +4,7 @@
 
 [submodule "monado"]
 	path = monado
-	url = ../linux-streaming-monado.git
+	url = https://gitlab.freedesktop.org/monado/monado.git
 [submodule "external/Catch2"]
 	path = external/Catch2
 	url = https://github.com/catchorg/Catch2.git

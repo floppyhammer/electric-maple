@@ -327,8 +327,8 @@ compositor_init_sys_info(struct ems_compositor *c, struct xrt_device *xdev)
 	sys_info->supported_blend_mode_count = (uint8_t)xdev->hmd->blend_mode_count;
 
 	// Refresh rates.
-	sys_info->num_refresh_rates = 1;
-	sys_info->refresh_rates[0] = (float)(1. / time_ns_to_s(c->settings.frame_interval_ns));
+	sys_info->refresh_rate_count = 1;
+	sys_info->refresh_rates_hz[0] = (float)(1. / time_ns_to_s(c->settings.frame_interval_ns));
 
 	return true;
 }
@@ -555,20 +555,20 @@ ems_compositor_end_session(struct xrt_compositor *xc)
 static xrt_result_t
 ems_compositor_predict_frame(struct xrt_compositor *xc,
                              int64_t *out_frame_id,
-                             uint64_t *out_wake_time_ns,
-                             uint64_t *out_predicted_gpu_time_ns,
-                             uint64_t *out_predicted_display_time_ns,
-                             uint64_t *out_predicted_display_period_ns)
+                             int64_t *out_wake_time_ns,
+                             int64_t *out_predicted_gpu_time_ns,
+                             int64_t *out_predicted_display_time_ns,
+                             int64_t *out_predicted_display_period_ns)
 {
 	COMP_TRACE_MARKER();
 
 	struct ems_compositor *c = ems_compositor(xc);
 	EMS_COMP_TRACE(c, "PREDICT_FRAME");
 
-	uint64_t now_ns = os_monotonic_get_ns();
-	uint64_t null_desired_present_time_ns = 0;
-	uint64_t null_present_slop_ns = 0;
-	uint64_t null_min_display_period_ns = 0;
+	int64_t now_ns = os_monotonic_get_ns();
+	int64_t null_desired_present_time_ns = 0;
+	int64_t null_present_slop_ns = 0;
+	int64_t null_min_display_period_ns = 0;
 
 	u_pc_predict(                        //
 	    c->upc,                          // upc
@@ -588,7 +588,7 @@ static xrt_result_t
 ems_compositor_mark_frame(struct xrt_compositor *xc,
                           int64_t frame_id,
                           enum xrt_compositor_frame_point point,
-                          uint64_t when_ns)
+                          int64_t when_ns)
 {
 	COMP_TRACE_MARKER();
 
@@ -634,7 +634,7 @@ ems_compositor_layer_commit(struct xrt_compositor *xc, xrt_graphics_sync_handle_
 	struct ems_compositor *c = ems_compositor(xc);
 	EMS_COMP_TRACE(c, "LAYER_COMMIT");
 
-	int64_t frame_id = c->base.slot.data.frame_id;
+	int64_t frame_id = c->base.layer_accum.data.frame_id;
 
 	u_graphics_sync_unref(&sync_handle);
 
@@ -649,27 +649,27 @@ ems_compositor_layer_commit(struct xrt_compositor *xc, xrt_graphics_sync_handle_
 	}
 
 	// We want to render here. comp_base filled c->base.slot.layers for us.
-	for (uint32_t i = 0; i < c->base.slot.layer_count; i++) {
-		comp_layer &layer = c->base.slot.layers[i];
+	for (uint32_t i = 0; i < c->base.layer_accum.layer_count; i++) {
+		comp_layer &layer = c->base.layer_accum.layers[i];
 
 		switch (layer.data.type) {
-		case XRT_LAYER_STEREO_PROJECTION_DEPTH: {
-			const struct xrt_layer_stereo_projection_depth_data *stereo = &layer.data.stereo_depth;
-			const struct xrt_layer_projection_view_data *lvd = &stereo->l;
-			const struct xrt_layer_projection_view_data *rvd = &stereo->r;
+		case XRT_LAYER_PROJECTION_DEPTH: {
+			const struct xrt_layer_projection_depth_data *stereo = &layer.data.depth;
+			const struct xrt_layer_projection_view_data *lvd = &stereo->v[0];
+			const struct xrt_layer_projection_view_data *rvd = &stereo->v[1];
 
-			struct comp_swapchain *left = layer.sc_array[0];
-			struct comp_swapchain *right = layer.sc_array[1];
+			struct comp_swapchain *left = (struct comp_swapchain *)layer.sc_array[0];
+			struct comp_swapchain *right = (struct comp_swapchain *)layer.sc_array[1];
 
 			pack_blit_and_encode(c, lvd, rvd, left, right);
 		} break;
-		case XRT_LAYER_STEREO_PROJECTION: {
-			const struct xrt_layer_stereo_projection_data *stereo = &layer.data.stereo;
-			const struct xrt_layer_projection_view_data *lvd = &stereo->l;
-			const struct xrt_layer_projection_view_data *rvd = &stereo->r;
+		case XRT_LAYER_PROJECTION: {
+			const struct xrt_layer_projection_data *stereo = &layer.data.proj;
+			const struct xrt_layer_projection_view_data *lvd = &stereo->v[0];
+			const struct xrt_layer_projection_view_data *rvd = &stereo->v[1];
 
-			struct comp_swapchain *left = layer.sc_array[0];
-			struct comp_swapchain *right = layer.sc_array[1];
+			struct comp_swapchain *left = (struct comp_swapchain *)layer.sc_array[0];
+			struct comp_swapchain *right = (struct comp_swapchain *)layer.sc_array[1];
 
 			pack_blit_and_encode(c, lvd, rvd, left, right);
 		} break;
@@ -679,8 +679,11 @@ ems_compositor_layer_commit(struct xrt_compositor *xc, xrt_graphics_sync_handle_
 
 	// When we are submitting to the GPU.
 	{
-		uint64_t now_ns = os_monotonic_get_ns();
-		u_pc_mark_point(c->upc, U_TIMING_POINT_SUBMIT, frame_id, now_ns);
+		int64_t now_ns = os_monotonic_get_ns();
+		u_pc_mark_point(c->upc, U_TIMING_POINT_SUBMIT_BEGIN, frame_id, now_ns);
+
+		now_ns = os_monotonic_get_ns();
+		u_pc_mark_point(c->upc, U_TIMING_POINT_SUBMIT_END, frame_id, now_ns);
 	}
 
 	// Now is a good point to garbage collect.
@@ -690,45 +693,45 @@ ems_compositor_layer_commit(struct xrt_compositor *xc, xrt_graphics_sync_handle_
 }
 
 
-static xrt_result_t
-ems_compositor_poll_events(struct xrt_compositor *xc, union xrt_compositor_event *out_xce)
-{
-	struct ems_compositor *c = ems_compositor(xc);
-	EMS_COMP_TRACE(c, "POLL_EVENTS");
-
-	/*
-	 * Note this is very often consumed only by the multi compositor.
-	 */
-
-	U_ZERO(out_xce);
-
-	switch (c->state) {
-	case EMS_COMP_COMP_STATE_UNINITIALIZED:
-		EMS_COMP_ERROR(c, "Polled uninitialized compositor");
-		out_xce->state.type = XRT_COMPOSITOR_EVENT_NONE;
-		break;
-	case EMS_COMP_COMP_STATE_READY: out_xce->state.type = XRT_COMPOSITOR_EVENT_NONE; break;
-	case EMS_COMP_COMP_STATE_PREPARED:
-		EMS_COMP_DEBUG(c, "PREPARED -> VISIBLE");
-		out_xce->state.type = XRT_COMPOSITOR_EVENT_STATE_CHANGE;
-		out_xce->state.visible = true;
-		c->state = EMS_COMP_COMP_STATE_VISIBLE;
-		break;
-	case EMS_COMP_COMP_STATE_VISIBLE:
-		EMS_COMP_DEBUG(c, "VISIBLE -> FOCUSED");
-		out_xce->state.type = XRT_COMPOSITOR_EVENT_STATE_CHANGE;
-		out_xce->state.visible = true;
-		out_xce->state.focused = true;
-		c->state = EMS_COMP_COMP_STATE_FOCUSED;
-		break;
-	case EMS_COMP_COMP_STATE_FOCUSED:
-		// No more transitions.
-		out_xce->state.type = XRT_COMPOSITOR_EVENT_NONE;
-		break;
-	}
-
-	return XRT_SUCCESS;
-}
+// static xrt_result_t
+// ems_compositor_poll_events(struct xrt_compositor *xc, union xrt_compositor_event *out_xce)
+// {
+// 	struct ems_compositor *c = ems_compositor(xc);
+// 	EMS_COMP_TRACE(c, "POLL_EVENTS");
+//
+// 	/*
+// 	 * Note this is very often consumed only by the multi compositor.
+// 	 */
+//
+// 	U_ZERO(out_xce);
+//
+// 	switch (c->state) {
+// 	case EMS_COMP_COMP_STATE_UNINITIALIZED:
+// 		EMS_COMP_ERROR(c, "Polled uninitialized compositor");
+// 		out_xce->state.type = XRT_COMPOSITOR_EVENT_NONE;
+// 		break;
+// 	case EMS_COMP_COMP_STATE_READY: out_xce->state.type = XRT_COMPOSITOR_EVENT_NONE; break;
+// 	case EMS_COMP_COMP_STATE_PREPARED:
+// 		EMS_COMP_DEBUG(c, "PREPARED -> VISIBLE");
+// 		out_xce->state.type = XRT_COMPOSITOR_EVENT_STATE_CHANGE;
+// 		out_xce->state.visible = true;
+// 		c->state = EMS_COMP_COMP_STATE_VISIBLE;
+// 		break;
+// 	case EMS_COMP_COMP_STATE_VISIBLE:
+// 		EMS_COMP_DEBUG(c, "VISIBLE -> FOCUSED");
+// 		out_xce->state.type = XRT_COMPOSITOR_EVENT_STATE_CHANGE;
+// 		out_xce->state.visible = true;
+// 		out_xce->state.focused = true;
+// 		c->state = EMS_COMP_COMP_STATE_FOCUSED;
+// 		break;
+// 	case EMS_COMP_COMP_STATE_FOCUSED:
+// 		// No more transitions.
+// 		out_xce->state.type = XRT_COMPOSITOR_EVENT_NONE;
+// 		break;
+// 	}
+//
+// 	return XRT_SUCCESS;
+// }
 
 static xrt_result_t
 ems_compositor_get_swapchain_create_properties(struct xrt_compositor *xc,
@@ -812,16 +815,16 @@ ems_compositor_create_system(ems_instance &emsi, struct xrt_system_compositor **
 	c->base.base.base.begin_frame = ems_compositor_begin_frame;
 	c->base.base.base.discard_frame = ems_compositor_discard_frame;
 	c->base.base.base.layer_commit = ems_compositor_layer_commit;
-	c->base.base.base.poll_events = ems_compositor_poll_events;
+	// c->base.base.base. = ems_compositor_poll_events;
 	c->base.base.base.destroy = ems_compositor_destroy;
 
-	// Note that we don't want to set eg. layer_stereo_projection - comp_base handles that stuff for us.
+	// Note that we don't want to set e.g. layer_stereo_projection - comp_base handles that stuff for us.
 	c->settings.log_level = debug_get_log_option_log();
 	c->frame.waited.id = -1;
 	c->frame.rendering.id = -1;
 	c->state = EMS_COMP_COMP_STATE_READY;
 
-	xrt_device *xdev = emsi.xsysd_base.roles.head;
+	xrt_device *xdev = emsi.xsysd_base.static_roles.head;
 
 	c->settings.frame_interval_ns = xdev->hmd->screens[0].nominal_frame_interval_ns;
 	c->xdev = xdev;

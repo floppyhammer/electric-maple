@@ -88,23 +88,24 @@ ems_hmd_destroy(struct xrt_device *xdev)
 	u_device_free(&eh->base);
 }
 
-static void
+static xrt_result_t
 ems_hmd_update_inputs(struct xrt_device *xdev)
 {
 	// Empty, you should put code to update the attached input fields (if any)
+	return XRT_SUCCESS;
 }
 
-static void
+static xrt_result_t
 ems_hmd_get_tracked_pose(struct xrt_device *xdev,
                          enum xrt_input_name name,
-                         uint64_t at_timestamp_ns,
+                         int64_t at_timestamp_ns,
                          struct xrt_space_relation *out_relation)
 {
 	struct ems_hmd *eh = ems_hmd(xdev);
 
 	if (name != XRT_INPUT_GENERIC_HEAD_POSE) {
 		EMS_ERROR(eh, "unknown input name");
-		return;
+		return XRT_ERROR_INPUT_UNSUPPORTED;
 	}
 
 	if (eh->received->updated) {
@@ -118,12 +119,14 @@ ems_hmd_get_tracked_pose(struct xrt_device *xdev,
 	out_relation->relation_flags = (enum xrt_space_relation_flags)(XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |
 	                                                               XRT_SPACE_RELATION_POSITION_VALID_BIT |
 	                                                               XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT);
+
+	return XRT_SUCCESS;
 }
 
 static void
 ems_hmd_get_view_poses(struct xrt_device *xdev,
                        const struct xrt_vec3 *default_eye_relation,
-                       uint64_t at_timestamp_ns,
+                       int64_t at_timestamp_ns,
                        uint32_t view_count,
                        struct xrt_space_relation *out_head_relation,
                        struct xrt_fov *out_fovs,

@@ -15,6 +15,7 @@
 #include "xrt/xrt_config_drivers.h"
 
 #include "util/u_misc.h"
+#include "util/u_system.h"
 #include "util/u_builders.h"
 #include "util/u_trace_marker.h"
 
@@ -60,7 +61,16 @@ ems_instance_system_devices_destroy(struct xrt_system_devices *xsysd)
 	(void)emsi; // We are a part of ems_instance, do not free.
 }
 
+static xrt_result_t
+ems_instance_system_devices_get_roles(struct xrt_system_devices *xsysd, struct xrt_system_roles *out_roles)
+{
+	struct xrt_system_roles roles = XRT_SYSTEM_ROLES_INIT;
+	roles.generation_id = 1; // Never changes.
 
+	*out_roles = roles;
+
+	return XRT_SUCCESS;
+}
 
 /*
  *
@@ -76,23 +86,26 @@ ems_instance_get_prober(struct xrt_instance *xinst, struct xrt_prober **out_xp)
 
 xrt_result_t
 ems_instance_create_system(struct xrt_instance *xinst,
+                           struct xrt_system **out_xsys,
                            struct xrt_system_devices **out_xsysd,
                            struct xrt_space_overseer **out_xso,
                            struct xrt_system_compositor **out_xsysc)
 {
+	assert(out_xsys != NULL);
+	assert(*out_xsys == NULL);
 	assert(out_xsysd != NULL);
 	assert(*out_xsysd == NULL);
 	assert(out_xso != NULL);
 	assert(*out_xso == NULL);
 	assert(out_xsysc == NULL || *out_xsysc == NULL);
 
-	struct xrt_system_compositor *xsysc = NULL;
-
-	xrt_result_t xret = XRT_SUCCESS;
-
-
 	struct ems_instance *emsi = from_xinst(xinst);
 
+	emsi->usys = u_system_create();
+	assert(usys != NULL); // Should never fail.
+
+	u_system_fill_properties(emsi->usys, emsi->xsysd_base.static_roles.head->str);
+	*out_xsys = &emsi->usys->base;
 	*out_xsysd = &emsi->xsysd_base;
 	*out_xso = emsi->xso;
 
@@ -101,9 +114,11 @@ ems_instance_create_system(struct xrt_instance *xinst,
 		return XRT_SUCCESS;
 	}
 
-	if (xret == XRT_SUCCESS && xsysc == NULL) {
-		xret = ems_compositor_create_system(*emsi, &xsysc);
-	}
+	struct xrt_system_compositor *xsysc = NULL;
+	xrt_result_t xret = ems_compositor_create_system(*emsi, &xsysc);
+
+	// Tell the system about the system compositor.
+	u_system_set_system_compositor(emsi->usys, xsysc);
 
 	*out_xsysc = xsysc;
 
@@ -136,11 +151,11 @@ ems_instance_system_devices_init(struct ems_instance *emsi)
 	emsi->callbacks = ems_callbacks_create();
 
 	emsi->xsysd_base.destroy = ems_instance_system_devices_destroy;
-
+	emsi->xsysd_base.get_roles = ems_instance_system_devices_get_roles;
 
 	xrt_tracking_origin &origin = emsi->tracking_origin;
 	origin.type = XRT_TRACKING_TYPE_OTHER;
-	origin.offset = (xrt_pose)XRT_POSE_IDENTITY;
+	origin.initial_offset = (xrt_pose)XRT_POSE_IDENTITY;
 	snprintf(origin.name, ARRAY_SIZE(origin.name), "Electric Maple Server Tracking Space");
 
 	struct ems_hmd *eh = ems_hmd_create(*emsi);
@@ -161,16 +176,25 @@ ems_instance_system_devices_init(struct ems_instance *emsi)
 	struct xrt_device *left = &emcl->base;
 	struct xrt_device *right = &emcr->base;
 
-	// Setup the device base as the only device.
+	// Set up the device base as the only device.
 	emsi->xsysd_base.xdevs[0] = head;
 	emsi->xsysd_base.xdevs[1] = left;
 	emsi->xsysd_base.xdevs[2] = right;
 	emsi->xsysd_base.xdev_count = 3;
-	emsi->xsysd_base.roles.head = head;
-	emsi->xsysd_base.roles.left = left;
-	emsi->xsysd_base.roles.right = right;
+	emsi->xsysd_base.static_roles.head = head;
+	emsi->xsysd_base.static_roles.hand_tracking.left = left;
+	emsi->xsysd_base.static_roles.hand_tracking.right = right;
 
-	u_builder_create_space_overseer(&emsi->xsysd_base, &emsi->xso);
+	u_builder_create_space_overseer_legacy( //
+	    &emsi->usys->broadcast,             // broadcast
+	    head,                               // head
+	    left,                               // left
+	    right,                              // right
+	    emsi->xsysd_base.xdevs,             // xdevs
+	    emsi->xsysd_base.xdev_count,        // xdev_count
+	    false,                              // root_is_unbounded
+	    true,                               // per_app_local_spaces
+	    &emsi->xso);                        // out_xso
 }
 
 void

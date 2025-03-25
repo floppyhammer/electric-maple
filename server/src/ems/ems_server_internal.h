@@ -74,11 +74,20 @@ struct ems_motion_controller
 
 struct ems_instance
 {
+	//! Base class for devices.
+	struct xrt_device xdev_base;
+
 	//! Instance base.
 	struct xrt_instance xinst_base;
 
+	//! System, implemented for now using helper code.
+	struct u_system *usys;
+
 	//! System devices base.
 	struct xrt_system_devices xsysd_base;
+
+	//! Space overseer, implemented for now using helper code.
+	struct xrt_space_overseer *xso;
 
 	//! Shared tracking origin for all devices.
 	struct xrt_tracking_origin tracking_origin;
@@ -87,9 +96,6 @@ struct ems_instance
 	struct ems_hmd *head;
 	struct ems_motion_controller *left;
 	struct ems_motion_controller *right;
-
-	//! Space overseer, implemented for now using helper code.
-	struct xrt_space_overseer *xso;
 
 	//! Callbacks collection
 	struct ems_callbacks *callbacks;

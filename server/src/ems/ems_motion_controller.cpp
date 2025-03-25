@@ -73,10 +73,11 @@ controller_destroy(struct xrt_device *xdev)
 	u_device_free(&emc->base);
 }
 
-static void
+static xrt_result_t
 controller_update_inputs(struct xrt_device *xdev)
 {
 	// Empty, you should put code to update the attached input fields (if any)
+	return XRT_SUCCESS;
 }
 
 static void
@@ -85,10 +86,10 @@ controller_set_output(struct xrt_device *xdev, enum xrt_output_name name, const 
 	// Since we don't have a data channel yet, this is a no-op.
 }
 
-static void
+static xrt_result_t
 controller_get_tracked_pose(struct xrt_device *xdev,
                             enum xrt_input_name name,
-                            uint64_t at_timestamp_ns,
+                            int64_t at_timestamp_ns,
                             struct xrt_space_relation *out_relation)
 {
 	struct ems_motion_controller *emc = ems_motion_controller(xdev);
@@ -96,7 +97,7 @@ controller_get_tracked_pose(struct xrt_device *xdev,
 	switch (name) {
 	case XRT_INPUT_TOUCH_GRIP_POSE:
 	case XRT_INPUT_TOUCH_AIM_POSE: break;
-	default: EMS_ERROR(emc, "unknown input name"); return;
+	default: EMS_ERROR(emc, "unknown input name"); return XRT_ERROR_INPUT_UNSUPPORTED;
 	}
 
 	// Estimate pose at timestamp at_timestamp_ns!
@@ -107,12 +108,14 @@ controller_get_tracked_pose(struct xrt_device *xdev,
 	    XRT_SPACE_RELATION_POSITION_VALID_BIT |                     //
 	    XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT |                //
 	    XRT_SPACE_RELATION_POSITION_TRACKED_BIT);                   //
+
+	return XRT_SUCCESS;
 }
 
 static void
 controller_get_view_poses(struct xrt_device *xdev,
                           const struct xrt_vec3 *default_eye_relation,
-                          uint64_t at_timestamp_ns,
+                          int64_t at_timestamp_ns,
                           uint32_t view_count,
                           struct xrt_space_relation *out_head_relation,
                           struct xrt_fov *out_fovs,
