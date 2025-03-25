@@ -608,7 +608,7 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 
 	// no webrtc bin yet until later!
 
-	printf("%s\n\n\n\n", pipeline_str);
+	g_print("EMS gstreamer pipeline: %s\n", pipeline_str);
 
 	struct ems_gstreamer_pipeline *egp = U_TYPED_CALLOC(struct ems_gstreamer_pipeline);
 	egp->base.node.break_apart = break_apart;
