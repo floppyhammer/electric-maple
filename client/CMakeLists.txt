@@ -100,7 +100,8 @@ add_library(
 				   "${NANOPB_ROOT}/pb_encode.c"
 	)
 target_include_directories(xrt-external-nanopb PUBLIC "${NANOPB_ROOT}")
-add_library(xrt-interfaces INTERFACE)
+
+add_subdirectory(../monado/src/xrt/include xrt-include)
 target_include_directories(xrt-interfaces INTERFACE ../monado/src/xrt/include)
 
 add_library(aux-includes INTERFACE)
