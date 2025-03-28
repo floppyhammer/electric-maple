@@ -63,7 +63,7 @@ set(GST_LIBRARIES
     ${GST_ARCH_DIR}/lib/libspandsp.a
     ${GST_ARCH_DIR}/lib/libgmodule-2.0.a
     ${GST_ARCH_DIR}/lib/libbz2.a
-    ${GST_ARCH_DIR}/lib/libcroco-0.6.a
+#    ${GST_ARCH_DIR}/lib/libcroco-0.6.a
     ${GST_ARCH_DIR}/lib/libjson-glib-1.0.a
     ${GST_ARCH_DIR}/lib/libgstriff-1.0.a
     ${GST_ARCH_DIR}/lib/libgstplayer-1.0.a
@@ -103,7 +103,7 @@ set(GST_LIBRARIES
     ${GST_ARCH_DIR}/lib/gstreamer-1.0/libgstaudioconvert.a
     ${GST_ARCH_DIR}/lib/gstreamer-1.0/libgstbayer.a
     ${GST_ARCH_DIR}/lib/gstreamer-1.0/libgsticydemux.a
-    ${GST_ARCH_DIR}/lib/gstreamer-1.0/libgstfrei0r.a
+#    ${GST_ARCH_DIR}/lib/gstreamer-1.0/libgstfrei0r.a
     ${GST_ARCH_DIR}/lib/gstreamer-1.0/libgstjpegformat.a
     ${GST_ARCH_DIR}/lib/gstreamer-1.0/libgstaudiobuffersplit.a
     ${GST_ARCH_DIR}/lib/gstreamer-1.0/libgstrtpmanagerbad.a
@@ -290,7 +290,7 @@ set(GST_LIBRARIES
     ${GST_ARCH_DIR}/lib/libmpg123.a
     ${GST_ARCH_DIR}/lib/libswresample.a
     ${GST_ARCH_DIR}/lib/libz.a
-    ${GST_ARCH_DIR}/lib/libsoup-2.4.a
+    ${GST_ARCH_DIR}/lib/libsoup-3.0.a
     ${GST_ARCH_DIR}/lib/libFLAC.a
     ${GST_ARCH_DIR}/lib/libgio-2.0.a
     ${GST_ARCH_DIR}/lib/libexpat.a
@@ -311,6 +311,7 @@ set(GST_LIBRARIES
     ${GST_ARCH_DIR}/lib/libavfilter.a
     ${GST_ARCH_DIR}/lib/libgstcontroller-1.0.a
     ${GST_ARCH_DIR}/lib/libturbojpeg.a
+	${GST_ARCH_DIR}/lib/libnghttp2.a
 	)
 
 if(EXISTS "${GST_ARCH_DIR}/lib/libwebrtc-audio-processing-1.a")
@@ -319,7 +320,7 @@ else()
 	list(APPEND GST_LIBRARIES "${GST_ARCH_DIR}/lib/libwebrtc_audio_processing.a")
 endif()
 
-set(LIBSOUP_LIBRARIES ${GST_ARCH_DIR}/lib/libsoup-2.4.a)
+set(LIBSOUP_LIBRARIES ${GST_ARCH_DIR}/lib/libsoup-3.0.a)
 set(JSONGLIB_LIBRARIES ${GST_ARCH_DIR}/lib/libjson-glib-1.0.a)
 set(GLIB_LIBRARIES ${GST_ARCH_DIR}/lib/libglib-2.0.a)
 

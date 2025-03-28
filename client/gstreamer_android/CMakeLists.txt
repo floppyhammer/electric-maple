@@ -13,6 +13,7 @@ target_link_libraries(
 		${JSONGLIB_LIBRARIES}
 		${LIBSOUP_LIBRARIES}
 		EGL::EGL
+		android
 	PUBLIC ${ANDROID_LOG_LIBRARY} z
 	)
 target_include_directories(

@@ -163,7 +163,7 @@ if(ANDROID)
 	set(GLIB_INCLUDE_DIRS ${GST_ARCH_DIR}/include/glib-2.0
 			      ${GST_ARCH_DIR}/lib/glib-2.0/include/
 		)
-	set(LIBSOUP_INCLUDE_DIRS ${GST_ARCH_DIR}/include/libsoup-2.4/)
+	set(LIBSOUP_INCLUDE_DIRS ${GST_ARCH_DIR}/include/libsoup-3.0/)
 	set(JSONGLIB_INCLUDE_DIRS ${GST_ARCH_DIR}/include/json-glib-1.0)
 	set(GIO_INCLUDE_DIRS ${GST_ARCH_DIR}/include/glib-2.0/ ${GST_ARCH_DIR}/lib/gio-unix-2.0/)
 
