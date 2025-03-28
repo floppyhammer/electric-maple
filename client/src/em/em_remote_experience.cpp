@@ -80,7 +80,7 @@ em_remote_experience_emit_upmessage(EmRemoteExperience *exp, em_proto_UpMessage 
 
 	pb_encode(&os, &em_proto_UpMessage_msg, upMessage);
 
-	ALOGI("RYLIE: Sending message");
+//	ALOGI("RYLIE: Sending message");
 	GBytes *bytes = g_bytes_new(buffer, os.bytes_written);
 	bool bResult = em_connection_send_bytes(exp->connection, bytes);
 	g_bytes_unref(bytes);
@@ -105,8 +105,6 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 	}
 
 	XrPosef hmdLocalPose = hmdLocalLocation.pose;
-
-    ALOGI("hmdLocalPose orientation: %f %f %f %f", hmdLocalPose.orientation.w, hmdLocalPose.orientation.x, hmdLocalPose.orientation.y, hmdLocalPose.orientation.z);
 
     em_proto_TrackingMessage tracking = em_proto_TrackingMessage_init_default;
 

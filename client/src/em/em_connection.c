@@ -82,7 +82,7 @@ static GParamSpec *properties[N_PROPERTIES] = {
     NULL,
 };
 
-#define DEFAULT_WEBSOCKET_URI "ws://127.0.0.1:8080/ws"
+#define DEFAULT_WEBSOCKET_URI "ws://10.11.9.210:52356/ws"
 
 
 /* GObject method implementations */
@@ -559,7 +559,7 @@ emconn_websocket_connected_cb(GObject *session, GAsyncResult *res, EmConnection 
 	emconn->ws = g_object_ref_sink(soup_session_websocket_connect_finish(SOUP_SESSION(session), res, &error));
 
 	if (error) {
-		ALOGW("Websocket connection failed, may not be available.");
+		ALOGE("Websocket connection failed, error: '%s'", error->message);
 		g_signal_emit(emconn, signals[SIGNAL_WEBSOCKET_FAILED], 0);
 		emconn_update_status(emconn, EM_STATUS_WEBSOCKET_FAILED);
 		return;
