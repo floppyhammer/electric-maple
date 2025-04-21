@@ -206,6 +206,19 @@ webrtc_on_ice_candidate_cb(GstElement *webrtcbin, guint mlineindex, gchar *candi
 }
 
 static void
+on_incoming_stream(GstElement *webrtc, GstPad *pad, gpointer user_data)
+{
+	g_print("Got incoming stream\n");
+
+	if (GST_PAD_DIRECTION(pad) != GST_PAD_SRC)
+		return;
+
+	GstCaps *caps = gst_pad_get_current_caps(pad);
+	gchar *str = gst_caps_serialize(caps, 0);
+	g_print("Pad caps: %s\n", str);
+}
+
+static void
 on_answer_created(GstPromise *promise, gpointer user_data)
 {
 	GstWebRTCSessionDescription *answer = NULL;
@@ -337,6 +350,8 @@ websocket_connected_cb(GObject *session, GAsyncResult *res, gpointer user_data)
 
 		g_signal_connect(webrtcbin, "on-data-channel", G_CALLBACK(webrtc_on_data_channel_cb), NULL);
 		g_signal_connect(webrtcbin, "on-ice-candidate", G_CALLBACK(webrtc_on_ice_candidate_cb), NULL);
+		// Incoming streams will be exposed via this signal
+		g_signal_connect(webrtcbin, "pad-added", G_CALLBACK(on_incoming_stream), NULL);
 
 		bus = gst_element_get_bus(pipeline);
 		gst_bus_add_watch(bus, gst_bus_cb, pipeline);
