@@ -359,6 +359,19 @@ emconn_webrtc_prepare_data_channel_cb(GstElement *webrtc,
 }
 
 static void
+emconn_webrtc_on_incoming_stream(GstElement *webrtc, GstPad *pad, gpointer user_data)
+{
+	ALOGI("Got incoming stream");
+
+	if (GST_PAD_DIRECTION(pad) != GST_PAD_SRC)
+		return;
+
+	GstCaps *caps = gst_pad_get_current_caps(pad);
+	gchar *str = gst_caps_serialize(caps, 0);
+	ALOGI("Pad caps: %s", str);
+}
+
+static void
 emconn_webrtc_on_data_channel_cb(GstElement *webrtcbin, GstWebRTCDataChannel *data_channel, EmConnection *emconn)
 {
 
@@ -608,6 +621,8 @@ em_connection_set_pipeline(EmConnection *emconn, GstPipeline *pipeline)
 	g_signal_connect(emconn->webrtcbin, "on-ice-candidate", G_CALLBACK(emconn_webrtc_on_ice_candidate_cb), emconn);
 	g_signal_connect(emconn->webrtcbin, "prepare-data-channel", G_CALLBACK(emconn_webrtc_prepare_data_channel_cb),
 	                 emconn);
+	// Incoming streams will be exposed via this signal
+	g_signal_connect(emconn->webrtcbin, "pad-added", G_CALLBACK(emconn_webrtc_on_incoming_stream), NULL);
 	g_signal_connect(emconn->webrtcbin, "on-data-channel", G_CALLBACK(emconn_webrtc_on_data_channel_cb), emconn);
 	g_signal_connect(emconn->webrtcbin, "deep-notify::connection-state",
 	                 G_CALLBACK(emconn_webrtc_deep_notify_callback), emconn);
