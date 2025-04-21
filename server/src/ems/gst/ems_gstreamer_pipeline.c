@@ -128,22 +128,38 @@ get_webrtcbin_for_client(GstBin *pipeline, EmsClientId client_id)
 static void
 connect_webrtc_to_tee(GstElement *webrtcbin)
 {
-	GstElement *pipeline;
-	GstElement *tee;
-	GstPad *srcpad;
-	GstPad *sinkpad;
-	GstPadLinkReturn ret;
-
-	pipeline = GST_ELEMENT(gst_element_get_parent(webrtcbin));
-	if (pipeline == NULL)
+	GstElement *pipeline = GST_ELEMENT(gst_element_get_parent(webrtcbin));
+	if (pipeline == NULL) {
 		return;
-	tee = gst_bin_get_by_name(GST_BIN(pipeline), WEBRTC_TEE_NAME);
-	srcpad = gst_element_request_pad_simple(tee, "src_%u");
-	sinkpad = gst_element_request_pad_simple(webrtcbin, "sink_0");
-	ret = gst_pad_link(srcpad, sinkpad);
+	}
+
+	GstElement *tee = gst_bin_get_by_name(GST_BIN(pipeline), WEBRTC_TEE_NAME);
+	GstPad *src_pad = gst_element_request_pad_simple(tee, "src_%u");
+
+	GstPadTemplate *pad_template = gst_element_class_get_pad_template(GST_ELEMENT_GET_CLASS(webrtcbin), "sink_%u");
+
+	GstCaps *caps = gst_caps_from_string(
+	    "application/x-rtp, "
+	    "payload=96,encoding-name=H264,clock-rate=90000,media=video,packetization-mode=(string)1,profile-level-id=("
+	    "string)42e01f");
+
+	GstPad *sink_pad = gst_element_request_pad(webrtcbin, pad_template, "sink_0", caps);
+
+	GstPadLinkReturn ret = gst_pad_link(src_pad, sink_pad);
 	g_assert(ret == GST_PAD_LINK_OK);
-	gst_object_unref(srcpad);
-	gst_object_unref(sinkpad);
+
+	{
+		GArray *transceivers;
+		g_signal_emit_by_name(webrtcbin, "get-transceivers", &transceivers);
+		g_assert(transceivers != NULL && transceivers->len == 1);
+		GstWebRTCRTPTransceiver *trans = g_array_index(transceivers, GstWebRTCRTPTransceiver *, 0);
+		g_object_set(trans, "direction", GST_WEBRTC_RTP_TRANSCEIVER_DIRECTION_SENDONLY, NULL);
+		g_array_unref(transceivers);
+	}
+
+	gst_caps_unref(caps);
+	gst_object_unref(src_pad);
+	gst_object_unref(sink_pad);
 	gst_object_unref(tee);
 	gst_object_unref(pipeline);
 }
@@ -164,8 +180,6 @@ on_offer_created(GstPromise *promise, GstElement *webrtcbin)
 	g_free(sdp);
 
 	gst_webrtc_session_description_free(offer);
-
-	connect_webrtc_to_tee(webrtcbin);
 }
 
 static void
@@ -287,26 +301,17 @@ webrtc_client_connected_cb(EmsSignalingServer *server, EmsClientId client_id, st
 		                 egp);
 	}
 
-	ret = gst_element_set_state(webrtcbin, GST_STATE_PLAYING);
-	g_assert(ret != GST_STATE_CHANGE_FAILURE);
-
 	g_signal_connect(webrtcbin, "on-ice-candidate", G_CALLBACK(webrtc_on_ice_candidate_cb), NULL);
 
-	caps = gst_caps_from_string(
-	    "application/x-rtp, "
-	    "payload=96,encoding-name=H264,clock-rate=90000,media=video,packetization-mode=(string)1,profile-level-id=("
-	    "string)42e01f");
-	g_signal_emit_by_name(webrtcbin, "add-transceiver", GST_WEBRTC_RTP_TRANSCEIVER_DIRECTION_SENDONLY, caps,
-	                      &transceiver);
+	connect_webrtc_to_tee(webrtcbin);
 
-	gst_caps_unref(caps);
-	gst_clear_object(&transceiver);
-
-	g_signal_emit_by_name(
-	    webrtcbin, "create-offer", NULL,
-	    gst_promise_new_with_change_func((GstPromiseChangeFunc)on_offer_created, webrtcbin, NULL));
+	GstPromise *promise = gst_promise_new_with_change_func((GstPromiseChangeFunc)on_offer_created, webrtcbin, NULL);
+	g_signal_emit_by_name(webrtcbin, "create-offer", NULL, promise);
 
 	GST_DEBUG_BIN_TO_DOT_FILE(pipeline, GST_DEBUG_GRAPH_SHOW_ALL, "rtcbin");
+
+	ret = gst_element_set_state(webrtcbin, GST_STATE_PLAYING);
+	g_assert(ret != GST_STATE_CHANGE_FAILURE);
 
 	g_free(name);
 }
