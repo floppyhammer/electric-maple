@@ -684,7 +684,7 @@ em_stream_client_release_sample(EmStreamClient *sc, struct em_sample *ems)
 {
 
 	struct em_sc_sample *impl = (struct em_sc_sample *)ems;
-	ALOGW("RYLIE: Releasing sample with texture ID %d", ems->frame_texture_id);
+	ALOGI("RYLIE: Releasing sample with texture ID %d", ems->frame_texture_id);
 	gst_sample_unref(impl->sample);
 	free(impl);
 }
