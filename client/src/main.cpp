@@ -52,7 +52,7 @@
 #include <ctime>
 
 
-#define XR_LOAD(fn) xrGetInstanceProcAddr(state.instance, #fn, (PFN_xrVoidFunction *)&fn);
+#define XR_LOAD(fn) xrGetInstanceProcAddr(_state.instance, #fn, (PFN_xrVoidFunction *)&fn);
 
 namespace {
 
@@ -71,7 +71,7 @@ struct em_state
 	EmConnection *connection;
 };
 
-em_state state = {};
+em_state _state = {};
 
 void
 onAppCmd(struct android_app *app, int32_t cmd)
@@ -82,15 +82,15 @@ onAppCmd(struct android_app *app, int32_t cmd)
 	case APP_CMD_PAUSE: ALOGI("APP_CMD_PAUSE"); break;
 	case APP_CMD_STOP:
 		ALOGE("APP_CMD_STOP - shutting down connection");
-		em_connection_disconnect(state.connection);
-		state.connected = false;
+		em_connection_disconnect(_state.connection);
+		_state.connected = false;
 		break;
 	case APP_CMD_DESTROY: ALOGI("APP_CMD_DESTROY"); break;
 	case APP_CMD_INIT_WINDOW: ALOGI("APP_CMD_INIT_WINDOW"); break;
 	case APP_CMD_TERM_WINDOW:
-        ALOGI("APP_CMD_TERM_WINDOW - shutting down connection");
-		em_connection_disconnect(state.connection);
-		state.connected = false;
+		ALOGI("APP_CMD_TERM_WINDOW - shutting down connection");
+		em_connection_disconnect(_state.connection);
+		_state.connected = false;
 		break;
 	}
 }
@@ -105,7 +105,6 @@ onAppCmd(struct android_app *app, int32_t cmd)
 bool
 poll_events(struct android_app *app, struct em_state &state)
 {
-
 	// Poll Android events
 	for (;;) {
 		int events;
@@ -191,7 +190,6 @@ connected_cb(EmConnection *connection, struct em_state *state)
 void
 android_main(struct android_app *app)
 {
-
 	// Debugging gstreamer.
 	// GST_DEBUG = *:3 will give you ONLY ERROR-level messages.
 	// GST_DEBUG = *:6 will give you ALL messages (make sure you BOOST your android-studio's
@@ -203,7 +201,7 @@ android_main(struct android_app *app)
 	// setenv("GST_DEBUG", "GST_CAPS:5", 1);
 	setenv("GST_DEBUG", "*:2,webrtc*:9,sctp*:9,dtls*:9,amcvideodec:9", 1);
 
-	// do not do ansi color codes
+	// Do not do ansi color codes
 	setenv("GST_DEBUG_NO_COLOR", "1", 1);
 
 	JNIEnv *env = nullptr;
@@ -228,7 +226,7 @@ android_main(struct android_app *app)
 	XrResult result = xrInitializeLoaderKHR((XrLoaderInitInfoBaseHeaderKHR *)&loaderInfo);
 
 	if (XR_FAILED(result)) {
-		ALOGE("Failed to initialize OpenXR loader\n");
+		ALOGE("Failed to initialize OpenXR loader");
 		return;
 	}
 
@@ -257,11 +255,10 @@ android_main(struct android_app *app)
 	instanceInfo.enabledExtensionCount = sizeof(extensions) / sizeof(extensions[0]);
 	instanceInfo.enabledExtensionNames = extensions;
 
-
-	result = xrCreateInstance(&instanceInfo, &state.instance);
+	result = xrCreateInstance(&instanceInfo, &_state.instance);
 
 	if (XR_FAILED(result)) {
-		ALOGE("Failed to initialize OpenXR instance\n");
+		ALOGE("Failed to initialize OpenXR instance");
 		return;
 	}
 
@@ -270,15 +267,15 @@ android_main(struct android_app *app)
 	XrSystemGetInfo systemInfo = {.type = XR_TYPE_SYSTEM_GET_INFO,
 	                              .formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY};
 
-	result = xrGetSystem(state.instance, &systemInfo, &state.system);
+	result = xrGetSystem(_state.instance, &systemInfo, &_state.system);
 
 	uint32_t viewConfigurationCount;
 	XrViewConfigurationType viewConfigurations[2];
-	result =
-	    xrEnumerateViewConfigurations(state.instance, state.system, 2, &viewConfigurationCount, viewConfigurations);
+	result = xrEnumerateViewConfigurations(_state.instance, _state.system, 2, &viewConfigurationCount,
+	                                       viewConfigurations);
 
 	if (XR_FAILED(result)) {
-		ALOGE("Failed to enumerate view configurations\n");
+		ALOGE("Failed to enumerate view configurations");
 		return;
 	}
 
@@ -287,25 +284,26 @@ android_main(struct android_app *app)
 	viewInfo[1].type = XR_TYPE_VIEW_CONFIGURATION_VIEW;
 
 	uint32_t viewCount = 0;
-	xrEnumerateViewConfigurationViews(state.instance, state.system, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, 0,
+	xrEnumerateViewConfigurationViews(_state.instance, _state.system, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, 0,
 	                                  &viewCount, NULL);
-	result = xrEnumerateViewConfigurationViews(state.instance, state.system,
+	result = xrEnumerateViewConfigurationViews(_state.instance, _state.system,
 	                                           XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, 2, &viewCount, viewInfo);
 
 	if (XR_FAILED(result) || viewCount != 2) {
-		ALOGE("Failed to enumerate view configuration views\n");
+		ALOGE("Failed to enumerate view configuration views");
 		return;
 	}
 
-	state.width = viewInfo[0].recommendedImageRectWidth;
-	state.height = viewInfo[0].recommendedImageRectHeight;
+	_state.width = viewInfo[0].recommendedImageRectWidth;
+	_state.height = viewInfo[0].recommendedImageRectHeight;
+	ALOGI("Recommended image rect size: %u, %u", _state.width, _state.height);
 
 	// OpenXR session
 	ALOGI("FRED: Creating OpenXR session...");
 	PFN_xrGetOpenGLESGraphicsRequirementsKHR xrGetOpenGLESGraphicsRequirementsKHR = NULL;
 	XR_LOAD(xrGetOpenGLESGraphicsRequirementsKHR);
 	XrGraphicsRequirementsOpenGLESKHR graphicsRequirements = {.type = XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_ES_KHR};
-	xrGetOpenGLESGraphicsRequirementsKHR(state.instance, state.system, &graphicsRequirements);
+	xrGetOpenGLESGraphicsRequirementsKHR(_state.instance, _state.system, &graphicsRequirements);
 
 	XrGraphicsBindingOpenGLESAndroidKHR graphicsBinding = {
 	    .type = XR_TYPE_GRAPHICS_BINDING_OPENGL_ES_ANDROID_KHR,
@@ -315,9 +313,9 @@ android_main(struct android_app *app)
 	};
 
 	XrSessionCreateInfo sessionInfo = {
-	    .type = XR_TYPE_SESSION_CREATE_INFO, .next = &graphicsBinding, .systemId = state.system};
+	    .type = XR_TYPE_SESSION_CREATE_INFO, .next = &graphicsBinding, .systemId = _state.system};
 
-	result = xrCreateSession(state.instance, &sessionInfo, &state.session);
+	result = xrCreateSession(_state.instance, &sessionInfo, &_state.session);
 
 	if (XR_FAILED(result)) {
 		ALOGE("ERROR: Failed to create OpenXR session (%d)\n", result);
@@ -346,42 +344,42 @@ android_main(struct android_app *app)
 	em_stream_client_set_egl_context(stream_client, egl_mutex, false, initialEglData->surface);
 
 	ALOGI("%s: creating connection object", __FUNCTION__);
-	state.connection = g_object_ref_sink(em_connection_new_localhost());
+	_state.connection = g_object_ref_sink(em_connection_new_localhost());
 
-	g_signal_connect(state.connection, "connected", G_CALLBACK(connected_cb), &state);
+	g_signal_connect(_state.connection, "connected", G_CALLBACK(connected_cb), &_state);
 
 	ALOGI("%s: starting connection", __FUNCTION__);
-	em_connection_connect(state.connection);
+	em_connection_connect(_state.connection);
 
-	XrExtent2Di eye_extents{static_cast<int32_t>(state.width), static_cast<int32_t>(state.height)};
+	XrExtent2Di eye_extents{static_cast<int32_t>(_state.width), static_cast<int32_t>(_state.height)};
 	EmRemoteExperience *remote_experience =
-	    em_remote_experience_new(state.connection, stream_client, state.instance, state.session, &eye_extents);
+	    em_remote_experience_new(_state.connection, stream_client, _state.instance, _state.session, &eye_extents);
 	if (!remote_experience) {
 		ALOGE("%s: Failed during remote experience init.", __FUNCTION__);
 		return;
 	}
 
 	ALOGI("%s: starting stream client mainloop thread", __FUNCTION__);
-	em_stream_client_spawn_thread(stream_client, state.connection);
+	em_stream_client_spawn_thread(stream_client, _state.connection);
 
 	//
 	// End of remote-rendering-specific setup, into main loop
 	//
 
 	// Main rendering loop.
-	ALOGI("DEBUG: Starting main loop.\n");
+	ALOGI("DEBUG: Starting main loop");
 	while (!app->destroyRequested) {
-		if (poll_events(app, state)) {
+		if (poll_events(app, _state)) {
 			em_remote_experience_poll_and_render_frame(remote_experience);
 		}
 	}
 
-	ALOGI("DEBUG: Exited main loop, cleaning up.\n");
+	ALOGI("DEBUG: Exited main loop, cleaning up");
 	//
 	// Clean up RR structures
 	//
 
-	g_clear_object(&state.connection);
+	g_clear_object(&_state.connection);
 	// without gobject for stream client, the EmRemoteExperience takes ownership
 	// g_clear_object(&stream_client);
 
