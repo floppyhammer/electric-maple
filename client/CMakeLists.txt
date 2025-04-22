@@ -150,6 +150,9 @@ if(ANDROID)
 		set(GST_ARCH_DIR ${GST_BASE_DIR}/${GST_ARCH})
 	endif()
 
+	option(EMC_OLDER_GST "Some older versions of gstreamer use libsoup2.4 instead of libsoup3.0" OFF)
+	set(EMC_OLDER_GST OFF)
+
 	set(USE_GST_SHARED OFF)
 	if(USE_GST_SHARED)
 		include(libraries_shared.cmake)
@@ -163,7 +166,11 @@ if(ANDROID)
 	set(GLIB_INCLUDE_DIRS ${GST_ARCH_DIR}/include/glib-2.0
 			      ${GST_ARCH_DIR}/lib/glib-2.0/include/
 		)
-	set(LIBSOUP_INCLUDE_DIRS ${GST_ARCH_DIR}/include/libsoup-3.0/)
+	if(EMC_OLDER_GST)
+		set(LIBSOUP_INCLUDE_DIRS ${GST_ARCH_DIR}/include/libsoup-2.4/)
+	else()
+		set(LIBSOUP_INCLUDE_DIRS ${GST_ARCH_DIR}/include/libsoup-3.0/)
+	endif()
 	set(JSONGLIB_INCLUDE_DIRS ${GST_ARCH_DIR}/include/json-glib-1.0)
 	set(GIO_INCLUDE_DIRS ${GST_ARCH_DIR}/include/glib-2.0/ ${GST_ARCH_DIR}/lib/gio-unix-2.0/)
 

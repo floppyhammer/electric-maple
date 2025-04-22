@@ -290,7 +290,6 @@ set(GST_LIBRARIES
     ${GST_ARCH_DIR}/lib/libmpg123.a
     ${GST_ARCH_DIR}/lib/libswresample.a
     ${GST_ARCH_DIR}/lib/libz.a
-    ${GST_ARCH_DIR}/lib/libsoup-3.0.a
     ${GST_ARCH_DIR}/lib/libFLAC.a
     ${GST_ARCH_DIR}/lib/libgio-2.0.a
     ${GST_ARCH_DIR}/lib/libexpat.a
@@ -311,16 +310,27 @@ set(GST_LIBRARIES
     ${GST_ARCH_DIR}/lib/libavfilter.a
     ${GST_ARCH_DIR}/lib/libgstcontroller-1.0.a
     ${GST_ARCH_DIR}/lib/libturbojpeg.a
-	${GST_ARCH_DIR}/lib/libnghttp2.a
 	)
 
-if(EXISTS "${GST_ARCH_DIR}/lib/libwebrtc-audio-processing-1.a")
+if(EMC_OLDER_GST)
+	set(GST_LIBRARIES ${GST_LIBRARIES} ${GST_ARCH_DIR}/lib/libsoup-2.4.a)
+else()
+	set(GST_LIBRARIES ${GST_LIBRARIES} ${GST_ARCH_DIR}/lib/libsoup-3.0.a ${GST_ARCH_DIR}/lib/libnghttp2.a)
+endif()
+
+if(EXISTS "${GST_ARCH_DIR}/lib/libwebrtc-audio-processing-2.a")
+	list(APPEND GST_LIBRARIES "${GST_ARCH_DIR}/lib/libwebrtc-audio-processing-2.a")
+elseif(EXISTS "${GST_ARCH_DIR}/lib/libwebrtc-audio-processing-1.a")
 	list(APPEND GST_LIBRARIES "${GST_ARCH_DIR}/lib/libwebrtc-audio-processing-1.a")
 else()
 	list(APPEND GST_LIBRARIES "${GST_ARCH_DIR}/lib/libwebrtc_audio_processing.a")
 endif()
 
-set(LIBSOUP_LIBRARIES ${GST_ARCH_DIR}/lib/libsoup-3.0.a)
+if(EMC_OLDER_GST)
+	set(LIBSOUP_LIBRARIES ${GST_ARCH_DIR}/lib/libsoup-2.4.a)
+else()
+	set(LIBSOUP_LIBRARIES ${GST_ARCH_DIR}/lib/libsoup-3.0.a)
+endif()
 set(JSONGLIB_LIBRARIES ${GST_ARCH_DIR}/lib/libjson-glib-1.0.a)
 set(GLIB_LIBRARIES ${GST_ARCH_DIR}/lib/libglib-2.0.a)
 
