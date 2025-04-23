@@ -359,12 +359,8 @@ on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc)
 	g_assert_nonnull(emconn);
 	GError *error = NULL;
 
-
 	// decodebin3 seems to .. hang?
 	// omxh264dec doesn't seem to exist
-
-	uint32_t width = 1280;
-	uint32_t height = 1024;
 
 	// We'll need an active egl context below before setting up gstgl (as explained previously)
 	if (!em_stream_client_egl_begin_pbuffer(sc)) {
