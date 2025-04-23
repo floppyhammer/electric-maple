@@ -122,7 +122,6 @@ struct ems_compositor
 		struct ems_comp_frame rendering;
 	} frame;
 
-
 	struct xrt_frame_context xfctx = {};
 
 	struct vk_cmd_pool cmd_pool = {};
@@ -139,7 +138,9 @@ struct ems_compositor
 
 	bool pipeline_playing = false;
 	struct gstreamer_pipeline *gstreamer_pipeline;
+
 	struct gstreamer_sink *gstreamer_sink;
+	// This is the base of gstreamer_sink, so they're basically the same pointer
 	struct xrt_frame_sink *frame_sink;
 
 	uint64_t offset_ns;

@@ -505,11 +505,10 @@ pack_blit_and_encode(struct ems_compositor *c,
 	}
 
 	// HACK
-	wrap->base_frame.timestamp = os_monotonic_get_ns();
-	wrap->base_frame.source_timestamp = wrap->base_frame.timestamp;
-	wrap->base_frame.source_sequence = c->image_sequence++;
-	wrap->base_frame.source_id = 0;
-	wrap = NULL;
+	frame->timestamp = os_monotonic_get_ns();
+	frame->source_timestamp = frame->timestamp;
+	frame->source_sequence = c->image_sequence++;
+	frame->source_id = 0;
 
 	if (!c->pipeline_playing) {
 		ems_gstreamer_pipeline_play(c->gstreamer_pipeline);
@@ -519,7 +518,6 @@ pack_blit_and_encode(struct ems_compositor *c,
 	u_sink_debug_push_frame(&c->debug_sink, frame);
 
 	xrt_sink_push_frame(c->frame_sink, frame);
-
 
 	// TODO send data channel message with pose and fov here?
 
