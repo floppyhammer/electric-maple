@@ -154,8 +154,6 @@ Renderer::~Renderer()
 void
 Renderer::setupRender()
 {
-
-
 	registerGlDebugCallback();
 	setupShaders();
 	setupQuadVertexData();
@@ -181,14 +179,11 @@ Renderer::reset()
 void
 Renderer::draw(GLuint texture, GLenum texture_target) const
 {
-	//    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-
 	// Use the shader program
 	glUseProgram(program);
 
 	// Bind the texture
 	glActiveTexture(GL_TEXTURE0);
-	// glBindTexture(GL_TEXTURE_2D, texture);
 	glBindTexture(texture_target, texture);
 	glUniform1i(textureSamplerLocation_, 0);
 
@@ -198,19 +193,4 @@ Renderer::draw(GLuint texture, GLenum texture_target) const
 	glBindVertexArray(0);
 
 	CHECK_GL_ERROR();
-#if 0
-	GLenum err;
-	while ((err = glGetError()) != GL_NO_ERROR) {
-		const char *errorStr;
-		switch (err) {
-		case GL_INVALID_ENUM: errorStr = "GL_INVALID_ENUM"; break;
-		case GL_INVALID_VALUE: errorStr = "GL_INVALID_VALUE"; break;
-		case GL_INVALID_OPERATION: errorStr = "GL_INVALID_OPERATION"; break;
-		case GL_INVALID_FRAMEBUFFER_OPERATION: errorStr = "GL_INVALID_FRAMEBUFFER_OPERATION"; break;
-		case GL_OUT_OF_MEMORY: errorStr = "GL_OUT_OF_MEMORY"; break;
-		default: errorStr = "Unknown error"; break;
-		}
-		ALOGE("error! %s", errorStr);
-	}
-#endif
 }
