@@ -597,17 +597,17 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	signaling_server = ems_signaling_server_new();
 
 	pipeline_str = g_strdup_printf(
-	    "appsrc name=%s ! "                //
-	    "queue ! "                         //
-	    "videoconvert ! "                  //
-	    "video/x-raw,format=NV12 ! "       //
-	    "queue !"                          //
-	    "x264enc tune=zerolatency ! "      //
-	    "video/x-h264,profile=baseline ! " //
-	    "queue !"                          //
-	    "h264parse ! "                     //
-	    "rtph264pay config-interval=1 ! "  //
-	    "application/x-rtp,payload=96 ! "  //
+	    "appsrc name=%s ! "                        //
+	    "queue ! "                                 //
+	    "videoconvert ! "                          //
+	    "video/x-raw,format=NV12 ! "               //
+	    "queue !"                                  //
+	    "x264enc tune=zerolatency bitrate=8192 ! " //
+	    "video/x-h264,profile=baseline ! "         //
+	    "queue !"                                  //
+	    "h264parse ! "                             //
+	    "rtph264pay config-interval=1 ! "          //
+	    "application/x-rtp,payload=96 ! "          //
 	    "tee name=%s allow-not-linked=true",
 	    appsrc_name, WEBRTC_TEE_NAME);
 
