@@ -31,6 +31,7 @@
 
 
 #include "electricmaple.pb.h"
+#include "ems_callbacks.h"
 #include "pb_decode.h"
 
 #include "ems_server_internal.h"
@@ -122,6 +123,36 @@ controller_get_view_poses(struct xrt_device *xdev,
                           struct xrt_pose *out_poses)
 {
 	assert(false);
+}
+
+static void
+controller_handle_data(enum ems_callbacks_event event, const em_proto_UpMessage *message, void *userdata)
+{
+	auto *emc = (struct ems_motion_controller *)userdata;
+
+	if (!message->has_tracking) {
+		return;
+	}
+
+	if (!message->tracking.has_P_local_controller_grip_left) {
+		return;
+	}
+
+	xrt_pose pose = {};
+	pose.position = {message->tracking.P_local_controller_grip_left.position.x,
+	                 message->tracking.P_local_controller_grip_left.position.y,
+	                 message->tracking.P_local_controller_grip_left.position.z};
+
+	pose.orientation.w = message->tracking.P_local_controller_grip_left.orientation.w;
+	pose.orientation.x = message->tracking.P_local_controller_grip_left.orientation.x;
+	pose.orientation.y = message->tracking.P_local_controller_grip_left.orientation.y;
+	pose.orientation.z = message->tracking.P_local_controller_grip_left.orientation.z;
+
+	// TODO handle timestamp, etc
+
+	{
+		emc->pose = pose;
+	}
 }
 
 
@@ -249,7 +280,9 @@ ems_motion_controller_create(ems_instance &emsi, enum xrt_device_name device_nam
 	default: assert(false);
 	}
 
-	// Lastly setup variable tracking.
+	ems_callbacks_add(emsi.callbacks, EMS_CALLBACKS_EVENT_CONTROLLER, controller_handle_data, emc);
+
+	// Lastly, setup variable tracking.
 	u_var_add_root(emc, emc->base.str, true);
 	u_var_add_pose(emc, &emc->pose, "pose");
 	u_var_add_log_level(emc, &emc->log_level, "log_level");

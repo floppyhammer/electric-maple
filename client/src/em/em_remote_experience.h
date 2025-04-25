@@ -14,6 +14,7 @@
 #include "em_connection.h"
 #include "em_stream_client.h"
 #include <openxr/openxr.h>
+#include <array>
 
 typedef struct _EmRemoteExperience EmRemoteExperience;
 typedef struct _EmConnection EmConnection;
@@ -24,6 +25,25 @@ typedef struct _em_proto_UpMessage em_proto_UpMessage;
 extern "C" {
 #endif
 
+namespace Side {
+	const int LEFT = 0;
+	const int RIGHT = 1;
+	const int COUNT = 2;
+} // namespace Side
+
+struct InputState
+{
+	XrActionSet actionSet{XR_NULL_HANDLE};
+	XrAction grabAction{XR_NULL_HANDLE};
+	XrAction poseAction{XR_NULL_HANDLE};
+	XrAction vibrateAction{XR_NULL_HANDLE};
+	XrAction quitAction{XR_NULL_HANDLE};
+	std::array<XrPath, Side::COUNT> handSubactionPath;
+	std::array<XrSpace, Side::COUNT> handSpace;
+	std::array<float, Side::COUNT> handScale = {{1.0f, 1.0f}};
+	std::array<XrBool32, Side::COUNT> handActive;
+};
+
 typedef enum EmPollRenderResult
 {
 	EM_POLL_RENDER_RESULT_ERROR_EGL = -2,
@@ -32,7 +52,7 @@ typedef enum EmPollRenderResult
 	EM_POLL_RENDER_RESULT_SHOULD_NOT_RENDER,
 	EM_POLL_RENDER_RESULT_REUSED_SAMPLE,
 	EM_POLL_RENDER_RESULT_NEW_SAMPLE,
-    EM_POLL_RENDER_RESULT_ERROR_ENDFRAME,
+	EM_POLL_RENDER_RESULT_ERROR_ENDFRAME,
 } EmPollRenderResult;
 
 static inline bool
@@ -100,7 +120,7 @@ em_remote_experience_destroy(EmRemoteExperience **ptr_exp);
  * if you are doing this yourself in your app.
  */
 EmPollRenderResult
-em_remote_experience_poll_and_render_frame(EmRemoteExperience *exp);
+em_remote_experience_poll_and_render_frame(EmRemoteExperience *exp, InputState &inputState);
 
 /*!
  * Check for a delivered frame, rendering it if available.

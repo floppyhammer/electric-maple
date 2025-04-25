@@ -69,6 +69,8 @@ struct em_state
 	uint32_t height;
 
 	EmConnection *connection;
+
+	InputState input;
 };
 
 em_state _state = {};
@@ -93,6 +95,120 @@ onAppCmd(struct android_app *app, int32_t cmd)
 		_state.connected = false;
 		break;
 	}
+}
+
+inline XrResult
+CheckXrResult(XrResult res, const char *originator = nullptr, const char *sourceLocation = nullptr)
+{
+	if (XR_FAILED(res)) {
+		ALOGE("XR call failed with: %i, %s, %s", res, originator, sourceLocation);
+	}
+
+	return res;
+}
+
+void
+initialize_actions(struct em_state &state)
+{
+	// Create an action set.
+	{
+		XrActionSetCreateInfo actionSetInfo{XR_TYPE_ACTION_SET_CREATE_INFO};
+		strcpy(actionSetInfo.actionSetName, "gameplay");
+		strcpy(actionSetInfo.localizedActionSetName, "Gameplay");
+		actionSetInfo.priority = 0;
+		CheckXrResult(xrCreateActionSet(state.instance, &actionSetInfo, &state.input.actionSet));
+	}
+
+	// Get the XrPath for the left and right hands - we will use them as subaction paths.
+	CheckXrResult(xrStringToPath(state.instance, "/user/hand/left", &state.input.handSubactionPath[Side::LEFT]));
+	CheckXrResult(xrStringToPath(state.instance, "/user/hand/right", &state.input.handSubactionPath[Side::RIGHT]));
+
+	// Create actions.
+	{
+		// Create an input action for grabbing objects with the left and right hands.
+		XrActionCreateInfo actionInfo{XR_TYPE_ACTION_CREATE_INFO};
+		actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
+		strcpy(actionInfo.actionName, "grab_object");
+		strcpy(actionInfo.localizedActionName, "Grab Object");
+		actionInfo.countSubactionPaths = uint32_t(state.input.handSubactionPath.size());
+		actionInfo.subactionPaths = state.input.handSubactionPath.data();
+		CheckXrResult(xrCreateAction(state.input.actionSet, &actionInfo, &state.input.grabAction));
+
+		// Create an input action getting the left and right hand poses.
+		actionInfo.actionType = XR_ACTION_TYPE_POSE_INPUT;
+		strcpy(actionInfo.actionName, "hand_pose");
+		strcpy(actionInfo.localizedActionName, "Hand Pose");
+		actionInfo.countSubactionPaths = uint32_t(state.input.handSubactionPath.size());
+		actionInfo.subactionPaths = state.input.handSubactionPath.data();
+		CheckXrResult(xrCreateAction(state.input.actionSet, &actionInfo, &state.input.poseAction));
+
+		// Create output actions for vibrating the left and right controller.
+		actionInfo.actionType = XR_ACTION_TYPE_VIBRATION_OUTPUT;
+		strcpy(actionInfo.actionName, "vibrate_hand");
+		strcpy(actionInfo.localizedActionName, "Vibrate Hand");
+		actionInfo.countSubactionPaths = uint32_t(state.input.handSubactionPath.size());
+		actionInfo.subactionPaths = state.input.handSubactionPath.data();
+		CheckXrResult(xrCreateAction(state.input.actionSet, &actionInfo, &state.input.vibrateAction));
+
+		// Create input actions for quitting the session using the left and right controller.
+		// Since it doesn't matter which hand did this, we do not specify subaction paths for it.
+		// We will just suggest bindings for both hands, where possible.
+		actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
+		strcpy(actionInfo.actionName, "quit_session");
+		strcpy(actionInfo.localizedActionName, "Quit Session");
+		actionInfo.countSubactionPaths = 0;
+		actionInfo.subactionPaths = nullptr;
+		CheckXrResult(xrCreateAction(state.input.actionSet, &actionInfo, &state.input.quitAction));
+	}
+
+	std::array<XrPath, Side::COUNT> selectPath;
+	std::array<XrPath, Side::COUNT> squeezeValuePath;
+	std::array<XrPath, Side::COUNT> squeezeForcePath;
+	std::array<XrPath, Side::COUNT> squeezeClickPath;
+	std::array<XrPath, Side::COUNT> posePath;
+	std::array<XrPath, Side::COUNT> hapticPath;
+	std::array<XrPath, Side::COUNT> menuClickPath;
+	std::array<XrPath, Side::COUNT> bClickPath;
+	std::array<XrPath, Side::COUNT> triggerValuePath;
+	CheckXrResult(xrStringToPath(state.instance, "/user/hand/left/input/select/click", &selectPath[Side::LEFT]));
+	CheckXrResult(xrStringToPath(state.instance, "/user/hand/right/input/select/click", &selectPath[Side::RIGHT]));
+	CheckXrResult(
+	    xrStringToPath(state.instance, "/user/hand/left/input/squeeze/value", &squeezeValuePath[Side::LEFT]));
+	CheckXrResult(
+	    xrStringToPath(state.instance, "/user/hand/right/input/squeeze/value", &squeezeValuePath[Side::RIGHT]));
+	CheckXrResult(
+	    xrStringToPath(state.instance, "/user/hand/left/input/squeeze/force", &squeezeForcePath[Side::LEFT]));
+	CheckXrResult(
+	    xrStringToPath(state.instance, "/user/hand/right/input/squeeze/force", &squeezeForcePath[Side::RIGHT]));
+	CheckXrResult(
+	    xrStringToPath(state.instance, "/user/hand/left/input/squeeze/click", &squeezeClickPath[Side::LEFT]));
+	CheckXrResult(
+	    xrStringToPath(state.instance, "/user/hand/right/input/squeeze/click", &squeezeClickPath[Side::RIGHT]));
+	CheckXrResult(xrStringToPath(state.instance, "/user/hand/left/input/grip/pose", &posePath[Side::LEFT]));
+	CheckXrResult(xrStringToPath(state.instance, "/user/hand/right/input/grip/pose", &posePath[Side::RIGHT]));
+	CheckXrResult(xrStringToPath(state.instance, "/user/hand/left/output/haptic", &hapticPath[Side::LEFT]));
+	CheckXrResult(xrStringToPath(state.instance, "/user/hand/right/output/haptic", &hapticPath[Side::RIGHT]));
+	CheckXrResult(xrStringToPath(state.instance, "/user/hand/left/input/menu/click", &menuClickPath[Side::LEFT]));
+	CheckXrResult(xrStringToPath(state.instance, "/user/hand/right/input/menu/click", &menuClickPath[Side::RIGHT]));
+	CheckXrResult(xrStringToPath(state.instance, "/user/hand/left/input/b/click", &bClickPath[Side::LEFT]));
+	CheckXrResult(xrStringToPath(state.instance, "/user/hand/right/input/b/click", &bClickPath[Side::RIGHT]));
+	CheckXrResult(
+	    xrStringToPath(state.instance, "/user/hand/left/input/trigger/value", &triggerValuePath[Side::LEFT]));
+	CheckXrResult(
+	    xrStringToPath(state.instance, "/user/hand/right/input/trigger/value", &triggerValuePath[Side::RIGHT]));
+
+	XrActionSpaceCreateInfo actionSpaceInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO};
+	actionSpaceInfo.action = state.input.poseAction;
+	actionSpaceInfo.poseInActionSpace.orientation.w = 1.f;
+	actionSpaceInfo.subactionPath = state.input.handSubactionPath[Side::LEFT];
+	CheckXrResult(xrCreateActionSpace(state.session, &actionSpaceInfo, &state.input.handSpace[Side::LEFT]));
+	actionSpaceInfo.subactionPath = state.input.handSubactionPath[Side::RIGHT];
+	CheckXrResult(xrCreateActionSpace(state.session, &actionSpaceInfo, &state.input.handSpace[Side::RIGHT]));
+
+	XrSessionActionSetsAttachInfo attachInfo{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
+	attachInfo.countActionSets = 1;
+	attachInfo.actionSets = &state.input.actionSet;
+	CheckXrResult(xrAttachSessionActionSets(state.session, &attachInfo));
 }
 
 /**
@@ -172,6 +288,37 @@ poll_events(struct android_app *app, struct em_state &state)
 		using namespace std::chrono_literals;
 		std::this_thread::sleep_for(100ms);
 		return false;
+	}
+
+	// Get pose and grab action state and start haptic vibrate when hand is 90% squeezed.
+	for (auto hand : {Side::LEFT, Side::RIGHT}) {
+		XrActionStateGetInfo getInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+		getInfo.action = state.input.grabAction;
+		getInfo.subactionPath = state.input.handSubactionPath[hand];
+
+		XrActionStateFloat grabValue{XR_TYPE_ACTION_STATE_FLOAT};
+		CheckXrResult(xrGetActionStateFloat(state.session, &getInfo, &grabValue));
+		if (grabValue.isActive == XR_TRUE) {
+			// Scale the rendered hand by 1.0f (open) to 0.5f (fully squeezed).
+			state.input.handScale[hand] = 1.0f - 0.5f * grabValue.currentState;
+			if (grabValue.currentState > 0.9f) {
+				XrHapticVibration vibration{XR_TYPE_HAPTIC_VIBRATION};
+				vibration.amplitude = 0.5;
+				vibration.duration = XR_MIN_HAPTIC_DURATION;
+				vibration.frequency = XR_FREQUENCY_UNSPECIFIED;
+
+				XrHapticActionInfo hapticActionInfo{XR_TYPE_HAPTIC_ACTION_INFO};
+				hapticActionInfo.action = state.input.vibrateAction;
+				hapticActionInfo.subactionPath = state.input.handSubactionPath[hand];
+				CheckXrResult(xrApplyHapticFeedback(state.session, &hapticActionInfo,
+				                                    (XrHapticBaseHeader *)&vibration));
+			}
+		}
+
+		getInfo.action = state.input.poseAction;
+		XrActionStatePose poseState{XR_TYPE_ACTION_STATE_POSE};
+		CheckXrResult(xrGetActionStatePose(state.session, &getInfo, &poseState));
+		state.input.handActive[hand] = poseState.isActive;
 	}
 
 	return true;
@@ -322,11 +469,13 @@ android_main(struct android_app *app)
 		return;
 	}
 
-	EmEglMutexIface *egl_mutex = em_egl_mutex_create(initialEglData->display, initialEglData->context);
+	initialize_actions(_state);
 
 	//
 	// End of normal OpenXR app startup
 	//
+
+	EmEglMutexIface *egl_mutex = em_egl_mutex_create(initialEglData->display, initialEglData->context);
 
 	//
 	// Start of remote-rendering-specific code
@@ -377,7 +526,7 @@ android_main(struct android_app *app)
 	ALOGI("DEBUG: Starting main loop");
 	while (!app->destroyRequested) {
 		if (poll_events(app, _state)) {
-			em_remote_experience_poll_and_render_frame(remote_experience);
+			em_remote_experience_poll_and_render_frame(remote_experience, _state.input);
 		}
 	}
 

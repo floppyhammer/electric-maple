@@ -89,7 +89,7 @@ em_remote_experience_emit_upmessage(EmRemoteExperience *exp, em_proto_UpMessage 
 
 /// Send pose data back to server.
 static void
-em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDisplayTime)
+em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDisplayTime, InputState &inputState)
 {
 	XrResult result = XR_SUCCESS;
 
@@ -120,6 +120,34 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 	tracking.P_localSpace_viewSpace.orientation.x = hmdLocalPose.orientation.x;
 	tracking.P_localSpace_viewSpace.orientation.y = hmdLocalPose.orientation.y;
 	tracking.P_localSpace_viewSpace.orientation.z = hmdLocalPose.orientation.z;
+
+	// Get hand location.
+	{
+		XrSpaceLocation handLocalLocation = {};
+		handLocalLocation.type = XR_TYPE_SPACE_LOCATION;
+		handLocalLocation.next = NULL;
+		result = xrLocateSpace(inputState.handSpace[Side::LEFT], exp->xr_owned.worldSpace, predictedDisplayTime,
+		                       &handLocalLocation);
+		if (result != XR_SUCCESS) {
+			ALOGE("Bad!");
+			return;
+		}
+
+		XrPosef handLocalPose = handLocalLocation.pose;
+
+		tracking.has_P_local_controller_grip_left = true;
+
+		tracking.P_local_controller_grip_left.has_position = true;
+		tracking.P_local_controller_grip_left.position.x = handLocalPose.position.x;
+		tracking.P_local_controller_grip_left.position.y = handLocalPose.position.y;
+		tracking.P_local_controller_grip_left.position.z = handLocalPose.position.z;
+
+		tracking.P_local_controller_grip_left.has_orientation = true;
+		tracking.P_local_controller_grip_left.orientation.w = handLocalPose.orientation.w;
+		tracking.P_local_controller_grip_left.orientation.x = handLocalPose.orientation.x;
+		tracking.P_local_controller_grip_left.orientation.y = handLocalPose.orientation.y;
+		tracking.P_local_controller_grip_left.orientation.z = handLocalPose.orientation.z;
+	}
 
 	em_proto_UpMessage upMessage = em_proto_UpMessage_init_default;
 	upMessage.has_tracking = true;
@@ -314,7 +342,7 @@ em_remote_experience_destroy(EmRemoteExperience **ptr_exp)
 }
 
 EmPollRenderResult
-em_remote_experience_poll_and_render_frame(EmRemoteExperience *exp)
+em_remote_experience_poll_and_render_frame(EmRemoteExperience *exp, InputState &inputState)
 {
 	XrFrameState frameState = {.type = XR_TYPE_FRAME_STATE};
 	XrSession session = exp->xr_not_owned.session;
@@ -402,7 +430,7 @@ em_remote_experience_poll_and_render_frame(EmRemoteExperience *exp)
 
 	em_stream_client_egl_end(exp->stream_client);
 
-	em_remote_experience_report_pose(exp, frameState.predictedDisplayTime);
+	em_remote_experience_report_pose(exp, frameState.predictedDisplayTime, inputState);
 
 	return prResult;
 }
