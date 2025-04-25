@@ -297,12 +297,16 @@ gst_bus_cb(GstBus *bus, GstMessage *message, gpointer data)
 		GError *gerr = NULL;
 		gchar *debug_msg = NULL;
 		gst_message_parse_error(message, &gerr, &debug_msg);
-		GST_DEBUG_BIN_TO_DOT_FILE(pipeline, GST_DEBUG_GRAPH_SHOW_ALL, "pipeline-error");
-		gchar *dotdata = gst_debug_bin_to_dot_data(pipeline, GST_DEBUG_GRAPH_SHOW_ALL);
-		ALOGE("gst_bus_cb: DOT data: %s", dotdata);
+
+		// Output pipeline dot file
+		//		GST_DEBUG_BIN_TO_DOT_FILE(pipeline, GST_DEBUG_GRAPH_SHOW_ALL, "pipeline-error");
+		// Print pipeline dot file
+		//		gchar *dotdata = gst_debug_bin_to_dot_data(pipeline, GST_DEBUG_GRAPH_SHOW_ALL);
+		//		ALOGE("gst_bus_cb: DOT data: %s", dotdata);
 
 		ALOGE("gst_bus_cb: Error: %s (%s)", gerr->message, debug_msg);
 		g_error("gst_bus_cb: Error: %s (%s)", gerr->message, debug_msg);
+
 		g_error_free(gerr);
 		g_free(debug_msg);
 	} break;
@@ -335,6 +339,7 @@ on_new_sample_cb(GstAppSink *appsink, gpointer user_data)
 		ALOGE("%s: clock_gettime failed, which is very bizarre.", __FUNCTION__);
 		return GST_FLOW_ERROR;
 	}
+
 	GstSample *prevSample = NULL;
 	GstSample *sample = gst_app_sink_pull_sample(appsink);
 	g_assert_nonnull(sample);
@@ -368,19 +373,19 @@ on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc)
 		return;
 	}
 
-//    GList *decoders = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DECODABLE,
-//                                                            GST_RANK_MARGINAL);
-//
-//    // Iterate through the list
-//    for (GList *iter = decoders; iter != NULL; iter = iter->next) {
-//        GstElementFactory *factory = (GstElementFactory *) iter->data;
-//
-//        // Get the factory name suitable for use in a string pipeline
-//        const gchar *name = gst_element_get_name(factory);
-//
-//        // Print the factory name
-//        g_print("Decoder: %s\n", name);
-//    }
+	//    GList *decoders = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DECODABLE,
+	//                                                            GST_RANK_MARGINAL);
+	//
+	//    // Iterate through the list
+	//    for (GList *iter = decoders; iter != NULL; iter = iter->next) {
+	//        GstElementFactory *factory = (GstElementFactory *) iter->data;
+	//
+	//        // Get the factory name suitable for use in a string pipeline
+	//        const gchar *name = gst_element_get_name(factory);
+	//
+	//        // Print the factory name
+	//        g_print("Decoder: %s\n", name);
+	//    }
 
 	gchar *pipeline_string = g_strdup_printf(
 	    "webrtcbin name=webrtc bundle-policy=max-bundle latency=0 ! "
@@ -395,10 +400,9 @@ on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc)
 		ALOGE("FRED: Failed creating pipeline : Bad source: %s", error->message);
 		abort();
 	}
-    if (error) {
-        ALOGE ("Error creating a pipeline from string: %s",
-                   error ? error->message : "Unknown");
-    }
+	if (error) {
+		ALOGE("Error creating a pipeline from string: %s", error ? error->message : "Unknown");
+	}
 
 	// Un-current the EGL context
 	em_stream_client_egl_end(sc);
@@ -670,9 +674,10 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 	}
 
 	gst_video_frame_unmap(&frame);
-	// move sample ownership into the return value
+	// Move sample ownership into the return value
 	ret->sample = sample;
-	return &(ret->base);
+
+	return ret;
 }
 
 void

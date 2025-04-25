@@ -80,7 +80,7 @@ em_remote_experience_emit_upmessage(EmRemoteExperience *exp, em_proto_UpMessage 
 
 	pb_encode(&os, &em_proto_UpMessage_msg, upMessage);
 
-//	ALOGI("RYLIE: Sending message");
+	//	ALOGI("RYLIE: Sending message");
 	GBytes *bytes = g_bytes_new(buffer, os.bytes_written);
 	bool bResult = em_connection_send_bytes(exp->connection, bytes);
 	g_bytes_unref(bytes);
@@ -93,7 +93,7 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 {
 	XrResult result = XR_SUCCESS;
 
-    // Get HMD location.
+	// Get HMD location.
 	XrSpaceLocation hmdLocalLocation = {};
 	hmdLocalLocation.type = XR_TYPE_SPACE_LOCATION;
 	hmdLocalLocation.next = NULL;
@@ -106,15 +106,16 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 
 	XrPosef hmdLocalPose = hmdLocalLocation.pose;
 
-    em_proto_TrackingMessage tracking = em_proto_TrackingMessage_init_default;
+	em_proto_TrackingMessage tracking = em_proto_TrackingMessage_init_default;
 
 	tracking.has_P_localSpace_viewSpace = true;
+
 	tracking.P_localSpace_viewSpace.has_position = true;
-	tracking.P_localSpace_viewSpace.has_orientation = true;
 	tracking.P_localSpace_viewSpace.position.x = hmdLocalPose.position.x;
 	tracking.P_localSpace_viewSpace.position.y = hmdLocalPose.position.y;
 	tracking.P_localSpace_viewSpace.position.z = hmdLocalPose.position.z;
 
+	tracking.P_localSpace_viewSpace.has_orientation = true;
 	tracking.P_localSpace_viewSpace.orientation.w = hmdLocalPose.orientation.w;
 	tracking.P_localSpace_viewSpace.orientation.x = hmdLocalPose.orientation.x;
 	tracking.P_localSpace_viewSpace.orientation.y = hmdLocalPose.orientation.y;
@@ -124,7 +125,7 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 	upMessage.has_tracking = true;
 	upMessage.tracking = tracking;
 
-    // Send message.
+	// Send message.
 	if (!em_remote_experience_emit_upmessage(exp, &upMessage)) {
 		ALOGE("RYLIE: Could not queue HMD pose message!");
 	}
@@ -273,7 +274,6 @@ em_remote_experience_new(EmConnection *connection,
 		    .referenceSpaceType = XR_REFERENCE_SPACE_TYPE_STAGE,
 		    .poseInReferenceSpace = {{0.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f}}};
 
-
 		result = xrCreateReferenceSpace(session, &spaceInfo, &self->xr_owned.worldSpace);
 
 		if (XR_FAILED(result)) {
@@ -394,11 +394,11 @@ em_remote_experience_poll_and_render_frame(EmRemoteExperience *exp)
 	endInfo.layerCount = em_poll_render_result_include_layer(prResult) ? 1 : 0;
 	endInfo.layers = (const XrCompositionLayerBaseHeader *[1]){(XrCompositionLayerBaseHeader *)&layer};
 
-    result = xrEndFrame(session, &endInfo);
-    if (XR_FAILED(result)) {
-        ALOGE("Failed to end frame");
-        return EM_POLL_RENDER_RESULT_ERROR_ENDFRAME;
-    }
+	result = xrEndFrame(session, &endInfo);
+	if (XR_FAILED(result)) {
+		ALOGE("Failed to end frame");
+		return EM_POLL_RENDER_RESULT_ERROR_ENDFRAME;
+	}
 
 	em_stream_client_egl_end(exp->stream_client);
 
@@ -445,7 +445,6 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
                                                  XrCompositionLayerProjection *projectionLayer,
                                                  XrCompositionLayerProjectionView *projectionViews)
 {
-	XrSession session = exp->xr_not_owned.session;
 	XrResult result;
 
 	// TODO these may not be the extents of the frame we receive, thus introducing repeated scaling!
@@ -488,7 +487,7 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 		return EM_POLL_RENDER_RESULT_NO_SAMPLE_AVAILABLE;
 	}
 
-    XrSwapchainImageAcquireInfo acquireInfo{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
+	XrSwapchainImageAcquireInfo acquireInfo{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
 	uint32_t imageIndex;
 	result = xrAcquireSwapchainImage(exp->xr_owned.swapchain, &acquireInfo, &imageIndex);
 
