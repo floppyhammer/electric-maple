@@ -597,9 +597,11 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	signaling_server = ems_signaling_server_new();
 
 	pipeline_str = g_strdup_printf(
-	    "appsrc name=%s ! "                        //
-	    "queue ! "                                 //
-	    "videoconvert ! "                          //
+	    "appsrc name=%s ! " //
+	    "queue ! "          //
+	    "videoconvert ! "   //
+	    "videorate ! "
+	    "videoscale ! "
 	    "video/x-raw,format=NV12 ! "               //
 	    "queue !"                                  //
 	    "x264enc tune=zerolatency bitrate=8192 ! " //
