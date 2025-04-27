@@ -35,6 +35,7 @@
 #include <gst/gst.h>
 
 #include <memory>
+#include <vector>
 #include <openxr/openxr.h>
 #include <openxr/openxr_platform.h>
 
@@ -197,6 +198,27 @@ initialize_actions(struct em_state &state)
 	CheckXrResult(
 	    xrStringToPath(state.instance, "/user/hand/right/input/trigger/value", &triggerValuePath[Side::RIGHT]));
 
+	// Suggest bindings for KHR Simple.
+	{
+		XrPath khrSimpleInteractionProfilePath;
+		CheckXrResult(
+		    xrStringToPath(state.instance, "/interaction_profiles/khr/simple_controller", &khrSimpleInteractionProfilePath));
+		std::vector<XrActionSuggestedBinding> bindings{{// Fall back to a click input for the grab action.
+		                                                {state.input.grabAction, selectPath[Side::LEFT]},
+		                                                {state.input.grabAction, selectPath[Side::RIGHT]},
+		                                                {state.input.poseAction, posePath[Side::LEFT]},
+		                                                {state.input.poseAction, posePath[Side::RIGHT]},
+		                                                {state.input.quitAction, menuClickPath[Side::LEFT]},
+		                                                {state.input.quitAction, menuClickPath[Side::RIGHT]},
+		                                                {state.input.vibrateAction, hapticPath[Side::LEFT]},
+		                                                {state.input.vibrateAction, hapticPath[Side::RIGHT]}}};
+		XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
+		suggestedBindings.interactionProfile = khrSimpleInteractionProfilePath;
+		suggestedBindings.suggestedBindings = bindings.data();
+		suggestedBindings.countSuggestedBindings = (uint32_t)bindings.size();
+		CheckXrResult(xrSuggestInteractionProfileBindings(state.instance, &suggestedBindings));
+	}
+	
 	XrActionSpaceCreateInfo actionSpaceInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO};
 	actionSpaceInfo.action = state.input.poseAction;
 	actionSpaceInfo.poseInActionSpace.orientation.w = 1.f;
@@ -289,6 +311,15 @@ poll_events(struct android_app *app, struct em_state &state)
 		std::this_thread::sleep_for(100ms);
 		return false;
 	}
+
+	state.input.handActive = {XR_FALSE, XR_FALSE};
+
+	// Sync actions
+	const XrActiveActionSet activeActionSet{state.input.actionSet, XR_NULL_PATH};
+	XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO};
+	syncInfo.countActiveActionSets = 1;
+	syncInfo.activeActionSets = &activeActionSet;
+	CheckXrResult(xrSyncActions(state.session, &syncInfo));
 
 	// Get pose and grab action state and start haptic vibrate when hand is 90% squeezed.
 	for (auto hand : {Side::LEFT, Side::RIGHT}) {

@@ -161,11 +161,11 @@ ems_instance_system_devices_init(struct ems_instance *emsi)
 	struct ems_hmd *eh = ems_hmd_create(*emsi);
 	struct ems_motion_controller *emcl = ems_motion_controller_create( //
 	    *emsi,                                                         //
-	    XRT_DEVICE_TOUCH_CONTROLLER,                                   //
+	    XRT_DEVICE_SIMPLE_CONTROLLER,                                   //
 	    XRT_DEVICE_TYPE_LEFT_HAND_CONTROLLER);                         //
 	struct ems_motion_controller *emcr = ems_motion_controller_create( //
 	    *emsi,                                                         //
-	    XRT_DEVICE_TOUCH_CONTROLLER,                                   //
+	    XRT_DEVICE_SIMPLE_CONTROLLER,                                   //
 	    XRT_DEVICE_TYPE_RIGHT_HAND_CONTROLLER);                        //
 
 	emsi->head = eh;

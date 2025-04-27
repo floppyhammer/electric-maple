@@ -135,7 +135,11 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 
 		XrPosef handLocalPose = handLocalLocation.pose;
 
-		tracking.has_P_local_controller_grip_left = true;
+		tracking.has_P_local_controller_grip_left = inputState.handActive[Side::LEFT];
+
+		if (tracking.has_P_local_controller_grip_left) {
+		    ALOGI("handLocalPose %f %f %f", handLocalPose.position.x, handLocalPose.position.y, handLocalPose.position.z);
+		}
 
 		tracking.P_local_controller_grip_left.has_position = true;
 		tracking.P_local_controller_grip_left.position.x = handLocalPose.position.x;

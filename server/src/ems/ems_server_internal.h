@@ -70,6 +70,8 @@ struct ems_motion_controller
 	struct ems_instance *instance;
 
 	enum u_logging_level log_level;
+
+	bool active;
 };
 
 struct ems_instance

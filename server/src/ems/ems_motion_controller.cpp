@@ -74,10 +74,35 @@ controller_destroy(struct xrt_device *xdev)
 	u_device_free(&emc->base);
 }
 
+// You should put code to update the attached input fields (if any)
 static xrt_result_t
 controller_update_inputs(struct xrt_device *xdev)
 {
-	// Empty, you should put code to update the attached input fields (if any)
+	struct ems_motion_controller *emc = ems_motion_controller(xdev);
+
+	uint64_t now = os_monotonic_get_ns();
+
+	if (!emc->active) {
+		for (uint32_t i = 0; i < xdev->input_count; i++) {
+			xdev->inputs[i].active = false;
+			xdev->inputs[i].timestamp = now;
+			U_ZERO(&xdev->inputs[i].value);
+		}
+		return XRT_SUCCESS;
+	}
+
+	for (uint32_t i = 0; i < xdev->input_count; i++) {
+		xdev->inputs[i].active = true;
+		xdev->inputs[i].timestamp = now;
+	}
+
+	// clang-format off
+	// xdev->inputs[0].value.boolean  = emc->pose;
+	// xdev->inputs[1].value.boolean  = emc->pose;
+	// xdev->inputs[2].value.vec2  = emc->pose;
+	// xdev->inputs[3].value.vec2  = emc->pose;
+	// clang-format on
+
 	return XRT_SUCCESS;
 }
 
@@ -96,8 +121,8 @@ controller_get_tracked_pose(struct xrt_device *xdev,
 	struct ems_motion_controller *emc = ems_motion_controller(xdev);
 
 	switch (name) {
-	case XRT_INPUT_TOUCH_GRIP_POSE:
-	case XRT_INPUT_TOUCH_AIM_POSE: break;
+	case XRT_INPUT_SIMPLE_GRIP_POSE:
+	case XRT_INPUT_SIMPLE_AIM_POSE: break;
 	default: EMS_ERROR(emc, "unknown input name"); return XRT_ERROR_INPUT_UNSUPPORTED;
 	}
 
@@ -125,10 +150,12 @@ controller_get_view_poses(struct xrt_device *xdev,
 	assert(false);
 }
 
+/// Fetch remote input data.
 static void
 controller_handle_data(enum ems_callbacks_event event, const em_proto_UpMessage *message, void *userdata)
 {
 	auto *emc = (struct ems_motion_controller *)userdata;
+	emc->active = false;
 
 	if (!message->has_tracking) {
 		return;
@@ -137,6 +164,8 @@ controller_handle_data(enum ems_callbacks_event event, const em_proto_UpMessage 
 	if (!message->tracking.has_P_local_controller_grip_left) {
 		return;
 	}
+
+	emc->active = true;
 
 	xrt_pose pose = {};
 	pose.position = {message->tracking.P_local_controller_grip_left.position.x,
@@ -147,6 +176,8 @@ controller_handle_data(enum ems_callbacks_event event, const em_proto_UpMessage 
 	pose.orientation.x = message->tracking.P_local_controller_grip_left.orientation.x;
 	pose.orientation.y = message->tracking.P_local_controller_grip_left.orientation.y;
 	pose.orientation.z = message->tracking.P_local_controller_grip_left.orientation.z;
+
+	U_LOG_E("handLocalPose %f %f %f", pose.position.x, pose.position.y, pose.position.z);
 
 	// TODO handle timestamp, etc
 
@@ -162,24 +193,24 @@ controller_handle_data(enum ems_callbacks_event event, const em_proto_UpMessage 
  *
  */
 
-static struct xrt_binding_input_pair simple_inputs_touch[4] = {
-    {XRT_INPUT_SIMPLE_SELECT_CLICK, XRT_INPUT_TOUCH_TRIGGER_VALUE},
-    {XRT_INPUT_SIMPLE_MENU_CLICK, XRT_INPUT_TOUCH_MENU_CLICK},
-    {XRT_INPUT_SIMPLE_GRIP_POSE, XRT_INPUT_TOUCH_GRIP_POSE},
-    {XRT_INPUT_SIMPLE_AIM_POSE, XRT_INPUT_TOUCH_AIM_POSE},
+static struct xrt_binding_input_pair simple_inputs_index[4] = {
+    {XRT_INPUT_SIMPLE_SELECT_CLICK, XRT_INPUT_INDEX_TRIGGER_VALUE},
+    {XRT_INPUT_SIMPLE_MENU_CLICK, XRT_INPUT_INDEX_B_CLICK},
+    {XRT_INPUT_SIMPLE_GRIP_POSE, XRT_INPUT_INDEX_GRIP_POSE},
+    {XRT_INPUT_SIMPLE_AIM_POSE, XRT_INPUT_INDEX_AIM_POSE},
 };
 
-static struct xrt_binding_output_pair simple_outputs_touch[1] = {
-    {XRT_OUTPUT_NAME_SIMPLE_VIBRATION, XRT_OUTPUT_NAME_TOUCH_HAPTIC},
+static struct xrt_binding_output_pair simple_outputs_index[1] = {
+    {XRT_OUTPUT_NAME_SIMPLE_VIBRATION, XRT_OUTPUT_NAME_INDEX_HAPTIC},
 };
 
 static struct xrt_binding_profile binding_profiles_touch[1] = {
     {
         .name = XRT_DEVICE_SIMPLE_CONTROLLER,
-        .inputs = simple_inputs_touch,
-        .input_count = ARRAY_SIZE(simple_inputs_touch),
-        .outputs = simple_outputs_touch,
-        .output_count = ARRAY_SIZE(simple_outputs_touch),
+        .inputs = simple_inputs_index,
+        .input_count = ARRAY_SIZE(simple_inputs_index),
+        .outputs = simple_outputs_index,
+        .output_count = ARRAY_SIZE(simple_outputs_index),
     },
 };
 
@@ -196,9 +227,9 @@ ems_motion_controller_create(ems_instance &emsi, enum xrt_device_name device_nam
 	uint32_t input_count = 0;
 	uint32_t output_count = 0;
 	switch (device_name) {
-	case XRT_DEVICE_TOUCH_CONTROLLER:
-		input_count = 14;
-		output_count = 1;
+	case XRT_DEVICE_SIMPLE_CONTROLLER:
+		input_count = ARRAY_SIZE(simple_inputs_index);
+		output_count = ARRAY_SIZE(simple_outputs_index);
 		break;
 	default: U_LOG_E("Device name not supported!"); return nullptr;
 	}
@@ -247,9 +278,16 @@ ems_motion_controller_create(ems_instance &emsi, enum xrt_device_name device_nam
 	snprintf(emc->base.str, XRT_DEVICE_NAME_LEN, "Touch %s Controller (Electric Maple)", hand_str);
 	snprintf(emc->base.serial, XRT_DEVICE_NAME_LEN, "N/A S/N");
 
-
 	// Setup input.
 	switch (device_name) {
+	case XRT_DEVICE_SIMPLE_CONTROLLER:
+		emc->base.inputs[0].name = XRT_INPUT_SIMPLE_SELECT_CLICK;
+		emc->base.inputs[1].name = XRT_INPUT_SIMPLE_MENU_CLICK;
+		emc->base.inputs[2].name = XRT_INPUT_SIMPLE_GRIP_POSE;
+		emc->base.inputs[3].name = XRT_INPUT_SIMPLE_AIM_POSE;
+
+		emc->base.outputs[0].name = XRT_OUTPUT_NAME_TOUCH_HAPTIC;
+		break;
 	case XRT_DEVICE_TOUCH_CONTROLLER:
 		emc->base.inputs[0].name = XRT_INPUT_TOUCH_SQUEEZE_VALUE;
 		emc->base.inputs[1].name = XRT_INPUT_TOUCH_TRIGGER_TOUCH;
