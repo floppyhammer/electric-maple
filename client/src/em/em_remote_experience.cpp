@@ -121,7 +121,7 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 	tracking.P_localSpace_viewSpace.orientation.y = hmdLocalPose.orientation.y;
 	tracking.P_localSpace_viewSpace.orientation.z = hmdLocalPose.orientation.z;
 
-	// Get hand location.
+	// Get left hand location.
 	{
 		XrSpaceLocation handLocalLocation = {};
 		handLocalLocation.type = XR_TYPE_SPACE_LOCATION;
@@ -138,7 +138,8 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 		tracking.has_P_local_controller_grip_left = inputState.handActive[Side::LEFT];
 
 		if (tracking.has_P_local_controller_grip_left) {
-		    ALOGI("handLocalPose %f %f %f", handLocalPose.position.x, handLocalPose.position.y, handLocalPose.position.z);
+			ALOGI("handLocalPose %f %f %f", handLocalPose.position.x, handLocalPose.position.y,
+			      handLocalPose.position.z);
 		}
 
 		tracking.P_local_controller_grip_left.has_position = true;
@@ -151,6 +152,39 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 		tracking.P_local_controller_grip_left.orientation.x = handLocalPose.orientation.x;
 		tracking.P_local_controller_grip_left.orientation.y = handLocalPose.orientation.y;
 		tracking.P_local_controller_grip_left.orientation.z = handLocalPose.orientation.z;
+	}
+
+	// Get right hand location.
+	{
+		XrSpaceLocation handLocalLocation = {};
+		handLocalLocation.type = XR_TYPE_SPACE_LOCATION;
+		handLocalLocation.next = NULL;
+		result = xrLocateSpace(inputState.handSpace[Side::RIGHT], exp->xr_owned.worldSpace,
+		                       predictedDisplayTime, &handLocalLocation);
+		if (result != XR_SUCCESS) {
+			ALOGE("Bad!");
+			return;
+		}
+
+		XrPosef handLocalPose = handLocalLocation.pose;
+
+		tracking.has_controller_grip_right = inputState.handActive[Side::RIGHT];
+
+		if (tracking.has_controller_grip_right) {
+			ALOGI("handLocalPose %f %f %f", handLocalPose.position.x, handLocalPose.position.y,
+			      handLocalPose.position.z);
+		}
+
+		tracking.controller_grip_right.has_position = true;
+		tracking.controller_grip_right.position.x = handLocalPose.position.x;
+		tracking.controller_grip_right.position.y = handLocalPose.position.y;
+		tracking.controller_grip_right.position.z = handLocalPose.position.z;
+
+		tracking.controller_grip_right.has_orientation = true;
+		tracking.controller_grip_right.orientation.w = handLocalPose.orientation.w;
+		tracking.controller_grip_right.orientation.x = handLocalPose.orientation.x;
+		tracking.controller_grip_right.orientation.y = handLocalPose.orientation.y;
+		tracking.controller_grip_right.orientation.z = handLocalPose.orientation.z;
 	}
 
 	em_proto_UpMessage upMessage = em_proto_UpMessage_init_default;

@@ -35,6 +35,7 @@
 #include "pb_decode.h"
 
 #include "ems_server_internal.h"
+#include "util/u_hand_simulation.h"
 
 #include <thread>
 
@@ -112,6 +113,44 @@ controller_set_output(struct xrt_device *xdev, enum xrt_output_name name, const 
 	// Since we don't have a data channel yet, this is a no-op.
 }
 
+static void
+controller_get_hand_tracking(struct xrt_device *xdev,
+                             enum xrt_input_name name,
+                             int64_t requested_timestamp_ns,
+                             struct xrt_hand_joint_set *out_value,
+                             int64_t *out_timestamp_ns)
+{
+	struct ems_motion_controller *emc = ems_motion_controller(xdev);
+
+	if (name != XRT_INPUT_GENERIC_HAND_TRACKING_LEFT && name != XRT_INPUT_GENERIC_HAND_TRACKING_RIGHT) {
+		U_LOG_E("Unknown input name for hand tracker: 0x%0x", name);
+		return;
+	}
+
+	struct u_hand_tracking_curl_values values = {
+	    .little = 0,
+	    .ring = 0,
+	    .middle = 0,
+	    .index = 0,
+	    .thumb = 0,
+	};
+
+	// Get the pose of the hand.
+	struct xrt_space_relation relation;
+	xrt_device_get_tracked_pose(xdev, XRT_INPUT_INDEX_GRIP_POSE, requested_timestamp_ns, &relation);
+
+	// Simulate the hand.
+	enum xrt_hand hand = XRT_HAND_LEFT;
+	u_hand_sim_simulate_for_valve_index_knuckles(&values, hand, &relation, out_value);
+
+	out_value->hand_pose.pose = emc->pose;
+
+	out_value->is_active = emc->active;
+
+	// This is a lie
+	*out_timestamp_ns = requested_timestamp_ns;
+}
+
 static xrt_result_t
 controller_get_tracked_pose(struct xrt_device *xdev,
                             enum xrt_input_name name,
@@ -161,23 +200,43 @@ controller_handle_data(enum ems_callbacks_event event, const em_proto_UpMessage 
 		return;
 	}
 
-	if (!message->tracking.has_P_local_controller_grip_left) {
+	xrt_pose pose = {};
+
+	if (emc->base.device_type == XRT_DEVICE_TYPE_LEFT_HAND_CONTROLLER) {
+		if (!message->tracking.has_P_local_controller_grip_left) {
+			return;
+		}
+
+		emc->active = true;
+
+		pose.position = {message->tracking.P_local_controller_grip_left.position.x,
+		                 message->tracking.P_local_controller_grip_left.position.y,
+		                 message->tracking.P_local_controller_grip_left.position.z};
+
+		pose.orientation.w = message->tracking.P_local_controller_grip_left.orientation.w;
+		pose.orientation.x = message->tracking.P_local_controller_grip_left.orientation.x;
+		pose.orientation.y = message->tracking.P_local_controller_grip_left.orientation.y;
+		pose.orientation.z = message->tracking.P_local_controller_grip_left.orientation.z;
+	} else if (emc->base.device_type == XRT_DEVICE_TYPE_RIGHT_HAND_CONTROLLER) {
+		if (!message->tracking.has_controller_grip_right) {
+			return;
+		}
+
+		emc->active = true;
+
+		pose.position = {message->tracking.controller_grip_right.position.x,
+		                 message->tracking.controller_grip_right.position.y,
+		                 message->tracking.controller_grip_right.position.z};
+
+		pose.orientation.w = message->tracking.controller_grip_right.orientation.w;
+		pose.orientation.x = message->tracking.controller_grip_right.orientation.x;
+		pose.orientation.y = message->tracking.controller_grip_right.orientation.y;
+		pose.orientation.z = message->tracking.controller_grip_right.orientation.z;
+	} else {
 		return;
 	}
 
-	emc->active = true;
-
-	xrt_pose pose = {};
-	pose.position = {message->tracking.P_local_controller_grip_left.position.x,
-	                 message->tracking.P_local_controller_grip_left.position.y,
-	                 message->tracking.P_local_controller_grip_left.position.z};
-
-	pose.orientation.w = message->tracking.P_local_controller_grip_left.orientation.w;
-	pose.orientation.x = message->tracking.P_local_controller_grip_left.orientation.x;
-	pose.orientation.y = message->tracking.P_local_controller_grip_left.orientation.y;
-	pose.orientation.z = message->tracking.P_local_controller_grip_left.orientation.z;
-
-	U_LOG_E("handLocalPose %f %f %f", pose.position.x, pose.position.y, pose.position.z);
+	// U_LOG_E("handLocalPose %f %f %f", pose.position.x, pose.position.y, pose.position.z);
 
 	// TODO handle timestamp, etc
 
@@ -204,7 +263,7 @@ static struct xrt_binding_output_pair simple_outputs_index[1] = {
     {XRT_OUTPUT_NAME_SIMPLE_VIBRATION, XRT_OUTPUT_NAME_INDEX_HAPTIC},
 };
 
-static struct xrt_binding_profile binding_profiles_touch[1] = {
+static struct xrt_binding_profile binding_profiles_index[1] = {
     {
         .name = XRT_DEVICE_SIMPLE_CONTROLLER,
         .inputs = simple_inputs_index,
@@ -224,11 +283,11 @@ static struct xrt_binding_profile binding_profiles_touch[1] = {
 struct ems_motion_controller *
 ems_motion_controller_create(ems_instance &emsi, enum xrt_device_name device_name, enum xrt_device_type device_type)
 {
-	uint32_t input_count = 0;
-	uint32_t output_count = 0;
+	uint32_t input_count = 1;
+	uint32_t output_count = 1;
 	switch (device_name) {
 	case XRT_DEVICE_SIMPLE_CONTROLLER:
-		input_count = ARRAY_SIZE(simple_inputs_index);
+		input_count = ARRAY_SIZE(simple_inputs_index) + 1;
 		output_count = ARRAY_SIZE(simple_outputs_index);
 		break;
 	default: U_LOG_E("Device name not supported!"); return nullptr;
@@ -256,14 +315,16 @@ ems_motion_controller_create(ems_instance &emsi, enum xrt_device_name device_nam
 	// Functions.
 	emc->base.update_inputs = controller_update_inputs;
 	emc->base.set_output = controller_set_output;
+	emc->base.get_hand_tracking = controller_get_hand_tracking;
+	emc->base.hand_tracking_supported = true;
 	emc->base.get_tracked_pose = controller_get_tracked_pose;
 	emc->base.get_view_poses = controller_get_view_poses;
 	emc->base.destroy = controller_destroy;
 
 	// Data.
 	emc->base.tracking_origin = &emsi.tracking_origin;
-	emc->base.binding_profiles = binding_profiles_touch;
-	emc->base.binding_profile_count = ARRAY_SIZE(binding_profiles_touch);
+	// emc->base.binding_profiles = binding_profiles_index;
+	// emc->base.binding_profile_count = ARRAY_SIZE(binding_profiles_index);
 	emc->base.orientation_tracking_supported = true;
 	emc->base.position_tracking_supported = true;
 	emc->base.name = device_name;
@@ -275,45 +336,23 @@ ems_motion_controller_create(ems_instance &emsi, enum xrt_device_name device_nam
 	emc->log_level = debug_get_log_option_sample_log();
 
 	// Print name.
-	snprintf(emc->base.str, XRT_DEVICE_NAME_LEN, "Touch %s Controller (Electric Maple)", hand_str);
+	snprintf(emc->base.str, XRT_DEVICE_NAME_LEN, "Hand %s Controller (Electric Maple)", hand_str);
 	snprintf(emc->base.serial, XRT_DEVICE_NAME_LEN, "N/A S/N");
 
 	// Setup input.
 	switch (device_name) {
 	case XRT_DEVICE_SIMPLE_CONTROLLER:
-		emc->base.inputs[0].name = XRT_INPUT_SIMPLE_SELECT_CLICK;
-		emc->base.inputs[1].name = XRT_INPUT_SIMPLE_MENU_CLICK;
-		emc->base.inputs[2].name = XRT_INPUT_SIMPLE_GRIP_POSE;
-		emc->base.inputs[3].name = XRT_INPUT_SIMPLE_AIM_POSE;
-
-		emc->base.outputs[0].name = XRT_OUTPUT_NAME_TOUCH_HAPTIC;
-		break;
-	case XRT_DEVICE_TOUCH_CONTROLLER:
-		emc->base.inputs[0].name = XRT_INPUT_TOUCH_SQUEEZE_VALUE;
-		emc->base.inputs[1].name = XRT_INPUT_TOUCH_TRIGGER_TOUCH;
-		emc->base.inputs[2].name = XRT_INPUT_TOUCH_TRIGGER_VALUE;
-		emc->base.inputs[3].name = XRT_INPUT_TOUCH_THUMBSTICK_CLICK;
-		emc->base.inputs[4].name = XRT_INPUT_TOUCH_THUMBSTICK_TOUCH;
-		emc->base.inputs[5].name = XRT_INPUT_TOUCH_THUMBSTICK;
-		emc->base.inputs[6].name = XRT_INPUT_TOUCH_THUMBREST_TOUCH;
-		emc->base.inputs[7].name = XRT_INPUT_TOUCH_GRIP_POSE;
-		emc->base.inputs[8].name = XRT_INPUT_TOUCH_AIM_POSE;
-
+		emc->base.inputs[0].name = XRT_INPUT_INDEX_TRIGGER_VALUE;
+		emc->base.inputs[1].name = XRT_INPUT_INDEX_B_CLICK;
+		emc->base.inputs[2].name = XRT_INPUT_INDEX_GRIP_POSE;
+		emc->base.inputs[3].name = XRT_INPUT_INDEX_AIM_POSE;
 		if (device_type == XRT_DEVICE_TYPE_LEFT_HAND_CONTROLLER) {
-			emc->base.inputs[9].name = XRT_INPUT_TOUCH_X_CLICK;
-			emc->base.inputs[10].name = XRT_INPUT_TOUCH_X_TOUCH;
-			emc->base.inputs[11].name = XRT_INPUT_TOUCH_Y_CLICK;
-			emc->base.inputs[12].name = XRT_INPUT_TOUCH_Y_TOUCH;
-			emc->base.inputs[13].name = XRT_INPUT_TOUCH_MENU_CLICK;
+			emc->base.inputs[4].name = XRT_INPUT_GENERIC_HAND_TRACKING_LEFT;
 		} else {
-			emc->base.inputs[9].name = XRT_INPUT_TOUCH_A_CLICK;
-			emc->base.inputs[10].name = XRT_INPUT_TOUCH_A_TOUCH;
-			emc->base.inputs[11].name = XRT_INPUT_TOUCH_B_CLICK;
-			emc->base.inputs[12].name = XRT_INPUT_TOUCH_B_TOUCH;
-			emc->base.inputs[13].name = XRT_INPUT_TOUCH_SYSTEM_CLICK;
+			emc->base.inputs[4].name = XRT_INPUT_GENERIC_HAND_TRACKING_RIGHT;
 		}
 
-		emc->base.outputs[0].name = XRT_OUTPUT_NAME_TOUCH_HAPTIC;
+		emc->base.outputs[0].name = XRT_OUTPUT_NAME_INDEX_HAPTIC;
 		break;
 	default: assert(false);
 	}
@@ -328,5 +367,5 @@ ems_motion_controller_create(ems_instance &emsi, enum xrt_device_name device_nam
 	return emc;
 }
 
-// Has to be standard layout because of first element casts we do.
+// Has to be standard layout because of the first element casts we do.
 static_assert(std::is_standard_layout<struct ems_motion_controller>::value);
