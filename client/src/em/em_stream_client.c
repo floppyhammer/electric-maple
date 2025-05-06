@@ -351,7 +351,7 @@ on_new_sample_cb(GstAppSink *appsink, gpointer user_data)
 		sc->received_first_frame = true;
 	}
 	if (prevSample) {
-		ALOGI("Discarding unused, replaced sample");
+//		ALOGI("Discarding unused, replaced sample");
 		gst_sample_unref(prevSample);
 	}
 	return GST_FLOW_OK;
@@ -630,7 +630,7 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 	gst_video_info_from_caps(&info, caps);
 	gint width = GST_VIDEO_INFO_WIDTH(&info);
 	gint height = GST_VIDEO_INFO_HEIGHT(&info);
-	ALOGI("%s: frame %d (w) x %d (h)", __FUNCTION__, width, height);
+//	ALOGI("%s: frame %d (w) x %d (h)", __FUNCTION__, width, height);
 
 	// TODO: Handle resize?
 #if 0
@@ -685,7 +685,7 @@ em_stream_client_release_sample(EmStreamClient *sc, struct em_sample *ems)
 {
 
 	struct em_sc_sample *impl = (struct em_sc_sample *)ems;
-	ALOGI("RYLIE: Releasing sample with texture ID %d", ems->frame_texture_id);
+//	ALOGI("RYLIE: Releasing sample with texture ID %d", ems->frame_texture_id);
 	gst_sample_unref(impl->sample);
 	free(impl);
 }

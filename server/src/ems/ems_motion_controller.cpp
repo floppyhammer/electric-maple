@@ -143,7 +143,7 @@ controller_get_hand_tracking(struct xrt_device *xdev,
 	enum xrt_hand hand = XRT_HAND_LEFT;
 	u_hand_sim_simulate_for_valve_index_knuckles(&values, hand, &relation, out_value);
 
-	out_value->hand_pose.pose = emc->pose;
+	// out_value->hand_pose.pose = emc->pose;
 
 	out_value->is_active = emc->active;
 
@@ -160,9 +160,12 @@ controller_get_tracked_pose(struct xrt_device *xdev,
 	struct ems_motion_controller *emc = ems_motion_controller(xdev);
 
 	switch (name) {
-	case XRT_INPUT_SIMPLE_GRIP_POSE:
-	case XRT_INPUT_SIMPLE_AIM_POSE: break;
-	default: EMS_ERROR(emc, "unknown input name"); return XRT_ERROR_INPUT_UNSUPPORTED;
+	case XRT_INPUT_INDEX_GRIP_POSE:
+	case XRT_INPUT_INDEX_AIM_POSE: break;
+	default: {
+		EMS_ERROR(emc, "unknown input name: %d", name);
+		return XRT_ERROR_INPUT_UNSUPPORTED;
+	}
 	}
 
 	// Estimate pose at timestamp at_timestamp_ns!

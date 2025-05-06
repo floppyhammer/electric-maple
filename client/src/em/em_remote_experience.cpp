@@ -137,11 +137,6 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 
 		tracking.has_P_local_controller_grip_left = inputState.handActive[Side::LEFT];
 
-		if (tracking.has_P_local_controller_grip_left) {
-			ALOGI("handLocalPose %f %f %f", handLocalPose.position.x, handLocalPose.position.y,
-			      handLocalPose.position.z);
-		}
-
 		tracking.P_local_controller_grip_left.has_position = true;
 		tracking.P_local_controller_grip_left.position.x = handLocalPose.position.x;
 		tracking.P_local_controller_grip_left.position.y = handLocalPose.position.y;
@@ -169,11 +164,6 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 		XrPosef handLocalPose = handLocalLocation.pose;
 
 		tracking.has_controller_grip_right = inputState.handActive[Side::RIGHT];
-
-		if (tracking.has_controller_grip_right) {
-			ALOGI("handLocalPose %f %f %f", handLocalPose.position.x, handLocalPose.position.y,
-			      handLocalPose.position.z);
-		}
 
 		tracking.controller_grip_right.has_position = true;
 		tracking.controller_grip_right.position.x = handLocalPose.position.x;
@@ -576,10 +566,7 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 	glViewport(0, 0, width * 2, height);
 	glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
 
-	// for (uint32_t eye = 0; eye < 2; eye++) {
-	// 	glViewport(eye * width, 0, width, height);
 	exp->renderer->draw(sample->frame_texture_id, sample->frame_texture_target);
-	// }
 
 	// Release
 

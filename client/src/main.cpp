@@ -89,7 +89,7 @@ onAppCmd(struct android_app *app, int32_t cmd)
 		_state.connected = false;
 		break;
 	case APP_CMD_DESTROY: ALOGI("APP_CMD_DESTROY"); break;
-	case APP_CMD_INIT_WINDOW: ALOGI("APP_CMD_INIT_WINDOW"); break;
+	case APP_CMD_INIT_WINDOW: ALOGI("APP_CMD_INIT_WINDOW: %p", app->window); break;
 	case APP_CMD_TERM_WINDOW:
 		ALOGI("APP_CMD_TERM_WINDOW - shutting down connection");
 		em_connection_disconnect(_state.connection);

@@ -45,21 +45,11 @@
 
 #define WEBRTC_TEE_NAME "webrtctee"
 
-#ifdef __aarch64__
-#define DEFAULT_VIDEOSINK " queue max-size-bytes=0 ! kmssink bus-id=a0070000.v_mix"
-#else
-#define DEFAULT_VIDEOSINK " videoconvert ! autovideosink "
-#endif
-
-
-
 EmsSignalingServer *signaling_server;
-
 
 struct ems_gstreamer_pipeline
 {
 	struct gstreamer_pipeline base;
-
 
 	// struct GstElement *pipeline;
 	GstElement *webrtc;
@@ -67,10 +57,8 @@ struct ems_gstreamer_pipeline
 	GObject *data_channel;
 	guint timeout_src_id;
 
-
 	struct ems_callbacks *callbacks;
 };
-
 
 static gboolean
 sigint_handler(gpointer user_data)
@@ -188,15 +176,12 @@ webrtc_on_data_channel_cb(GstElement *webrtcbin, GObject *data_channel, struct e
 	U_LOG_I("webrtc_on_data_channel_cb called");
 }
 
-
-
 static void
 webrtc_on_ice_candidate_cb(GstElement *webrtcbin, guint mlineindex, gchar *candidate)
 {
 	ems_signaling_server_send_candidate(signaling_server, g_object_get_data(G_OBJECT(webrtcbin), "client_id"),
 	                                    mlineindex, candidate);
 }
-
 
 static void
 data_channel_error_cb(GstWebRTCDataChannel *datachannel, struct ems_gstreamer_pipeline *egp)
@@ -580,8 +565,6 @@ ems_gstreamer_pipeline_stop(struct gstreamer_pipeline *gp)
 	U_LOG_T("Setting to NULL");
 	gst_element_set_state(egp->base.pipeline, GST_STATE_NULL);
 }
-
-
 
 void
 ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
