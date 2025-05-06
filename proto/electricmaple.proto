@@ -38,7 +38,7 @@ message TrackingMessage {
 	Pose P_viewSpace_view0 = 2; // Left view
 	Pose P_viewSpace_view1 = 3; // Right view
 
-	Pose P_local_controller_grip_left = 4;
+	Pose controller_grip_left = 4;
 	Pose controller_aim_left = 5;
 
 	Pose controller_grip_right = 6;
@@ -78,12 +78,12 @@ message TouchControllerLeft {
 	InputClickTouch menu = 3; // no "touch"
 	TouchControllerCommon common = 4;
 }
+
 message TouchControllerRight {
 	InputClickTouch a = 1;
 	InputClickTouch b = 2;
 	InputClickTouch system = 3; // no "touch", probably not accessible
 	TouchControllerCommon common = 4;
-
 }
 
 message UpFrameMessage {

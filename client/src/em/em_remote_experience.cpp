@@ -93,33 +93,35 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 {
 	XrResult result = XR_SUCCESS;
 
-	// Get HMD location.
-	XrSpaceLocation hmdLocalLocation = {};
-	hmdLocalLocation.type = XR_TYPE_SPACE_LOCATION;
-	hmdLocalLocation.next = NULL;
-	result =
-	    xrLocateSpace(exp->xr_owned.viewSpace, exp->xr_owned.worldSpace, predictedDisplayTime, &hmdLocalLocation);
-	if (result != XR_SUCCESS) {
-		ALOGE("Bad!");
-		return;
-	}
-
-	XrPosef hmdLocalPose = hmdLocalLocation.pose;
-
 	em_proto_TrackingMessage tracking = em_proto_TrackingMessage_init_default;
 
-	tracking.has_P_localSpace_viewSpace = true;
+	{
+		// Get HMD location.
+		XrSpaceLocation hmdLocalLocation = {};
+		hmdLocalLocation.type = XR_TYPE_SPACE_LOCATION;
+		hmdLocalLocation.next = NULL;
+		result = xrLocateSpace(exp->xr_owned.viewSpace, exp->xr_owned.worldSpace, predictedDisplayTime,
+		                       &hmdLocalLocation);
+		if (result != XR_SUCCESS) {
+			ALOGE("Bad!");
+			return;
+		}
 
-	tracking.P_localSpace_viewSpace.has_position = true;
-	tracking.P_localSpace_viewSpace.position.x = hmdLocalPose.position.x;
-	tracking.P_localSpace_viewSpace.position.y = hmdLocalPose.position.y;
-	tracking.P_localSpace_viewSpace.position.z = hmdLocalPose.position.z;
+		XrPosef hmdLocalPose = hmdLocalLocation.pose;
 
-	tracking.P_localSpace_viewSpace.has_orientation = true;
-	tracking.P_localSpace_viewSpace.orientation.w = hmdLocalPose.orientation.w;
-	tracking.P_localSpace_viewSpace.orientation.x = hmdLocalPose.orientation.x;
-	tracking.P_localSpace_viewSpace.orientation.y = hmdLocalPose.orientation.y;
-	tracking.P_localSpace_viewSpace.orientation.z = hmdLocalPose.orientation.z;
+		tracking.has_P_localSpace_viewSpace = true;
+
+		tracking.P_localSpace_viewSpace.has_position = true;
+		tracking.P_localSpace_viewSpace.position.x = hmdLocalPose.position.x;
+		tracking.P_localSpace_viewSpace.position.y = hmdLocalPose.position.y;
+		tracking.P_localSpace_viewSpace.position.z = hmdLocalPose.position.z;
+
+		tracking.P_localSpace_viewSpace.has_orientation = true;
+		tracking.P_localSpace_viewSpace.orientation.w = hmdLocalPose.orientation.w;
+		tracking.P_localSpace_viewSpace.orientation.x = hmdLocalPose.orientation.x;
+		tracking.P_localSpace_viewSpace.orientation.y = hmdLocalPose.orientation.y;
+		tracking.P_localSpace_viewSpace.orientation.z = hmdLocalPose.orientation.z;
+	}
 
 	// Get left hand location.
 	{
@@ -135,18 +137,18 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 
 		XrPosef handLocalPose = handLocalLocation.pose;
 
-		tracking.has_P_local_controller_grip_left = inputState.handActive[Side::LEFT];
+		tracking.has_controller_grip_left = inputState.handActive[Side::LEFT];
 
-		tracking.P_local_controller_grip_left.has_position = true;
-		tracking.P_local_controller_grip_left.position.x = handLocalPose.position.x;
-		tracking.P_local_controller_grip_left.position.y = handLocalPose.position.y;
-		tracking.P_local_controller_grip_left.position.z = handLocalPose.position.z;
+		tracking.controller_grip_left.has_position = true;
+		tracking.controller_grip_left.position.x = handLocalPose.position.x;
+		tracking.controller_grip_left.position.y = handLocalPose.position.y;
+		tracking.controller_grip_left.position.z = handLocalPose.position.z;
 
-		tracking.P_local_controller_grip_left.has_orientation = true;
-		tracking.P_local_controller_grip_left.orientation.w = handLocalPose.orientation.w;
-		tracking.P_local_controller_grip_left.orientation.x = handLocalPose.orientation.x;
-		tracking.P_local_controller_grip_left.orientation.y = handLocalPose.orientation.y;
-		tracking.P_local_controller_grip_left.orientation.z = handLocalPose.orientation.z;
+		tracking.controller_grip_left.has_orientation = true;
+		tracking.controller_grip_left.orientation.w = handLocalPose.orientation.w;
+		tracking.controller_grip_left.orientation.x = handLocalPose.orientation.x;
+		tracking.controller_grip_left.orientation.y = handLocalPose.orientation.y;
+		tracking.controller_grip_left.orientation.z = handLocalPose.orientation.z;
 	}
 
 	// Get right hand location.

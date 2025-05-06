@@ -206,20 +206,20 @@ controller_handle_data(enum ems_callbacks_event event, const em_proto_UpMessage 
 	xrt_pose pose = {};
 
 	if (emc->base.device_type == XRT_DEVICE_TYPE_LEFT_HAND_CONTROLLER) {
-		if (!message->tracking.has_P_local_controller_grip_left) {
+		if (!message->tracking.has_controller_grip_left) {
 			return;
 		}
 
 		emc->active = true;
 
-		pose.position = {message->tracking.P_local_controller_grip_left.position.x,
-		                 message->tracking.P_local_controller_grip_left.position.y,
-		                 message->tracking.P_local_controller_grip_left.position.z};
+		pose.position = {message->tracking.controller_grip_left.position.x,
+		                 message->tracking.controller_grip_left.position.y,
+		                 message->tracking.controller_grip_left.position.z};
 
-		pose.orientation.w = message->tracking.P_local_controller_grip_left.orientation.w;
-		pose.orientation.x = message->tracking.P_local_controller_grip_left.orientation.x;
-		pose.orientation.y = message->tracking.P_local_controller_grip_left.orientation.y;
-		pose.orientation.z = message->tracking.P_local_controller_grip_left.orientation.z;
+		pose.orientation.w = message->tracking.controller_grip_left.orientation.w;
+		pose.orientation.x = message->tracking.controller_grip_left.orientation.x;
+		pose.orientation.y = message->tracking.controller_grip_left.orientation.y;
+		pose.orientation.z = message->tracking.controller_grip_left.orientation.z;
 	} else if (emc->base.device_type == XRT_DEVICE_TYPE_RIGHT_HAND_CONTROLLER) {
 		if (!message->tracking.has_controller_grip_right) {
 			return;

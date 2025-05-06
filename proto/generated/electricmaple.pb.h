@@ -49,8 +49,8 @@ typedef struct _em_proto_TrackingMessage {
     em_proto_Pose P_viewSpace_view0; /* Left view */
     bool has_P_viewSpace_view1;
     em_proto_Pose P_viewSpace_view1; /* Right view */
-    bool has_P_local_controller_grip_left;
-    em_proto_Pose P_local_controller_grip_left;
+    bool has_controller_grip_left;
+    em_proto_Pose controller_grip_left;
     bool has_controller_aim_left;
     em_proto_Pose controller_aim_left;
     bool has_controller_grip_right;
@@ -210,7 +210,7 @@ extern "C" {
 #define em_proto_TrackingMessage_P_localSpace_viewSpace_tag 1
 #define em_proto_TrackingMessage_P_viewSpace_view0_tag 2
 #define em_proto_TrackingMessage_P_viewSpace_view1_tag 3
-#define em_proto_TrackingMessage_P_local_controller_grip_left_tag 4
+#define em_proto_TrackingMessage_controller_grip_left_tag 4
 #define em_proto_TrackingMessage_controller_aim_left_tag 5
 #define em_proto_TrackingMessage_controller_grip_right_tag 6
 #define em_proto_TrackingMessage_controller_aim_right_tag 7
@@ -281,7 +281,7 @@ X(a, STATIC,   OPTIONAL, MESSAGE,  orientation,       2)
 X(a, STATIC,   OPTIONAL, MESSAGE,  P_localSpace_viewSpace,   1) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  P_viewSpace_view0,   2) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  P_viewSpace_view1,   3) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  P_local_controller_grip_left,   4) \
+X(a, STATIC,   OPTIONAL, MESSAGE,  controller_grip_left,   4) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  controller_aim_left,   5) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  controller_grip_right,   6) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  controller_aim_right,   7) \
@@ -292,7 +292,7 @@ X(a, STATIC,   SINGULAR, INT64,    sequence_idx,      9)
 #define em_proto_TrackingMessage_P_localSpace_viewSpace_MSGTYPE em_proto_Pose
 #define em_proto_TrackingMessage_P_viewSpace_view0_MSGTYPE em_proto_Pose
 #define em_proto_TrackingMessage_P_viewSpace_view1_MSGTYPE em_proto_Pose
-#define em_proto_TrackingMessage_P_local_controller_grip_left_MSGTYPE em_proto_Pose
+#define em_proto_TrackingMessage_controller_grip_left_MSGTYPE em_proto_Pose
 #define em_proto_TrackingMessage_controller_aim_left_MSGTYPE em_proto_Pose
 #define em_proto_TrackingMessage_controller_grip_right_MSGTYPE em_proto_Pose
 #define em_proto_TrackingMessage_controller_aim_right_MSGTYPE em_proto_Pose
