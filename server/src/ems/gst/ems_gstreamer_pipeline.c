@@ -45,6 +45,8 @@
 
 #define WEBRTC_TEE_NAME "webrtctee"
 
+#define EM_USE_ENCODEBIN
+
 EmsSignalingServer *signaling_server;
 
 struct ems_gstreamer_pipeline
@@ -611,12 +613,12 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	    "encodebin2 profile=\"video/x-h264,tune=zerolatency\" ! "
 #else
 	    "x264enc tune=zerolatency bitrate=8192 key-int-max=60 ! " //
+	    "video/x-h264,profile=baseline ! "                        //
 #endif
-	    "video/x-h264,profile=baseline ! " //
-	    "queue !"                          //
-	    "h264parse ! "                     //
-	    "rtph264pay config-interval=1 ! "  //
-	    "application/x-rtp,payload=96 ! "  //
+	    "queue !"                         //
+	    "h264parse ! "                    //
+	    "rtph264pay config-interval=1 ! " //
+	    "application/x-rtp,payload=96 ! " //
 	    "tee name=%s allow-not-linked=true",
 	    appsrc_name, WEBRTC_TEE_NAME);
 
