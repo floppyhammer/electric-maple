@@ -567,6 +567,25 @@ ems_gstreamer_pipeline_stop(struct gstreamer_pipeline *gp)
 }
 
 void
+gstAndroidLog(GstDebugCategory *category,
+              GstDebugLevel level,
+              const gchar *file,
+              const gchar *function,
+              gint line,
+              GObject *object,
+              GstDebugMessage *message,
+              gpointer data)
+{
+	if (level <= gst_debug_category_get_threshold(category)) {
+		if (level == GST_LEVEL_ERROR) {
+			U_LOG_IFL_E(U_LOGGING_ERROR, "%s, %s: %s", file, function, gst_debug_message_get(message));
+		} else {
+			U_LOG_IFL_E(U_LOGGING_DEBUG, "%s, %s: %s", file, function, gst_debug_message_get(message));
+		}
+	}
+}
+
+void
 ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
                               const char *appsrc_name,
                               struct ems_callbacks *callbacks_collection,
@@ -586,18 +605,18 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	    "videoconvert ! "   //
 	    "videorate ! "
 	    "videoscale ! "
-	    "video/x-raw,format=NV12 ! "               //
-	    "queue !"                                  //
+	    "video/x-raw,format=NV12 ! " //
+	    "queue !"                    //
 #ifdef EM_USE_ENCODEBIN
 	    "encodebin2 profile=\"video/x-h264,tune=zerolatency\" ! "
 #else
 	    "x264enc tune=zerolatency bitrate=8192 key-int-max=60 ! " //
 #endif
-	    "video/x-h264,profile=baseline ! "         //
-	    "queue !"                                  //
-	    "h264parse ! "                             //
-	    "rtph264pay config-interval=1 ! "          //
-	    "application/x-rtp,payload=96 ! "          //
+	    "video/x-h264,profile=baseline ! " //
+	    "queue !"                          //
+	    "h264parse ! "                     //
+	    "rtph264pay config-interval=1 ! "  //
+	    "application/x-rtp,payload=96 ! "  //
 	    "tee name=%s allow-not-linked=true",
 	    appsrc_name, WEBRTC_TEE_NAME);
 
@@ -611,8 +630,15 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	egp->base.xfctx = xfctx;
 	egp->callbacks = callbacks_collection;
 
-
 	gst_init(NULL, NULL);
+
+#ifdef __ANDROID__
+	gst_debug_add_log_function(&gstAndroidLog, NULL, NULL);
+#endif
+	gst_debug_set_default_threshold(GST_LEVEL_WARNING);
+	gst_debug_set_threshold_for_name("decodebin2", GST_LEVEL_INFO);
+	gst_debug_set_threshold_for_name("webrtcbin", GST_LEVEL_INFO);
+	gst_debug_set_threshold_for_name("webrtcbindatachannel", GST_LEVEL_INFO);
 
 	pipeline = gst_parse_launch(pipeline_str, &error);
 	g_assert_no_error(error);
