@@ -610,7 +610,7 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	    "video/x-raw,format=NV12,framerate=60/1 ! " //
 	    "queue !"                                   //
 #ifdef EM_USE_ENCODEBIN
-	    "encodebin2 profile=\"video/x-h264,tune=zerolatency\" ! "
+	    "encodebin2 profile=\"video/x-h264,tune=zerolatency,bitrate=8192\" ! "
 #else
 	    "x264enc tune=zerolatency bitrate=8192 key-int-max=60 ! " //
 	    "video/x-h264,profile=baseline ! "                        //
@@ -676,4 +676,18 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	xrt_frame_context_add(xfctx, &egp->base.node);
 
 	*out_gp = &egp->base;
+}
+
+void
+ems_gstreamer_pipeline_dump(struct gstreamer_pipeline *gp)
+{
+#ifdef __ANDROID__
+	g_print("Write dot file");
+	GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(gp->pipeline), GST_DEBUG_GRAPH_SHOW_ALL, "pipeline");
+	g_print("Writing dot file done");
+#else
+	g_print("Print dot file");
+	gchar *data = gst_debug_bin_to_dot_data(GST_BIN(gp->pipeline), GST_DEBUG_GRAPH_SHOW_ALL);
+	g_print("DOT data: %s", data);
+#endif
 }
