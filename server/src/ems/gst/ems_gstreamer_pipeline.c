@@ -607,8 +607,8 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	    "videoconvert ! "   //
 	    "videorate ! "
 	    "videoscale ! "
-	    "video/x-raw,format=NV12 ! " //
-	    "queue !"                    //
+	    "video/x-raw,format=NV12,framerate=60/1 ! " //
+	    "queue !"                                   //
 #ifdef EM_USE_ENCODEBIN
 	    "encodebin2 profile=\"video/x-h264,tune=zerolatency\" ! "
 #else
