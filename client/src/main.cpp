@@ -515,6 +515,16 @@ android_main(struct android_app *app)
 	// Set up gstreamer
 	gst_init(0, NULL);
 
+	// Set rank for decoder c2qtiavcdecoder
+	GstRegistry *plugins_register = gst_registry_get();
+	GstPluginFeature *dec = gst_registry_lookup_feature(plugins_register, "amcviddec-c2qtiavcdecoder");
+	if (dec == NULL) {
+		ALOGW("c2qtiavcdecoder not available!");
+	} else {
+		gst_plugin_feature_set_rank(dec, GST_RANK_PRIMARY + 1);
+		gst_object_unref(dec);
+	}
+
 	// Set up gst logger
 	{
 		// gst_debug_set_default_threshold(GST_LEVEL_WARNING);
