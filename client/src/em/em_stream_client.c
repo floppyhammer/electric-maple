@@ -392,8 +392,8 @@ on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc)
 	    "rtph264depay ! "
 	    "h264parse ! "
 	    "video/x-h264,stream-format=(string)byte-stream,alignment=(string)au,parsed=(boolean)true ! "
-	    "decodebin3 ! "
-//	    "amcviddec-c2qtiavcdecoder ! "        // Hardware
+	    //"decodebin3 ! "
+	    "amcviddec-c2qtiavcdecoder ! "        // Hardware
 //	    "amcviddec-omxqcomvideodecoderavc ! " // Hardware
 //	    "amcviddec-c2androidavcdecoder ! "    // Software
 //	    "amcviddec-omxgoogleh264decoder ! "   // Software
