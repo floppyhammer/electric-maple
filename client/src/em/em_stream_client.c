@@ -618,6 +618,10 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 		decode_end = sc->sample_decode_end_ts;
 	}
 
+	// Check pipeline
+//	gchar *data = gst_debug_bin_to_dot_data(GST_BIN(sc->pipeline), GST_DEBUG_GRAPH_SHOW_ALL);
+//	g_free(data);
+
 	if (sample == NULL) {
 		if (gst_app_sink_is_eos(GST_APP_SINK(sc->appsink))) {
 			ALOGW("%s: EOS", __FUNCTION__);

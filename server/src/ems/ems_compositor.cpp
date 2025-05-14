@@ -352,6 +352,8 @@ pack_blit_and_encode(struct ems_compositor *c,
 	struct vk_image_readback_to_xf *wrap = NULL;
 	struct vk_bundle *vk = &c->base.vk;
 
+//	ems_gstreamer_pipeline_dump(c->gstreamer_pipeline);
+
 	// Getting frame
 	if (!vk_image_readback_to_xf_pool_get_unused_frame(vk, c->pool, &wrap)) {
 		EMS_COMP_ERROR(c, "vk_image_readback_to_xf_pool_get_unused_frame: Failed!");

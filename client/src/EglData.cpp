@@ -54,9 +54,6 @@ EglData::EglData()
 	    EGL_SAMPLES,
 	    1, //
 
-	    EGL_COLOR_BUFFER_TYPE,
-	    EGL_RGB_BUFFER,
-
 	    EGL_RENDERABLE_TYPE,
 	    EGL_OPENGL_ES3_BIT,
 
