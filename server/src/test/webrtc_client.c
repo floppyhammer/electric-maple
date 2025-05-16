@@ -15,6 +15,8 @@
 #include "stdio.h"
 #include "util/u_logging.h"
 
+#define USE_DECODEBIN
+
 static gchar *websocket_uri = NULL;
 
 static GOptionEntry options[] = {{
@@ -340,7 +342,12 @@ websocket_connected_cb(GObject *session, GAsyncResult *res, gpointer user_data)
 		    "webrtcbin name=webrtc bundle-policy=max-bundle ! "
 		    "rtph264depay ! "
 		    "h264parse ! "
+#ifdef USE_DECODEBIN
+		    "decodebin3 ! "
+		    "videoconvert ! "
+#else
 		    "avdec_h264 ! " // sudo apt install gstreamer1.0-libav
+#endif
 		    "autovideosink",
 		    &error);
 		g_assert_no_error(error);
