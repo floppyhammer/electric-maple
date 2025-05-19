@@ -73,6 +73,9 @@ controller_destroy(struct xrt_device *xdev)
 	u_var_remove_root(emc);
 
 	u_device_free(&emc->base);
+
+	delete[] emc->hand_joints;
+	emc->hand_joints = NULL;
 }
 
 // You should put code to update the attached input fields (if any)
@@ -127,25 +130,23 @@ controller_get_hand_tracking(struct xrt_device *xdev,
 		return;
 	}
 
-	struct u_hand_tracking_curl_values values = {
-	    .little = 0,
-	    .ring = 0,
-	    .middle = 0,
-	    .index = 0,
-	    .thumb = 0,
-	};
-
-	// Get the pose of the hand.
-	struct xrt_space_relation relation;
-	xrt_device_get_tracked_pose(xdev, XRT_INPUT_INDEX_GRIP_POSE, requested_timestamp_ns, &relation);
-
-	// Simulate the hand.
-	enum xrt_hand hand = XRT_HAND_LEFT;
-	u_hand_sim_simulate_for_valve_index_knuckles(&values, hand, &relation, out_value);
-
-	// out_value->hand_pose.pose = emc->pose;
+	out_value->hand_pose.pose = emc->pose;
 
 	out_value->is_active = emc->active;
+
+	for (int i = 0; i < 26; i++) {
+		auto &joint_pose = out_value->values.hand_joint_set_default[i].relation.pose;
+		joint_pose.position.x = emc->hand_joints[i].pose.position.x;
+		joint_pose.position.y = emc->hand_joints[i].pose.position.y;
+		joint_pose.position.z = emc->hand_joints[i].pose.position.z;
+
+		joint_pose.orientation.x = emc->hand_joints[i].pose.orientation.x;
+		joint_pose.orientation.y = emc->hand_joints[i].pose.orientation.y;
+		joint_pose.orientation.z = emc->hand_joints[i].pose.orientation.z;
+		joint_pose.orientation.w = emc->hand_joints[i].pose.orientation.w;
+
+		out_value->values.hand_joint_set_default[i].radius = emc->hand_joints[i].radius;
+	}
 
 	// This is a lie
 	*out_timestamp_ns = requested_timestamp_ns;
@@ -220,6 +221,8 @@ controller_handle_data(enum ems_callbacks_event event, const em_proto_UpMessage 
 		pose.orientation.x = message->tracking.controller_grip_left.orientation.x;
 		pose.orientation.y = message->tracking.controller_grip_left.orientation.y;
 		pose.orientation.z = message->tracking.controller_grip_left.orientation.z;
+
+		memcpy(emc->hand_joints, message->tracking.hand_joints_left, sizeof(em_proto_HandJointLocation) * 26);
 	} else if (emc->base.device_type == XRT_DEVICE_TYPE_RIGHT_HAND_CONTROLLER) {
 		if (!message->tracking.has_controller_grip_right) {
 			return;
@@ -235,6 +238,8 @@ controller_handle_data(enum ems_callbacks_event event, const em_proto_UpMessage 
 		pose.orientation.x = message->tracking.controller_grip_right.orientation.x;
 		pose.orientation.y = message->tracking.controller_grip_right.orientation.y;
 		pose.orientation.z = message->tracking.controller_grip_right.orientation.z;
+
+		memcpy(emc->hand_joints, message->tracking.hand_joints_right, sizeof(em_proto_HandJointLocation) * 26);
 	} else {
 		return;
 	}
@@ -337,6 +342,7 @@ ems_motion_controller_create(ems_instance &emsi, enum xrt_device_name device_nam
 	emc->instance = &emsi;
 	emc->pose = default_pose;
 	emc->log_level = debug_get_log_option_sample_log();
+	emc->hand_joints = new struct _em_proto_HandJointLocation[26];
 
 	// Print name.
 	snprintf(emc->base.str, XRT_DEVICE_NAME_LEN, "Hand %s Controller (Electric Maple)", hand_str);

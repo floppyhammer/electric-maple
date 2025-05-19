@@ -179,6 +179,55 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 		tracking.controller_grip_right.orientation.z = handLocalPose.orientation.z;
 	}
 
+	// Get joints
+	if (inputState.pfnXrLocateHandJointsEXT != nullptr) {
+		for (auto hand : {inputState.xrHandTrackerEXTLeft, inputState.xrHandTrackerEXTRight}) {
+			XrHandJointLocationEXT jointLocations[XR_HAND_JOINT_COUNT_EXT];
+			XrHandJointLocationsEXT locationsEXT = {.type = XR_TYPE_HAND_JOINT_LOCATIONS_EXT,
+			                                        .jointCount = XR_HAND_JOINT_COUNT_EXT,
+			                                        .jointLocations = jointLocations};
+
+			XrHandJointsLocateInfoEXT locateInfoEXT = {.type = XR_TYPE_HAND_JOINTS_LOCATE_INFO_EXT,
+			                                           .next = nullptr,
+			                                           .baseSpace = exp->xr_owned.worldSpace,
+			                                           .time = predictedDisplayTime};
+
+			if (inputState.pfnXrLocateHandJointsEXT(hand, &locateInfoEXT, &locationsEXT) != XR_SUCCESS) {
+				ALOGV("Failed to get hand joint locations");
+				continue;
+			}
+
+			if (!locationsEXT.isActive) {
+				ALOGV("Hand %d is inactive", hand);
+				continue;
+			}
+
+			em_proto_HandJointLocation *locations;
+			if (hand == inputState.xrHandTrackerEXTLeft) {
+				locations = tracking.hand_joints_left;
+			} else {
+				locations = tracking.hand_joints_right;
+			}
+
+			for (int i = 0; i < locationsEXT.jointCount; i++) {
+				auto joint_pose = locationsEXT.jointLocations[i].pose;
+
+				locations[i].pose.has_position = locationsEXT.isActive;
+				locations[i].pose.position.x = joint_pose.position.x;
+				locations[i].pose.position.y = joint_pose.position.y;
+				locations[i].pose.position.z = joint_pose.position.z;
+
+				locations[i].pose.has_orientation = locationsEXT.isActive;
+				locations[i].pose.orientation.w = joint_pose.orientation.w;
+				locations[i].pose.orientation.x = joint_pose.orientation.x;
+				locations[i].pose.orientation.y = joint_pose.orientation.y;
+				locations[i].pose.orientation.z = joint_pose.orientation.z;
+
+				locations[i].radius = locationsEXT.jointLocations[i].radius;
+			}
+		}
+	}
+
 	em_proto_UpMessage upMessage = em_proto_UpMessage_init_default;
 	upMessage.has_tracking = true;
 	upMessage.tracking = tracking;

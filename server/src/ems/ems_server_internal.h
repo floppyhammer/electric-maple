@@ -72,6 +72,8 @@ struct ems_motion_controller
 	enum u_logging_level log_level;
 
 	bool active;
+
+	struct _em_proto_HandJointLocation* hand_joints;
 };
 
 struct ems_instance

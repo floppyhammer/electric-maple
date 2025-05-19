@@ -109,6 +109,38 @@ CheckXrResult(XrResult res, const char *originator = nullptr, const char *source
 }
 
 void
+initialize_handtracking(struct em_state &state)
+{
+	PFN_xrCreateHandTrackerEXT pfnXrCreateHandTrackerEXT = nullptr;
+	CheckXrResult(xrGetInstanceProcAddr(state.instance, "xrCreateHandTrackerEXT",
+	                                    (PFN_xrVoidFunction *)(&pfnXrCreateHandTrackerEXT)));
+
+	if (pfnXrCreateHandTrackerEXT == nullptr) {
+		ALOGE("Failed to xrCreateHandTrackerEXT");
+		return;
+	}
+
+	CheckXrResult(xrGetInstanceProcAddr(state.instance, "xrLocateHandJointsEXT",
+	                                    (PFN_xrVoidFunction *)(&state.input.pfnXrLocateHandJointsEXT)));
+
+	if (pfnXrCreateHandTrackerEXT == nullptr) {
+		ALOGE("Failed to xrLocateHandJointsEXT");
+		return;
+	}
+
+	XrHandTrackerCreateInfoEXT createInfoEXT;
+	memset(&createInfoEXT, 0, sizeof(createInfoEXT));
+	createInfoEXT.type = XR_TYPE_HAND_TRACKER_CREATE_INFO_EXT;
+	createInfoEXT.handJointSet = XR_HAND_JOINT_SET_DEFAULT_EXT;
+	// create left
+	createInfoEXT.hand = XR_HAND_LEFT_EXT;
+	CheckXrResult(pfnXrCreateHandTrackerEXT(state.session, &createInfoEXT, &state.input.xrHandTrackerEXTLeft));
+	// create right
+	createInfoEXT.hand = XR_HAND_RIGHT_EXT;
+	CheckXrResult(pfnXrCreateHandTrackerEXT(state.session, &createInfoEXT, &state.input.xrHandTrackerEXTRight));
+}
+
+void
 initialize_actions(struct em_state &state)
 {
 	// Create an action set.
@@ -201,8 +233,8 @@ initialize_actions(struct em_state &state)
 	// Suggest bindings for KHR Simple.
 	{
 		XrPath khrSimpleInteractionProfilePath;
-		CheckXrResult(
-		    xrStringToPath(state.instance, "/interaction_profiles/khr/simple_controller", &khrSimpleInteractionProfilePath));
+		CheckXrResult(xrStringToPath(state.instance, "/interaction_profiles/khr/simple_controller",
+		                             &khrSimpleInteractionProfilePath));
 		std::vector<XrActionSuggestedBinding> bindings{{// Fall back to a click input for the grab action.
 		                                                {state.input.grabAction, selectPath[Side::LEFT]},
 		                                                {state.input.grabAction, selectPath[Side::RIGHT]},
@@ -218,7 +250,7 @@ initialize_actions(struct em_state &state)
 		suggestedBindings.countSuggestedBindings = (uint32_t)bindings.size();
 		CheckXrResult(xrSuggestInteractionProfileBindings(state.instance, &suggestedBindings));
 	}
-	
+
 	XrActionSpaceCreateInfo actionSpaceInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO};
 	actionSpaceInfo.action = state.input.poseAction;
 	actionSpaceInfo.poseInActionSpace.orientation.w = 1.f;
@@ -412,7 +444,8 @@ android_main(struct android_app *app)
 
 	const char *extensions[] = {XR_KHR_OPENGL_ES_ENABLE_EXTENSION_NAME,
 	                            XR_KHR_ANDROID_CREATE_INSTANCE_EXTENSION_NAME,
-	                            XR_KHR_CONVERT_TIMESPEC_TIME_EXTENSION_NAME};
+	                            XR_KHR_CONVERT_TIMESPEC_TIME_EXTENSION_NAME,
+	                            XR_EXT_HAND_TRACKING_EXTENSION_NAME,};
 
 	XrInstanceCreateInfoAndroidKHR androidInfo = {};
 	androidInfo.type = XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR;
@@ -501,6 +534,8 @@ android_main(struct android_app *app)
 	}
 
 	initialize_actions(_state);
+
+	initialize_handtracking(_state);
 
 	//
 	// End of normal OpenXR app startup

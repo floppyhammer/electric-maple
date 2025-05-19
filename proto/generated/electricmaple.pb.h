@@ -42,6 +42,11 @@ typedef struct _em_proto_Pose {
     em_proto_Quaternion orientation;
 } em_proto_Pose;
 
+typedef struct _em_proto_HandJointLocation {
+  em_proto_Pose pose;
+  float radius;
+} em_proto_HandJointLocation;
+
 typedef struct _em_proto_TrackingMessage {
     bool has_P_localSpace_viewSpace;
     em_proto_Pose P_localSpace_viewSpace;
@@ -59,6 +64,8 @@ typedef struct _em_proto_TrackingMessage {
     em_proto_Pose controller_aim_right;
     int64_t timestamp;
     int64_t sequence_idx;
+    em_proto_HandJointLocation hand_joints_left[26];
+    em_proto_HandJointLocation hand_joints_right[26];
 } em_proto_TrackingMessage;
 
 typedef struct _em_proto_InputThumbstick {

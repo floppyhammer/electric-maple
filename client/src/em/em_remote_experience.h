@@ -42,6 +42,9 @@ struct InputState
 	std::array<XrSpace, Side::COUNT> handSpace;
 	std::array<float, Side::COUNT> handScale = {{1.0f, 1.0f}};
 	std::array<XrBool32, Side::COUNT> handActive;
+	PFN_xrLocateHandJointsEXT pfnXrLocateHandJointsEXT = nullptr;
+	XrHandTrackerEXT xrHandTrackerEXTLeft;
+	XrHandTrackerEXT xrHandTrackerEXTRight;
 };
 
 typedef enum EmPollRenderResult
