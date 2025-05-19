@@ -27,6 +27,11 @@ message Pose {
 	Quaternion orientation = 2;
 }
 
+message HandJointLocation {
+	Pose pose = 1;
+	float radius = 2;
+}
+
 // todo: make this bitflags, make this support "inferred"
 enum TrackedStatus {
 	UNTRACKED = 0;
@@ -46,6 +51,9 @@ message TrackingMessage {
 
 	int64 timestamp = 8;
 	int64 sequence_idx = 9;
+
+	repeated HandJointLocation hand_joint_locations_left = 10 [count = 26];
+    repeated HandJointLocation hand_joint_locations_right = 11 [count = 26];
 }
 
 message InputThumbstick {

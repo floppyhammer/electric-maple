@@ -206,6 +206,8 @@ controller_handle_data(enum ems_callbacks_event event, const em_proto_UpMessage 
 
 	xrt_pose pose = {};
 
+	em_proto_HandJointLocation hand_joint_locations[26];
+
 	if (emc->base.device_type == XRT_DEVICE_TYPE_LEFT_HAND_CONTROLLER) {
 		if (!message->tracking.has_controller_grip_left) {
 			return;
@@ -222,7 +224,6 @@ controller_handle_data(enum ems_callbacks_event event, const em_proto_UpMessage 
 		pose.orientation.y = message->tracking.controller_grip_left.orientation.y;
 		pose.orientation.z = message->tracking.controller_grip_left.orientation.z;
 
-		memcpy(emc->hand_joints, message->tracking.hand_joints_left, sizeof(em_proto_HandJointLocation) * 26);
 	} else if (emc->base.device_type == XRT_DEVICE_TYPE_RIGHT_HAND_CONTROLLER) {
 		if (!message->tracking.has_controller_grip_right) {
 			return;
@@ -239,7 +240,6 @@ controller_handle_data(enum ems_callbacks_event event, const em_proto_UpMessage 
 		pose.orientation.y = message->tracking.controller_grip_right.orientation.y;
 		pose.orientation.z = message->tracking.controller_grip_right.orientation.z;
 
-		memcpy(emc->hand_joints, message->tracking.hand_joints_right, sizeof(em_proto_HandJointLocation) * 26);
 	} else {
 		return;
 	}

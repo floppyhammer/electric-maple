@@ -220,6 +220,25 @@ data_channel_close_cb(GstWebRTCDataChannel *datachannel, struct ems_gstreamer_pi
 	g_clear_object(&egp->data_channel);
 }
 
+bool
+ProtoMessage_decode_hand_joint_locations(pb_istream_t *istream, const pb_field_t *field, void **arg)
+{
+	em_proto_HandJointLocation *dest = *arg;
+
+	em_proto_HandJointLocation location;
+
+	if (!pb_decode(istream, (pb_msgdesc_t *)field, &location)) {
+		const char *error = PB_GET_ERROR(istream);
+		printf("decode error: %s\n", error);
+		return false;
+	}
+
+	U_LOG_E("Get hand tracking %f %f %f", location.pose.position.x, location.pose.position.y,
+	        location.pose.position.z);
+
+	return true;
+}
+
 static void
 data_channel_message_data_cb(GstWebRTCDataChannel *datachannel, GBytes *data, struct ems_gstreamer_pipeline *egp)
 {
@@ -227,14 +246,24 @@ data_channel_message_data_cb(GstWebRTCDataChannel *datachannel, GBytes *data, st
 	size_t n = 0;
 
 	const unsigned char *buf = (const unsigned char *)g_bytes_get_data(data, &n);
+
 	pb_istream_t our_istream = pb_istream_from_buffer(buf, n);
 
-	bool result = pb_decode_ex(&our_istream, &em_proto_UpMessage_msg, &message, PB_DECODE_NULLTERMINATED);
+	em_proto_HandJointLocation hand_joint_locations_left[26];
+	em_proto_HandJointLocation hand_joint_locations_right[26];
 
+	message.tracking.hand_joint_locations_left.funcs.decode = ProtoMessage_decode_hand_joint_locations;
+	message.tracking.hand_joint_locations_left.arg = hand_joint_locations_left;
+
+	message.tracking.hand_joint_locations_right.funcs.decode = ProtoMessage_decode_hand_joint_locations;
+	message.tracking.hand_joint_locations_right.arg = hand_joint_locations_right;
+
+	bool result = pb_decode_ex(&our_istream, &em_proto_UpMessage_msg, &message, PB_DECODE_NULLTERMINATED);
 	if (!result) {
 		U_LOG_E("Error! %s", PB_GET_ERROR(&our_istream));
 		return;
 	}
+
 	ems_callbacks_call(egp->callbacks, EMS_CALLBACKS_EVENT_TRACKING, &message);
 	ems_callbacks_call(egp->callbacks, EMS_CALLBACKS_EVENT_CONTROLLER, &message);
 }
@@ -371,8 +400,16 @@ remove_webrtcbin_probe_cb(GstPad *pad, GstPadProbeInfo *info, gpointer user_data
 {
 	GstElement *webrtcbin = GST_ELEMENT(user_data);
 
+	// // Secondly, send an EOS event
+	// gboolean res = gst_element_send_event(webrtcbin, gst_event_new_eos());
+	// if (!res) {
+	// 	g_print("Error occurred! EOS signal cannot be sent!");
+	// }
+
 	gst_bin_remove(GST_BIN(GST_ELEMENT_PARENT(webrtcbin)), webrtcbin);
 	gst_element_set_state(webrtcbin, GST_STATE_NULL);
+
+	// gst_object_unref(webrtcbin);
 
 	return GST_PAD_PROBE_REMOVE;
 }
@@ -386,6 +423,7 @@ webrtc_client_disconnected_cb(EmsSignalingServer *server, EmsClientId client_id,
 	webrtcbin = get_webrtcbin_for_client(pipeline, client_id);
 
 	if (webrtcbin) {
+		// Firstly, we block the dataflow into the webrtcbin
 		GstPad *sinkpad;
 
 		sinkpad = gst_element_get_static_pad(webrtcbin, "sink_0");
@@ -681,13 +719,6 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 void
 ems_gstreamer_pipeline_dump(struct gstreamer_pipeline *gp)
 {
-#ifdef __ANDROID__
-	g_print("Write dot file");
-	GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(gp->pipeline), GST_DEBUG_GRAPH_SHOW_ALL, "pipeline");
-	g_print("Writing dot file done");
-#else
-	g_print("Print dot file");
 	gchar *data = gst_debug_bin_to_dot_data(GST_BIN(gp->pipeline), GST_DEBUG_GRAPH_SHOW_ALL);
-	g_print("DOT data: %s", data);
-#endif
+	g_free(data);
 }

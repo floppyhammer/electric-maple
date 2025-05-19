@@ -34,7 +34,6 @@
 #include "gstreamer/gst_sink.h"
 #include "gst/ems_gstreamer_pipeline.h"
 
-
 #include "ems_server_internal.h"
 
 #ifdef __cplusplus
