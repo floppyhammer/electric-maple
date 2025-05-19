@@ -227,14 +227,13 @@ ProtoMessage_decode_hand_joint_locations(pb_istream_t *istream, const pb_field_t
 
 	em_proto_HandJointLocation location;
 
-	if (!pb_decode(istream, (pb_msgdesc_t *)field, &location)) {
+	if (!pb_decode(istream, (pb_msgdesc_t *)em_proto_HandJointLocation_fields, &location)) {
 		const char *error = PB_GET_ERROR(istream);
 		printf("decode error: %s\n", error);
 		return false;
 	}
 
-	U_LOG_E("Get hand tracking %f %f %f", location.pose.position.x, location.pose.position.y,
-	        location.pose.position.z);
+	dest[(int)location.index] = location;
 
 	return true;
 }

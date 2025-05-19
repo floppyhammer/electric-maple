@@ -43,6 +43,7 @@ typedef struct _em_proto_Pose {
 } em_proto_Pose;
 
 typedef struct _em_proto_HandJointLocation {
+    float index;
     bool has_pose;
     em_proto_Pose pose;
     float radius;
@@ -177,7 +178,7 @@ extern "C" {
 #define em_proto_Vec3_init_default               {0, 0, 0}
 #define em_proto_Vec2_init_default               {0, 0}
 #define em_proto_Pose_init_default               {false, em_proto_Vec3_init_default, false, em_proto_Quaternion_init_default}
-#define em_proto_HandJointLocation_init_default  {false, em_proto_Pose_init_default, 0}
+#define em_proto_HandJointLocation_init_default  {0, false, em_proto_Pose_init_default, 0}
 #define em_proto_TrackingMessage_init_default    {false, em_proto_Pose_init_default, false, em_proto_Pose_init_default, false, em_proto_Pose_init_default, false, em_proto_Pose_init_default, false, em_proto_Pose_init_default, false, em_proto_Pose_init_default, false, em_proto_Pose_init_default, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}}
 #define em_proto_InputThumbstick_init_default    {false, em_proto_Vec2_init_default, 0, 0}
 #define em_proto_InputValueTouch_init_default    {0, 0}
@@ -193,7 +194,7 @@ extern "C" {
 #define em_proto_Vec3_init_zero                  {0, 0, 0}
 #define em_proto_Vec2_init_zero                  {0, 0}
 #define em_proto_Pose_init_zero                  {false, em_proto_Vec3_init_zero, false, em_proto_Quaternion_init_zero}
-#define em_proto_HandJointLocation_init_zero     {false, em_proto_Pose_init_zero, 0}
+#define em_proto_HandJointLocation_init_zero     {0, false, em_proto_Pose_init_zero, 0}
 #define em_proto_TrackingMessage_init_zero       {false, em_proto_Pose_init_zero, false, em_proto_Pose_init_zero, false, em_proto_Pose_init_zero, false, em_proto_Pose_init_zero, false, em_proto_Pose_init_zero, false, em_proto_Pose_init_zero, false, em_proto_Pose_init_zero, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}}
 #define em_proto_InputThumbstick_init_zero       {false, em_proto_Vec2_init_zero, 0, 0}
 #define em_proto_InputValueTouch_init_zero       {0, 0}
@@ -218,8 +219,9 @@ extern "C" {
 #define em_proto_Vec2_y_tag                      2
 #define em_proto_Pose_position_tag               1
 #define em_proto_Pose_orientation_tag            2
-#define em_proto_HandJointLocation_pose_tag      1
-#define em_proto_HandJointLocation_radius_tag    2
+#define em_proto_HandJointLocation_index_tag     1
+#define em_proto_HandJointLocation_pose_tag      2
+#define em_proto_HandJointLocation_radius_tag    3
 #define em_proto_TrackingMessage_P_localSpace_viewSpace_tag 1
 #define em_proto_TrackingMessage_P_viewSpace_view0_tag 2
 #define em_proto_TrackingMessage_P_viewSpace_view1_tag 3
@@ -293,8 +295,9 @@ X(a, STATIC,   OPTIONAL, MESSAGE,  orientation,       2)
 #define em_proto_Pose_orientation_MSGTYPE em_proto_Quaternion
 
 #define em_proto_HandJointLocation_FIELDLIST(X, a) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  pose,              1) \
-X(a, STATIC,   SINGULAR, FLOAT,    radius,            2)
+X(a, STATIC,   SINGULAR, FLOAT,    index,             1) \
+X(a, STATIC,   OPTIONAL, MESSAGE,  pose,              2) \
+X(a, STATIC,   SINGULAR, FLOAT,    radius,            3)
 #define em_proto_HandJointLocation_CALLBACK NULL
 #define em_proto_HandJointLocation_DEFAULT NULL
 #define em_proto_HandJointLocation_pose_MSGTYPE em_proto_Pose
@@ -450,7 +453,7 @@ extern const pb_msgdesc_t em_proto_DownMessage_msg;
 #define EM_PROTO_ELECTRICMAPLE_PB_H_MAX_SIZE     em_proto_DownMessage_size
 #define em_proto_DownFrameDataMessage_size       63
 #define em_proto_DownMessage_size                65
-#define em_proto_HandJointLocation_size          46
+#define em_proto_HandJointLocation_size          51
 #define em_proto_InputClickTouch_size            4
 #define em_proto_InputThumbstick_size            16
 #define em_proto_InputValueTouch_size            7

@@ -67,6 +67,7 @@ struct _EmRemoteExperience
 	std::atomic_int64_t nextUpMessage{1};
 };
 
+static constexpr size_t em_proto_UpMessage_size = 2969 * 2;
 static constexpr size_t kUpBufferSize = em_proto_UpMessage_size + 10;
 
 bool
@@ -75,16 +76,43 @@ em_remote_experience_emit_upmessage(EmRemoteExperience *exp, em_proto_UpMessage 
 	int64_t message_id = exp->nextUpMessage++;
 	upMessage->up_message_id = message_id;
 
+	// Serialize data
 	uint8_t buffer[kUpBufferSize];
 	pb_ostream_t os = pb_ostream_from_buffer(buffer, sizeof(buffer));
 
 	pb_encode(&os, &em_proto_UpMessage_msg, upMessage);
 
-	//	ALOGI("RYLIE: Sending message");
+	// Send data
 	GBytes *bytes = g_bytes_new(buffer, os.bytes_written);
 	bool bResult = em_connection_send_bytes(exp->connection, bytes);
 	g_bytes_unref(bytes);
+
 	return bResult;
+}
+
+bool
+ProtoMessage_encode_hand_joint_locations(pb_ostream_t *ostream, const pb_field_t *field, void *const *arg)
+{
+	auto *source = (em_proto_HandJointLocation *)(*arg);
+
+	// Encode all elements
+	for (int i = 0; i < 26; i++) {
+		source[i].index = i;
+
+		if (!pb_encode_tag_for_field(ostream, field)) {
+			const char *error = PB_GET_ERROR(ostream);
+			printf("SimpleMessage_encode_numbers error: %s", error);
+			return false;
+		}
+
+		if (!pb_encode_submessage(ostream, em_proto_HandJointLocation_fields, source + i)) {
+			const char *error = PB_GET_ERROR(ostream);
+			printf("SimpleMessage_encode_numbers error: %s", error);
+			return false;
+		}
+	}
+
+	return true;
 }
 
 /// Send pose data back to server.
@@ -179,6 +207,8 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 		tracking.controller_grip_right.orientation.z = handLocalPose.orientation.z;
 	}
 
+	em_proto_HandJointLocation hand_joint_locations[26];
+
 	// Get joints
 	if (inputState.pfnXrLocateHandJointsEXT != nullptr) {
 		for (auto hand : {inputState.xrHandTrackerEXTLeft, inputState.xrHandTrackerEXTRight}) {
@@ -198,33 +228,35 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 			}
 
 			if (!locationsEXT.isActive) {
-				ALOGV("Hand %d is inactive", hand);
+				//				ALOGV("Hand %d is inactive", hand);
 				continue;
-			}
-
-			em_proto_HandJointLocation *locations;
-			if (hand == inputState.xrHandTrackerEXTLeft) {
-				locations = tracking.hand_joints_left;
-			} else {
-				locations = tracking.hand_joints_right;
 			}
 
 			for (int i = 0; i < locationsEXT.jointCount; i++) {
 				auto joint_pose = locationsEXT.jointLocations[i].pose;
+				hand_joint_locations[i].pose.has_position = locationsEXT.isActive;
 
-				locations[i].pose.has_position = locationsEXT.isActive;
-				locations[i].pose.position.x = joint_pose.position.x;
-				locations[i].pose.position.y = joint_pose.position.y;
-				locations[i].pose.position.z = joint_pose.position.z;
+				hand_joint_locations[i].pose.position.x = joint_pose.position.x;
+				hand_joint_locations[i].pose.position.y = joint_pose.position.y;
+				hand_joint_locations[i].pose.position.z = joint_pose.position.z;
 
-				locations[i].pose.has_orientation = locationsEXT.isActive;
-				locations[i].pose.orientation.w = joint_pose.orientation.w;
-				locations[i].pose.orientation.x = joint_pose.orientation.x;
-				locations[i].pose.orientation.y = joint_pose.orientation.y;
-				locations[i].pose.orientation.z = joint_pose.orientation.z;
+				hand_joint_locations[i].pose.has_orientation = locationsEXT.isActive;
+				hand_joint_locations[i].pose.orientation.w = joint_pose.orientation.w;
+				hand_joint_locations[i].pose.orientation.x = joint_pose.orientation.x;
+				hand_joint_locations[i].pose.orientation.y = joint_pose.orientation.y;
+				hand_joint_locations[i].pose.orientation.z = joint_pose.orientation.z;
 
-				locations[i].radius = locationsEXT.jointLocations[i].radius;
+				hand_joint_locations[i].radius = locationsEXT.jointLocations[i].radius;
 			}
+
+			pb_callback_t *locations;
+			if (hand == inputState.xrHandTrackerEXTLeft) {
+				locations = &tracking.hand_joint_locations_left;
+			} else {
+				locations = &tracking.hand_joint_locations_right;
+			}
+			locations->arg = hand_joint_locations;
+			locations->funcs.encode = ProtoMessage_encode_hand_joint_locations;
 		}
 	}
 
