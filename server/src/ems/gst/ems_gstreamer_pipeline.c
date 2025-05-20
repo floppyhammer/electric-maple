@@ -229,11 +229,14 @@ ProtoMessage_decode_hand_joint_locations(pb_istream_t *istream, const pb_field_t
 
 	if (!pb_decode(istream, (pb_msgdesc_t *)em_proto_HandJointLocation_fields, &location)) {
 		const char *error = PB_GET_ERROR(istream);
-		printf("decode error: %s\n", error);
+		U_LOG_E("decode error: %s\n", error);
 		return false;
 	}
 
 	dest[(int)location.index] = location;
+
+	U_LOG_E("Down %d %f %f %f", (int)location.index, location.pose.position.x, location.pose.position.y,
+	        location.pose.position.z);
 
 	return true;
 }
@@ -241,7 +244,7 @@ ProtoMessage_decode_hand_joint_locations(pb_istream_t *istream, const pb_field_t
 static void
 data_channel_message_data_cb(GstWebRTCDataChannel *datachannel, GBytes *data, struct ems_gstreamer_pipeline *egp)
 {
-	UpMessageSuper message_super;
+	UpMessageSuper message_super = {};
 	em_proto_UpMessage message = em_proto_UpMessage_init_default;
 
 	size_t n = 0;
@@ -251,10 +254,10 @@ data_channel_message_data_cb(GstWebRTCDataChannel *datachannel, GBytes *data, st
 	pb_istream_t our_istream = pb_istream_from_buffer(buf, n);
 
 	message.tracking.hand_joint_locations_left.funcs.decode = ProtoMessage_decode_hand_joint_locations;
-	message.tracking.hand_joint_locations_left.arg = &message_super.hand_joint_locations_left;
+	message.tracking.hand_joint_locations_left.arg = message_super.hand_joint_locations_left;
 
 	message.tracking.hand_joint_locations_right.funcs.decode = ProtoMessage_decode_hand_joint_locations;
-	message.tracking.hand_joint_locations_right.arg = &message_super.hand_joint_locations_right;
+	message.tracking.hand_joint_locations_right.arg = message_super.hand_joint_locations_right;
 
 	bool result = pb_decode_ex(&our_istream, &em_proto_UpMessage_msg, &message, PB_DECODE_NULLTERMINATED);
 	if (!result) {

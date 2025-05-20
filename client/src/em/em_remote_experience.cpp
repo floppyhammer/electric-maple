@@ -97,19 +97,20 @@ ProtoMessage_encode_hand_joint_locations(pb_ostream_t *ostream, const pb_field_t
 
 	// Encode all elements
 	for (int i = 0; i < 26; i++) {
-		source[i].index = i;
-
 		if (!pb_encode_tag_for_field(ostream, field)) {
 			const char *error = PB_GET_ERROR(ostream);
-			printf("SimpleMessage_encode_numbers error: %s", error);
+			ALOGE("ProtoMessage_encode_hand_joint_locations error: %s", error);
 			return false;
 		}
 
 		if (!pb_encode_submessage(ostream, em_proto_HandJointLocation_fields, source + i)) {
 			const char *error = PB_GET_ERROR(ostream);
-			printf("SimpleMessage_encode_numbers error: %s", error);
+			ALOGE("ProtoMessage_encode_hand_joint_locations error: %s", error);
 			return false;
 		}
+
+		ALOGE("Up %d %f %f %f", i, (source + i)->pose.position.x, (source + i)->pose.position.y,
+		      (source + i)->pose.position.z);
 	}
 
 	return true;
@@ -207,7 +208,8 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 		tracking.controller_grip_right.orientation.z = handLocalPose.orientation.z;
 	}
 
-	em_proto_HandJointLocation hand_joint_locations[26];
+	std::array<em_proto_HandJointLocation, 26> hand_joint_locations_left{};
+	std::array<em_proto_HandJointLocation, 26> hand_joint_locations_right{};
 
 	// Get joints
 	if (inputState.pfnXrLocateHandJointsEXT != nullptr) {
@@ -232,10 +234,16 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 				continue;
 			}
 
-			for (int i = 0; i < locationsEXT.jointCount; i++) {
-				auto joint_pose = locationsEXT.jointLocations[i].pose;
-				hand_joint_locations[i].pose.has_position = locationsEXT.isActive;
+			auto &hand_joint_locations = hand == inputState.xrHandTrackerEXTLeft
+			                                 ? hand_joint_locations_left
+			                                 : hand_joint_locations_right;
 
+			for (int i = 0; i < locationsEXT.jointCount; i++) {
+				hand_joint_locations[i].index = i;
+
+				auto joint_pose = locationsEXT.jointLocations[i].pose;
+
+				hand_joint_locations[i].pose.has_position = locationsEXT.isActive;
 				hand_joint_locations[i].pose.position.x = joint_pose.position.x;
 				hand_joint_locations[i].pose.position.y = joint_pose.position.y;
 				hand_joint_locations[i].pose.position.z = joint_pose.position.z;
@@ -249,14 +257,10 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 				hand_joint_locations[i].radius = locationsEXT.jointLocations[i].radius;
 			}
 
-			pb_callback_t *locations;
-			if (hand == inputState.xrHandTrackerEXTLeft) {
-				locations = &tracking.hand_joint_locations_left;
-			} else {
-				locations = &tracking.hand_joint_locations_right;
-			}
-			locations->arg = hand_joint_locations;
-			locations->funcs.encode = ProtoMessage_encode_hand_joint_locations;
+			auto &locations = hand == inputState.xrHandTrackerEXTLeft ? tracking.hand_joint_locations_left
+			                                                          : tracking.hand_joint_locations_right;
+			locations.arg = hand_joint_locations.data();
+			locations.funcs.encode = ProtoMessage_encode_hand_joint_locations;
 		}
 	}
 

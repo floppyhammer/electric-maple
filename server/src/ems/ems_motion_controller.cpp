@@ -120,9 +120,25 @@ controller_get_hand_tracking(struct xrt_device *xdev,
 		return;
 	}
 
-	out_value->hand_pose.pose = emc->pose;
+	struct u_hand_tracking_curl_values values = {
+	    .little = 0,
+	    .ring = 0,
+	    .middle = 0,
+	    .index = 0,
+	    .thumb = 0,
+	};
 
-	out_value->is_active = emc->active;
+	// Get the pose of the hand.
+	struct xrt_space_relation relation;
+	xrt_device_get_tracked_pose(xdev, XRT_INPUT_INDEX_GRIP_POSE, requested_timestamp_ns, &relation);
+
+	// Simulate the hand.
+	enum xrt_hand hand = name == XRT_INPUT_GENERIC_HAND_TRACKING_LEFT ? XRT_HAND_LEFT : XRT_HAND_RIGHT;
+	u_hand_sim_simulate_for_valve_index_knuckles(&values, hand, &relation, out_value);
+
+	// out_value->hand_pose.pose = emc->pose;
+
+	// out_value->is_active = emc->active;
 
 	if (emc->active) {
 		for (int i = 0; i < 26; i++) {
@@ -138,33 +154,33 @@ controller_get_hand_tracking(struct xrt_device *xdev,
 
 			out_value->values.hand_joint_set_default[i].radius = emc->hand_joints[i].radius;
 
-			out_value->values.hand_joint_set_default[i].relation.relation_flags =
-			    (enum xrt_space_relation_flags)(                 //
-			        XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |   //
-			        XRT_SPACE_RELATION_POSITION_VALID_BIT |      //
-			        XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT | //
-			        XRT_SPACE_RELATION_POSITION_TRACKED_BIT);    //
+			// out_value->values.hand_joint_set_default[i].relation.relation_flags =
+			//     (enum xrt_space_relation_flags)(                 //
+			// 	XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |   //
+			// 	XRT_SPACE_RELATION_POSITION_VALID_BIT |      //
+			// 	XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT | //
+			// 	XRT_SPACE_RELATION_POSITION_TRACKED_BIT);    //
 		}
 
-		U_LOG_E("handLocalPose %f %f %f", out_value->values.hand_joint_set_default[0].relation.pose.position.x,
-		        out_value->values.hand_joint_set_default[0].relation.pose.position.y,
-		        out_value->values.hand_joint_set_default[0].relation.pose.position.z);
+		// U_LOG_E("handLocalPose %f %f %f", out_value->values.hand_joint_set_default[0].relation.pose.position.x,
+		//         out_value->values.hand_joint_set_default[0].relation.pose.position.y,
+		//         out_value->values.hand_joint_set_default[0].relation.pose.position.z);
 	} else {
 		for (int i = 0; i < 26; i++) {
-			auto &joint_pose = out_value->values.hand_joint_set_default[i].relation.pose;
-			joint_pose.position.x = 0;
-			joint_pose.position.y = 0;
-			joint_pose.position.z = 0;
-
-			joint_pose.orientation.x = 0;
-			joint_pose.orientation.y = 0;
-			joint_pose.orientation.z = 0;
-			joint_pose.orientation.w = 0;
+			// auto &joint_pose = out_value->values.hand_joint_set_default[i].relation.pose;
+			// joint_pose.position.x = 0;
+			// joint_pose.position.y = 0;
+			// joint_pose.position.z = 0;
+			//
+			// joint_pose.orientation.x = 0;
+			// joint_pose.orientation.y = 0;
+			// joint_pose.orientation.z = 0;
+			// joint_pose.orientation.w = 0;
 
 			out_value->values.hand_joint_set_default[i].radius = 0;
 
-			out_value->values.hand_joint_set_default[i].relation.relation_flags =
-			    XRT_SPACE_RELATION_BITMASK_NONE;
+			// out_value->values.hand_joint_set_default[i].relation.relation_flags =
+			//     XRT_SPACE_RELATION_BITMASK_NONE;
 		}
 	}
 
