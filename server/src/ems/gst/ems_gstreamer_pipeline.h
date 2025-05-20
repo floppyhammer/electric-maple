@@ -13,15 +13,12 @@
 
 #include "gstreamer/gst_pipeline.h"
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 struct gstreamer_pipeline;
 
 struct ems_callbacks;
-
-extern int client_id_i;
 
 void
 ems_gstreamer_pipeline_play(struct gstreamer_pipeline *gp);

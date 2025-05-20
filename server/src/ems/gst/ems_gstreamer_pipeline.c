@@ -241,21 +241,20 @@ ProtoMessage_decode_hand_joint_locations(pb_istream_t *istream, const pb_field_t
 static void
 data_channel_message_data_cb(GstWebRTCDataChannel *datachannel, GBytes *data, struct ems_gstreamer_pipeline *egp)
 {
+	UpMessageSuper message_super;
 	em_proto_UpMessage message = em_proto_UpMessage_init_default;
+
 	size_t n = 0;
 
-	const unsigned char *buf = (const unsigned char *)g_bytes_get_data(data, &n);
+	const unsigned char *buf = g_bytes_get_data(data, &n);
 
 	pb_istream_t our_istream = pb_istream_from_buffer(buf, n);
 
-	em_proto_HandJointLocation hand_joint_locations_left[26];
-	em_proto_HandJointLocation hand_joint_locations_right[26];
-
 	message.tracking.hand_joint_locations_left.funcs.decode = ProtoMessage_decode_hand_joint_locations;
-	message.tracking.hand_joint_locations_left.arg = hand_joint_locations_left;
+	message.tracking.hand_joint_locations_left.arg = &message_super.hand_joint_locations_left;
 
 	message.tracking.hand_joint_locations_right.funcs.decode = ProtoMessage_decode_hand_joint_locations;
-	message.tracking.hand_joint_locations_right.arg = hand_joint_locations_right;
+	message.tracking.hand_joint_locations_right.arg = &message_super.hand_joint_locations_right;
 
 	bool result = pb_decode_ex(&our_istream, &em_proto_UpMessage_msg, &message, PB_DECODE_NULLTERMINATED);
 	if (!result) {
@@ -263,8 +262,10 @@ data_channel_message_data_cb(GstWebRTCDataChannel *datachannel, GBytes *data, st
 		return;
 	}
 
-	ems_callbacks_call(egp->callbacks, EMS_CALLBACKS_EVENT_TRACKING, &message);
-	ems_callbacks_call(egp->callbacks, EMS_CALLBACKS_EVENT_CONTROLLER, &message);
+	message_super.protoMessage = message;
+
+	ems_callbacks_call(egp->callbacks, EMS_CALLBACKS_EVENT_TRACKING, &message_super);
+	ems_callbacks_call(egp->callbacks, EMS_CALLBACKS_EVENT_CONTROLLER, &message_super);
 }
 
 static void
@@ -272,7 +273,6 @@ data_channel_message_string_cb(GstWebRTCDataChannel *datachannel, gchar *str, st
 {
 	U_LOG_I("Received data channel message: %s\n", str);
 }
-
 
 static void
 webrtc_client_connected_cb(EmsSignalingServer *server, EmsClientId client_id, struct ems_gstreamer_pipeline *egp)

@@ -28,8 +28,6 @@
 #include "util/u_logging.h"
 #include "util/u_distortion_mesh.h"
 
-
-
 #include "electricmaple.pb.h"
 #include "ems_callbacks.h"
 #include "pb_decode.h"
@@ -41,7 +39,6 @@
 
 #include <cstdio>
 #include <cassert>
-
 
 
 /*
@@ -100,13 +97,6 @@ controller_update_inputs(struct xrt_device *xdev)
 		xdev->inputs[i].timestamp = now;
 	}
 
-	// clang-format off
-	// xdev->inputs[0].value.boolean  = emc->pose;
-	// xdev->inputs[1].value.boolean  = emc->pose;
-	// xdev->inputs[2].value.vec2  = emc->pose;
-	// xdev->inputs[3].value.vec2  = emc->pose;
-	// clang-format on
-
 	return XRT_SUCCESS;
 }
 
@@ -134,18 +124,48 @@ controller_get_hand_tracking(struct xrt_device *xdev,
 
 	out_value->is_active = emc->active;
 
-	for (int i = 0; i < 26; i++) {
-		auto &joint_pose = out_value->values.hand_joint_set_default[i].relation.pose;
-		joint_pose.position.x = emc->hand_joints[i].pose.position.x;
-		joint_pose.position.y = emc->hand_joints[i].pose.position.y;
-		joint_pose.position.z = emc->hand_joints[i].pose.position.z;
+	if (emc->active) {
+		for (int i = 0; i < 26; i++) {
+			auto &joint_pose = out_value->values.hand_joint_set_default[i].relation.pose;
+			joint_pose.position.x = emc->hand_joints[i].pose.position.x;
+			joint_pose.position.y = emc->hand_joints[i].pose.position.y;
+			joint_pose.position.z = emc->hand_joints[i].pose.position.z;
 
-		joint_pose.orientation.x = emc->hand_joints[i].pose.orientation.x;
-		joint_pose.orientation.y = emc->hand_joints[i].pose.orientation.y;
-		joint_pose.orientation.z = emc->hand_joints[i].pose.orientation.z;
-		joint_pose.orientation.w = emc->hand_joints[i].pose.orientation.w;
+			joint_pose.orientation.x = emc->hand_joints[i].pose.orientation.x;
+			joint_pose.orientation.y = emc->hand_joints[i].pose.orientation.y;
+			joint_pose.orientation.z = emc->hand_joints[i].pose.orientation.z;
+			joint_pose.orientation.w = emc->hand_joints[i].pose.orientation.w;
 
-		out_value->values.hand_joint_set_default[i].radius = emc->hand_joints[i].radius;
+			out_value->values.hand_joint_set_default[i].radius = emc->hand_joints[i].radius;
+
+			out_value->values.hand_joint_set_default[i].relation.relation_flags =
+			    (enum xrt_space_relation_flags)(                 //
+			        XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |   //
+			        XRT_SPACE_RELATION_POSITION_VALID_BIT |      //
+			        XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT | //
+			        XRT_SPACE_RELATION_POSITION_TRACKED_BIT);    //
+		}
+
+		U_LOG_E("handLocalPose %f %f %f", out_value->values.hand_joint_set_default[0].relation.pose.position.x,
+		        out_value->values.hand_joint_set_default[0].relation.pose.position.y,
+		        out_value->values.hand_joint_set_default[0].relation.pose.position.z);
+	} else {
+		for (int i = 0; i < 26; i++) {
+			auto &joint_pose = out_value->values.hand_joint_set_default[i].relation.pose;
+			joint_pose.position.x = 0;
+			joint_pose.position.y = 0;
+			joint_pose.position.z = 0;
+
+			joint_pose.orientation.x = 0;
+			joint_pose.orientation.y = 0;
+			joint_pose.orientation.z = 0;
+			joint_pose.orientation.w = 0;
+
+			out_value->values.hand_joint_set_default[i].radius = 0;
+
+			out_value->values.hand_joint_set_default[i].relation.relation_flags =
+			    XRT_SPACE_RELATION_BITMASK_NONE;
+		}
 	}
 
 	// This is a lie
@@ -195,10 +215,12 @@ controller_get_view_poses(struct xrt_device *xdev,
 
 /// Fetch remote input data.
 static void
-controller_handle_data(enum ems_callbacks_event event, const em_proto_UpMessage *message, void *userdata)
+controller_handle_data(enum ems_callbacks_event event, const UpMessageSuper *messageSuper, void *userdata)
 {
 	auto *emc = (struct ems_motion_controller *)userdata;
 	emc->active = false;
+
+	auto *message = &messageSuper->protoMessage;
 
 	if (!message->has_tracking) {
 		return;
@@ -206,14 +228,10 @@ controller_handle_data(enum ems_callbacks_event event, const em_proto_UpMessage 
 
 	xrt_pose pose = {};
 
-	em_proto_HandJointLocation hand_joint_locations[26];
-
 	if (emc->base.device_type == XRT_DEVICE_TYPE_LEFT_HAND_CONTROLLER) {
 		if (!message->tracking.has_controller_grip_left) {
 			return;
 		}
-
-		emc->active = true;
 
 		pose.position = {message->tracking.controller_grip_left.position.x,
 		                 message->tracking.controller_grip_left.position.y,
@@ -224,12 +242,12 @@ controller_handle_data(enum ems_callbacks_event event, const em_proto_UpMessage 
 		pose.orientation.y = message->tracking.controller_grip_left.orientation.y;
 		pose.orientation.z = message->tracking.controller_grip_left.orientation.z;
 
+		memcpy(emc->hand_joints, messageSuper->hand_joint_locations_left,
+		       sizeof(em_proto_HandJointLocation) * 26);
 	} else if (emc->base.device_type == XRT_DEVICE_TYPE_RIGHT_HAND_CONTROLLER) {
 		if (!message->tracking.has_controller_grip_right) {
 			return;
 		}
-
-		emc->active = true;
 
 		pose.position = {message->tracking.controller_grip_right.position.x,
 		                 message->tracking.controller_grip_right.position.y,
@@ -240,6 +258,8 @@ controller_handle_data(enum ems_callbacks_event event, const em_proto_UpMessage 
 		pose.orientation.y = message->tracking.controller_grip_right.orientation.y;
 		pose.orientation.z = message->tracking.controller_grip_right.orientation.z;
 
+		memcpy(emc->hand_joints, messageSuper->hand_joint_locations_right,
+		       sizeof(em_proto_HandJointLocation) * 26);
 	} else {
 		return;
 	}
@@ -248,9 +268,8 @@ controller_handle_data(enum ems_callbacks_event event, const em_proto_UpMessage 
 
 	// TODO handle timestamp, etc
 
-	{
-		emc->pose = pose;
-	}
+	emc->active = true;
+	emc->pose = pose;
 }
 
 
@@ -291,11 +310,12 @@ static struct xrt_binding_profile binding_profiles_index[1] = {
 struct ems_motion_controller *
 ems_motion_controller_create(ems_instance &emsi, enum xrt_device_name device_name, enum xrt_device_type device_type)
 {
-	uint32_t input_count = 1;
-	uint32_t output_count = 1;
+	uint32_t input_count;
+	uint32_t output_count;
+
 	switch (device_name) {
 	case XRT_DEVICE_SIMPLE_CONTROLLER:
-		input_count = ARRAY_SIZE(simple_inputs_index) + 1;
+		input_count = ARRAY_SIZE(simple_inputs_index) + 1; // ARRAY_SIZE + hand tracker
 		output_count = ARRAY_SIZE(simple_outputs_index);
 		break;
 	default: U_LOG_E("Device name not supported!"); return nullptr;

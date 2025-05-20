@@ -137,13 +137,16 @@ ems_hmd_get_view_poses(struct xrt_device *xdev,
 }
 
 static void
-ems_hmd_handle_data(enum ems_callbacks_event event, const em_proto_UpMessage *message, void *userdata)
+ems_hmd_handle_data(enum ems_callbacks_event event, const UpMessageSuper *messageSuper, void *userdata)
 {
-	struct ems_hmd *eh = (struct ems_hmd *)userdata;
+	auto *eh = (struct ems_hmd *)userdata;
+
+	auto *message = &messageSuper->protoMessage;
 
 	if (!message->has_tracking) {
 		return;
 	}
+
 	struct xrt_pose pose = {};
 	pose.position = {message->tracking.P_localSpace_viewSpace.position.x,
 	                 message->tracking.P_localSpace_viewSpace.position.y,
@@ -156,11 +159,9 @@ ems_hmd_handle_data(enum ems_callbacks_event event, const em_proto_UpMessage *me
 
 	// TODO handle timestamp, etc
 
-	{
-		std::lock_guard<std::mutex> lock(eh->received->mutex);
-		eh->received->pose = pose;
-		eh->received->updated = true;
-	}
+	std::lock_guard lock(eh->received->mutex);
+	eh->received->pose = pose;
+	eh->received->updated = true;
 }
 
 struct ems_hmd *
