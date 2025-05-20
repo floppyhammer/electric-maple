@@ -67,7 +67,7 @@ struct _EmRemoteExperience
 	std::atomic_int64_t nextUpMessage{1};
 };
 
-static constexpr size_t em_proto_UpMessage_size = 2969 * 2;
+static constexpr size_t em_proto_UpMessage_size = sizeof(_em_proto_HandJointLocation) * 26 * 2 + sizeof(_em_proto_UpMessage);
 static constexpr size_t kUpBufferSize = em_proto_UpMessage_size + 10;
 
 bool
@@ -240,6 +240,8 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 
 			for (int i = 0; i < locationsEXT.jointCount; i++) {
 				hand_joint_locations[i].index = i;
+
+				hand_joint_locations[i].has_pose = true;
 
 				auto joint_pose = locationsEXT.jointLocations[i].pose;
 
