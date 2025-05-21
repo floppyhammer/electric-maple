@@ -67,7 +67,8 @@ struct _EmRemoteExperience
 	std::atomic_int64_t nextUpMessage{1};
 };
 
-static constexpr size_t em_proto_UpMessage_size = sizeof(_em_proto_HandJointLocation) * 26 * 2 + sizeof(_em_proto_UpMessage);
+static constexpr size_t em_proto_UpMessage_size =
+    sizeof(_em_proto_HandJointLocation) * 26 * 2 + sizeof(_em_proto_UpMessage);
 static constexpr size_t kUpBufferSize = em_proto_UpMessage_size + 10;
 
 bool
@@ -109,8 +110,8 @@ ProtoMessage_encode_hand_joint_locations(pb_ostream_t *ostream, const pb_field_t
 			return false;
 		}
 
-		ALOGE("Up %d %f %f %f", i, (source + i)->pose.position.x, (source + i)->pose.position.y,
-		      (source + i)->pose.position.z);
+		//		ALOGE("Up %d %f %f %f", i, (source + i)->pose.position.x, (source + i)->pose.position.y,
+		//		      (source + i)->pose.position.z);
 	}
 
 	return true;
@@ -211,7 +212,7 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 	std::array<em_proto_HandJointLocation, 26> hand_joint_locations_left{};
 	std::array<em_proto_HandJointLocation, 26> hand_joint_locations_right{};
 
-	// Get joints
+	// Get hand joint locations
 	if (inputState.pfnXrLocateHandJointsEXT != nullptr) {
 		for (auto hand : {inputState.xrHandTrackerEXTLeft, inputState.xrHandTrackerEXTRight}) {
 			XrHandJointLocationEXT jointLocations[XR_HAND_JOINT_COUNT_EXT];
@@ -230,7 +231,6 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 			}
 
 			if (!locationsEXT.isActive) {
-				//				ALOGV("Hand %d is inactive", hand);
 				continue;
 			}
 
@@ -240,17 +240,16 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 
 			for (int i = 0; i < locationsEXT.jointCount; i++) {
 				hand_joint_locations[i].index = i;
+				hand_joint_locations[i].has_pose = locationsEXT.isActive;
 
-				hand_joint_locations[i].has_pose = true;
+				const auto &joint_pose = locationsEXT.jointLocations[i].pose;
 
-				auto joint_pose = locationsEXT.jointLocations[i].pose;
-
-				hand_joint_locations[i].pose.has_position = locationsEXT.isActive;
+				hand_joint_locations[i].pose.has_position = true;
 				hand_joint_locations[i].pose.position.x = joint_pose.position.x;
 				hand_joint_locations[i].pose.position.y = joint_pose.position.y;
 				hand_joint_locations[i].pose.position.z = joint_pose.position.z;
 
-				hand_joint_locations[i].pose.has_orientation = locationsEXT.isActive;
+				hand_joint_locations[i].pose.has_orientation = true;
 				hand_joint_locations[i].pose.orientation.w = joint_pose.orientation.w;
 				hand_joint_locations[i].pose.orientation.x = joint_pose.orientation.x;
 				hand_joint_locations[i].pose.orientation.y = joint_pose.orientation.y;
