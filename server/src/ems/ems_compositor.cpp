@@ -512,7 +512,8 @@ pack_blit_and_encode(struct ems_compositor *c,
 		c->pipeline_playing = true;
 	}
 
-	u_sink_debug_push_frame(&c->debug_sink, frame);
+	// Commented to fix crash on Android
+	// u_sink_debug_push_frame(&c->debug_sink, frame);
 
 	xrt_sink_push_frame(c->frame_sink, frame);
 
