@@ -102,7 +102,7 @@ ems_instance_create_system(struct xrt_instance *xinst,
 	struct ems_instance *emsi = from_xinst(xinst);
 
 	emsi->usys = u_system_create();
-	assert(usys != NULL); // Should never fail.
+	assert(emsi->usys != NULL); // Should never fail.
 
 	u_system_fill_properties(emsi->usys, emsi->xsysd_base.static_roles.head->str);
 	*out_xsys = &emsi->usys->base;
