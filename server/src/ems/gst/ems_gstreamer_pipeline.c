@@ -235,8 +235,8 @@ ProtoMessage_decode_hand_joint_locations(pb_istream_t *istream, const pb_field_t
 
 	dest[(int)location.index] = location;
 
-	U_LOG_E("Down %d %f %f %f", (int)location.index, location.pose.position.x, location.pose.position.y,
-	        location.pose.position.z);
+	// U_LOG_E("Down %d %d %f %f %f", (int)location.index, location.has_pose, location.pose.position.x, location.pose.position.y,
+	//         location.pose.position.z);
 
 	return true;
 }

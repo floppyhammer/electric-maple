@@ -73,6 +73,8 @@ struct ems_motion_controller
 
 	bool active;
 
+	float hand_grab;
+
 	struct _em_proto_HandJointLocation* hand_joints;
 };
 

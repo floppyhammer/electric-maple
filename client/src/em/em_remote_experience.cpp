@@ -179,6 +179,8 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 		tracking.controller_grip_left.orientation.x = handLocalPose.orientation.x;
 		tracking.controller_grip_left.orientation.y = handLocalPose.orientation.y;
 		tracking.controller_grip_left.orientation.z = handLocalPose.orientation.z;
+
+		tracking.controller_grip_value_left = inputState.handGrab[Side::LEFT];
 	}
 
 	// Get right hand location.
@@ -207,10 +209,12 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 		tracking.controller_grip_right.orientation.x = handLocalPose.orientation.x;
 		tracking.controller_grip_right.orientation.y = handLocalPose.orientation.y;
 		tracking.controller_grip_right.orientation.z = handLocalPose.orientation.z;
+
+		tracking.controller_grip_value_right = inputState.handGrab[Side::RIGHT];
 	}
 
-	std::array<em_proto_HandJointLocation, 26> hand_joint_locations_left{};
-	std::array<em_proto_HandJointLocation, 26> hand_joint_locations_right{};
+	std::array<em_proto_HandJointLocation, XR_HAND_JOINT_COUNT_EXT> hand_joint_locations_left{};
+	std::array<em_proto_HandJointLocation, XR_HAND_JOINT_COUNT_EXT> hand_joint_locations_right{};
 
 	// Get hand joint locations
 	if (inputState.pfnXrLocateHandJointsEXT != nullptr) {

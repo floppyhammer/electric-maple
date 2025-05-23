@@ -362,20 +362,20 @@ poll_events(struct android_app *app, struct em_state &state)
 		XrActionStateFloat grabValue{XR_TYPE_ACTION_STATE_FLOAT};
 		CheckXrResult(xrGetActionStateFloat(state.session, &getInfo, &grabValue));
 		if (grabValue.isActive == XR_TRUE) {
-			// Scale the rendered hand by 1.0f (open) to 0.5f (fully squeezed).
-			state.input.handScale[hand] = 1.0f - 0.5f * grabValue.currentState;
-			if (grabValue.currentState > 0.9f) {
-				XrHapticVibration vibration{XR_TYPE_HAPTIC_VIBRATION};
-				vibration.amplitude = 0.5;
-				vibration.duration = XR_MIN_HAPTIC_DURATION;
-				vibration.frequency = XR_FREQUENCY_UNSPECIFIED;
-
-				XrHapticActionInfo hapticActionInfo{XR_TYPE_HAPTIC_ACTION_INFO};
-				hapticActionInfo.action = state.input.vibrateAction;
-				hapticActionInfo.subactionPath = state.input.handSubactionPath[hand];
-				CheckXrResult(xrApplyHapticFeedback(state.session, &hapticActionInfo,
-				                                    (XrHapticBaseHeader *)&vibration));
-			}
+			state.input.handGrab[hand] = grabValue.currentState;
+//			ALOGE("state.input.handGrab %f", grabValue.currentState);
+//			if (grabValue.currentState > 0.9f) {
+//				XrHapticVibration vibration{XR_TYPE_HAPTIC_VIBRATION};
+//				vibration.amplitude = 0.5;
+//				vibration.duration = XR_MIN_HAPTIC_DURATION;
+//				vibration.frequency = XR_FREQUENCY_UNSPECIFIED;
+//
+//				XrHapticActionInfo hapticActionInfo{XR_TYPE_HAPTIC_ACTION_INFO};
+//				hapticActionInfo.action = state.input.vibrateAction;
+//				hapticActionInfo.subactionPath = state.input.handSubactionPath[hand];
+//				CheckXrResult(xrApplyHapticFeedback(state.session, &hapticActionInfo,
+//				                                    (XrHapticBaseHeader *)&vibration));
+//			}
 		}
 
 		getInfo.action = state.input.poseAction;

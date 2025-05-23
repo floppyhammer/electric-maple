@@ -40,7 +40,7 @@ struct InputState
 	XrAction quitAction{XR_NULL_HANDLE};
 	std::array<XrPath, Side::COUNT> handSubactionPath;
 	std::array<XrSpace, Side::COUNT> handSpace;
-	std::array<float, Side::COUNT> handScale = {{1.0f, 1.0f}};
+	std::array<float, Side::COUNT> handGrab = {{1.0f, 1.0f}};
 	std::array<XrBool32, Side::COUNT> handActive;
 	PFN_xrLocateHandJointsEXT pfnXrLocateHandJointsEXT = nullptr;
 	XrHandTrackerEXT xrHandTrackerEXTLeft;

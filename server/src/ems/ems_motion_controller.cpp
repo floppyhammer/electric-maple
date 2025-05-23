@@ -93,9 +93,10 @@ controller_update_inputs(struct xrt_device *xdev)
 		return XRT_SUCCESS;
 	}
 
-	for (uint32_t i = 0; i < xdev->input_count; i++) {
-		xdev->inputs[i].active = true;
-		xdev->inputs[i].timestamp = now;
+	if (emc->hand_grab > 0.5) {
+		xdev->inputs[0].active = true;
+		xdev->inputs[0].timestamp = now;
+		xdev->inputs[0].value.vec1 = {emc->hand_grab};
 	}
 
 	return XRT_SUCCESS;
@@ -123,7 +124,7 @@ controller_get_hand_tracking(struct xrt_device *xdev,
 
 	// Get the pose of the hand.
 	struct xrt_space_relation relation;
-	xrt_device_get_tracked_pose(xdev, XRT_INPUT_INDEX_GRIP_POSE, requested_timestamp_ns, &relation);
+	xrt_device_get_tracked_pose(xdev, XRT_INPUT_WMR_GRIP_POSE, requested_timestamp_ns, &relation);
 
 	out_value->hand_pose.pose = emc->pose;
 	m_space_relation_ident(&out_value->hand_pose);
@@ -164,8 +165,8 @@ controller_get_tracked_pose(struct xrt_device *xdev,
 	struct ems_motion_controller *emc = ems_motion_controller(xdev);
 
 	switch (name) {
-	case XRT_INPUT_INDEX_GRIP_POSE:
-	case XRT_INPUT_INDEX_AIM_POSE: break;
+	case XRT_INPUT_WMR_GRIP_POSE:
+	case XRT_INPUT_WMR_AIM_POSE: break;
 	default: {
 		EMS_ERROR(emc, "unknown input name: %d", name);
 		return XRT_ERROR_INPUT_UNSUPPORTED;
@@ -210,6 +211,7 @@ controller_handle_data(enum ems_callbacks_event event, const UpMessageSuper *mes
 	}
 
 	xrt_pose pose = {};
+	float hand_grab = 0;
 
 	if (emc->base.device_type == XRT_DEVICE_TYPE_LEFT_HAND_CONTROLLER) {
 		if (!message->tracking.has_controller_grip_left) {
@@ -227,6 +229,8 @@ controller_handle_data(enum ems_callbacks_event event, const UpMessageSuper *mes
 
 		memcpy(emc->hand_joints, messageSuper->hand_joint_locations_left,
 		       sizeof(em_proto_HandJointLocation) * 26);
+
+		hand_grab = message->tracking.controller_grip_value_left;
 	} else if (emc->base.device_type == XRT_DEVICE_TYPE_RIGHT_HAND_CONTROLLER) {
 		if (!message->tracking.has_controller_grip_right) {
 			return;
@@ -243,6 +247,8 @@ controller_handle_data(enum ems_callbacks_event event, const UpMessageSuper *mes
 
 		memcpy(emc->hand_joints, messageSuper->hand_joint_locations_right,
 		       sizeof(em_proto_HandJointLocation) * 26);
+
+		hand_grab = message->tracking.controller_grip_value_right;
 	} else {
 		return;
 	}
@@ -253,6 +259,8 @@ controller_handle_data(enum ems_callbacks_event event, const UpMessageSuper *mes
 
 	emc->active = true;
 	emc->pose = pose;
+	emc->hand_grab = hand_grab;
+	// printf("hand grab %f\n", hand_grab);
 }
 
 
@@ -263,14 +271,14 @@ controller_handle_data(enum ems_callbacks_event event, const UpMessageSuper *mes
  */
 
 static struct xrt_binding_input_pair simple_inputs_index[4] = {
-    {XRT_INPUT_SIMPLE_SELECT_CLICK, XRT_INPUT_INDEX_TRIGGER_VALUE},
-    {XRT_INPUT_SIMPLE_MENU_CLICK, XRT_INPUT_INDEX_B_CLICK},
-    {XRT_INPUT_SIMPLE_GRIP_POSE, XRT_INPUT_INDEX_GRIP_POSE},
-    {XRT_INPUT_SIMPLE_AIM_POSE, XRT_INPUT_INDEX_AIM_POSE},
+    {XRT_INPUT_SIMPLE_SELECT_CLICK, XRT_INPUT_WMR_TRIGGER_VALUE},
+    {XRT_INPUT_SIMPLE_MENU_CLICK, XRT_INPUT_WMR_MENU_CLICK},
+    {XRT_INPUT_SIMPLE_GRIP_POSE, XRT_INPUT_WMR_GRIP_POSE},
+    {XRT_INPUT_SIMPLE_AIM_POSE, XRT_INPUT_WMR_AIM_POSE},
 };
 
 static struct xrt_binding_output_pair simple_outputs_index[1] = {
-    {XRT_OUTPUT_NAME_SIMPLE_VIBRATION, XRT_OUTPUT_NAME_INDEX_HAPTIC},
+    {XRT_OUTPUT_NAME_SIMPLE_VIBRATION, XRT_OUTPUT_NAME_WMR_HAPTIC},
 };
 
 static struct xrt_binding_profile binding_profiles_index[1] = {
@@ -334,8 +342,8 @@ ems_motion_controller_create(ems_instance &emsi, enum xrt_device_name device_nam
 
 	// Data.
 	emc->base.tracking_origin = &emsi.tracking_origin;
-	// emc->base.binding_profiles = binding_profiles_index;
-	// emc->base.binding_profile_count = ARRAY_SIZE(binding_profiles_index);
+	emc->base.binding_profiles = binding_profiles_index;
+	emc->base.binding_profile_count = ARRAY_SIZE(binding_profiles_index);
 	emc->base.orientation_tracking_supported = true;
 	emc->base.position_tracking_supported = true;
 	emc->base.name = device_name;
@@ -354,17 +362,17 @@ ems_motion_controller_create(ems_instance &emsi, enum xrt_device_name device_nam
 	// Setup input.
 	switch (device_name) {
 	case XRT_DEVICE_SIMPLE_CONTROLLER:
-		emc->base.inputs[0].name = XRT_INPUT_INDEX_TRIGGER_VALUE;
-		emc->base.inputs[1].name = XRT_INPUT_INDEX_B_CLICK;
-		emc->base.inputs[2].name = XRT_INPUT_INDEX_GRIP_POSE;
-		emc->base.inputs[3].name = XRT_INPUT_INDEX_AIM_POSE;
+		emc->base.inputs[0].name = XRT_INPUT_WMR_TRIGGER_VALUE;
+		emc->base.inputs[1].name = XRT_INPUT_WMR_MENU_CLICK;
+		emc->base.inputs[2].name = XRT_INPUT_WMR_GRIP_POSE;
+		emc->base.inputs[3].name = XRT_INPUT_WMR_AIM_POSE;
 		if (device_type == XRT_DEVICE_TYPE_LEFT_HAND_CONTROLLER) {
 			emc->base.inputs[4].name = XRT_INPUT_GENERIC_HAND_TRACKING_LEFT;
 		} else {
 			emc->base.inputs[4].name = XRT_INPUT_GENERIC_HAND_TRACKING_RIGHT;
 		}
 
-		emc->base.outputs[0].name = XRT_OUTPUT_NAME_INDEX_HAPTIC;
+		emc->base.outputs[0].name = XRT_OUTPUT_NAME_WMR_HAPTIC;
 		break;
 	default: assert(false);
 	}
