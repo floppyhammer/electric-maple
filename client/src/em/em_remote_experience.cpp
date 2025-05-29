@@ -24,6 +24,7 @@
 #include "render/xr_platform_deps.h"
 
 #include <GLES3/gl3.h>
+#include <GLES2/gl2ext.h>
 #include <atomic>
 #include <cassert>
 #include <cstddef>
@@ -657,6 +658,9 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 
 	glViewport(0, 0, width * 2, height);
 	glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+
+	// Fix double gamma correction, as we are drawing to a sRGB framebuffer instead of a linear one.
+	glDisable(GL_FRAMEBUFFER_SRGB_EXT);
 
 	exp->renderer->draw(sample->frame_texture_id, sample->frame_texture_target);
 
