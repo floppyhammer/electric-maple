@@ -235,7 +235,8 @@ ProtoMessage_decode_hand_joint_locations(pb_istream_t *istream, const pb_field_t
 
 	dest[(int)location.index] = location;
 
-	// U_LOG_E("Down %d %d %f %f %f", (int)location.index, location.has_pose, location.pose.position.x, location.pose.position.y,
+	// U_LOG_E("Down %d %d %f %f %f", (int)location.index, location.has_pose, location.pose.position.x,
+	// location.pose.position.y,
 	//         location.pose.position.z);
 
 	return true;
@@ -248,7 +249,6 @@ data_channel_message_data_cb(GstWebRTCDataChannel *datachannel, GBytes *data, st
 	em_proto_UpMessage message = em_proto_UpMessage_init_default;
 
 	size_t n = 0;
-
 	const unsigned char *buf = g_bytes_get_data(data, &n);
 
 	pb_istream_t our_istream = pb_istream_from_buffer(buf, n);
@@ -267,8 +267,18 @@ data_channel_message_data_cb(GstWebRTCDataChannel *datachannel, GBytes *data, st
 
 	message_super.protoMessage = message;
 
-	ems_callbacks_call(egp->callbacks, EMS_CALLBACKS_EVENT_TRACKING, &message_super);
-	ems_callbacks_call(egp->callbacks, EMS_CALLBACKS_EVENT_CONTROLLER, &message_super);
+	if (message.has_tracking) {
+		ems_callbacks_call(egp->callbacks, EMS_CALLBACKS_EVENT_TRACKING, &message_super);
+		ems_callbacks_call(egp->callbacks, EMS_CALLBACKS_EVENT_CONTROLLER, &message_super);
+	}
+
+	if (message.has_frame) {
+		U_LOG_D(
+		    "Client frame message: frame_sequence_id %ld decode_complete_time %ld begin_frame_time %ld "
+		    "display_time %ld",
+		    message.frame.frame_sequence_id, message.frame.decode_complete_time, message.frame.begin_frame_time,
+		    message.frame.display_time);
+	}
 }
 
 static void
@@ -712,6 +722,7 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	// GstElement *scale = gst_element_factory_make("videoscale", "scale");
 	// GstElement *videosink = gst_element_factory_make("autovideosink", "videosink");
 
+	// g_signal_connect(source, "need-data", G_CALLBACK(start_feed), data);
 
 	/*
 	 * Add ourselves to the context so we are destroyed.
