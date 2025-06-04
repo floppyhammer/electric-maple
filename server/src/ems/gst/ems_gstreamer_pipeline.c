@@ -574,7 +574,6 @@ ems_gstreamer_pipeline_play(struct gstreamer_pipeline *gp)
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
-
 	GstStateChangeReturn ret = gst_element_set_state(egp->base.pipeline, GST_STATE_PLAYING);
 
 	g_assert(ret != GST_STATE_CHANGE_FAILURE);
@@ -647,19 +646,16 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 
 	pipeline_str = g_strdup_printf(
 	    "appsrc name=%s ! "
-	    "queue ! "
 	    "videoconvert ! "
 	    "videorate ! "
 	    "videoscale ! "
 	    "video/x-raw,format=NV12,framerate=60/1 ! "
-	    "queue !"
 #ifdef EM_USE_ENCODEBIN
 	    "encodebin2 profile=\"video/x-h264|element-properties,tune=zerolatency,bitrate=8192\" ! "
 #else
 	    "x264enc tune=zerolatency bitrate=8192 key-int-max=60 ! " //
 	    "video/x-h264,profile=baseline ! "                        //
 #endif
-	    "queue !"
 	    "h264parse ! "
 	    "rtph264pay config-interval=-1 aggregate-mode=zero-latency ! "
 	    "application/x-rtp,payload=96 ! "
@@ -676,8 +672,6 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	egp->base.xfctx = xfctx;
 	egp->callbacks = callbacks_collection;
 
-	gst_init(NULL, NULL);
-
 #ifdef __ANDROID__
 	gst_debug_add_log_function(&gstAndroidLog, NULL, NULL);
 #endif
@@ -685,6 +679,12 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	gst_debug_set_threshold_for_name("decodebin2", GST_LEVEL_INFO);
 	gst_debug_set_threshold_for_name("webrtcbin", GST_LEVEL_INFO);
 	gst_debug_set_threshold_for_name("webrtcbindatachannel", GST_LEVEL_INFO);
+
+	setenv("GST_TRACERS", "latency(flags=pipeline+element+reported)", 1);
+	setenv("GST_DEBUG", "GST_TRACER:7", 1);
+	setenv("GST_DEBUG_FILE", "./latency.log", 1);
+
+	gst_init(NULL, NULL);
 
 	pipeline = gst_parse_launch(pipeline_str, &error);
 	g_assert_no_error(error);

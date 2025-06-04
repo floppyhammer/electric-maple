@@ -30,8 +30,9 @@ static GOptionEntry options[] = {{
                                  },
                                  {NULL}};
 
-#define WEBSOCKET_URI_DEFAULT "ws://127.0.0.1:8080/ws"
-
+// #define WEBSOCKET_URI_DEFAULT "ws://127.0.0.1:8080/ws"
+// #define WEBSOCKET_URI_DEFAULT "ws://10.11.24.190:8080/ws"
+#define WEBSOCKET_URI_DEFAULT "ws://10.11.9.31:8080/ws"
 //!@todo Don't use global state
 static SoupWebsocketConnection *ws = NULL;
 static GstElement *pipeline = NULL;
@@ -339,7 +340,7 @@ websocket_connected_cb(GObject *session, GAsyncResult *res, gpointer user_data)
 		g_signal_connect(ws, "message", G_CALLBACK(message_cb), NULL);
 
 		pipeline = gst_parse_launch(
-		    "webrtcbin name=webrtc bundle-policy=max-bundle ! "
+		    "webrtcbin name=webrtc bundle-policy=max-bundle latency=0 ! "
 		    "rtph264depay ! "
 		    "h264parse ! "
 #ifdef USE_DECODEBIN
