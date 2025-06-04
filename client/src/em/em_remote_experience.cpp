@@ -366,6 +366,12 @@ em_remote_experience_new(EmConnection *connection,
 	em_stream_client_egl_begin_pbuffer(stream_client);
 
 	{
+		//		uint32_t formatCount;
+		//		xrEnumerateSwapchainFormats(session, 0, &formatCount, NULL);
+		//
+		//		std::vector<int64_t> formats(formatCount);
+		//		xrEnumerateSwapchainFormats(session, formatCount, &formatCount, formats.data());
+
 		ALOGI("%s: Creating OpenXR Swapchain...", __FUNCTION__);
 		// OpenXR swapchain
 		XrSwapchainCreateInfo swapchainInfo = {};
@@ -396,7 +402,6 @@ em_remote_experience_new(EmConnection *connection,
 		em_remote_experience_destroy(&self);
 		return nullptr;
 	}
-
 
 	try {
 		ALOGI("%s: Setup renderer...", __FUNCTION__);

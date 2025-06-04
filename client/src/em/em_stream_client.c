@@ -406,13 +406,14 @@ on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc)
 	    "rtph264depay ! "
 	    "h264parse ! "
 	    "video/x-h264,stream-format=(string)byte-stream,alignment=(string)au,parsed=(boolean)true ! "
-	    //"decodebin3 ! "
-	    "amcviddec-c2qtiavcdecoder ! "        // Hardware
+	    "decodebin3 ! "
+//	    "amcviddec-c2qtiavcdecoder ! "        // Hardware
 //	    "amcviddec-omxqcomvideodecoderavc ! " // Hardware
 //	    "amcviddec-c2androidavcdecoder ! "    // Software
 //	    "amcviddec-omxgoogleh264decoder ! "   // Software
-	    "video/x-raw(memory:GLMemory),format=(string)RGBA,width=(int)2560,height=(int)800,texture-target=(string)external-oes ! "
+//	    "video/x-raw(memory:GLMemory),format=(string)RGBA,width=(int)3840,height=(int)1080,texture-target=(string)external-oes ! "
 	    "glsinkbin name=glsink");
+	// clang-format on
 
 	sc->pipeline = gst_object_ref_sink(gst_parse_launch(pipeline_string, &error));
 	if (sc->pipeline == NULL) {
