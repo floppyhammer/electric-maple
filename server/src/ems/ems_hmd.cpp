@@ -205,7 +205,7 @@ ems_hmd_create(ems_instance &emsi)
 	eh->base.hmd->blend_mode_count = idx;
 
 	// TODO: Find out the framerate that the remote device runs at
-	eh->base.hmd->screens[0].nominal_frame_interval_ns = time_s_to_ns(1.0f / 90.0f);
+	eh->base.hmd->screens[0].nominal_frame_interval_ns = time_s_to_ns(1.0f / 60.0f);
 
 	// TODO: Find out the remote device's actual FOV. Or maybe remove this because I think get_view_poses lets us
 	// set the FOV dynamically.
