@@ -328,10 +328,24 @@ gst_bus_cb(GstBus *bus, GstMessage *message, gpointer data)
 	return TRUE;
 }
 
+static void
+on_stats(GstPromise *promise, GstElement *user_data)
+{
+	const GstStructure *reply = gst_promise_get_reply(promise);
+	gchar *str = gst_structure_to_string(reply);
+	g_free(str);
+	//	GST_INFO("Got stats %" GST_PTR_FORMAT, reply);
+}
+
 static GstFlowReturn
 on_new_sample_cb(GstAppSink *appsink, gpointer user_data)
 {
 	EmStreamClient *sc = (EmStreamClient *)user_data;
+
+//	GstElement *webrtcbin = gst_bin_get_by_name(GST_BIN(sc->pipeline), "webrtc");
+//	GstPromise *promise = gst_promise_new_with_change_func((GstPromiseChangeFunc)on_stats, NULL, NULL);
+//	g_signal_emit_by_name(webrtcbin, "get-stats", NULL, promise);
+
 	// TODO record the frame ID, get frame pose
 	struct timespec ts;
 	int ret = clock_gettime(CLOCK_MONOTONIC, &ts);
