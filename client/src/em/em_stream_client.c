@@ -376,14 +376,19 @@ buffer_probe_cb(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 {
 	if (info->type & GST_PAD_PROBE_TYPE_BUFFER) {
 		GstBuffer *buf = GST_PAD_PROBE_INFO_BUFFER(info);
-		GstClockTime pts = GST_BUFFER_PTS(buf); // 获取PTS值（纳秒单位）
+		GstClockTime pts = GST_BUFFER_PTS(buf);
 
 		static GstClockTime previous_pts = 0;
+		static int64_t previous_time = 0;
+		int64_t now = os_monotonic_get_ns();
 		if (previous_pts != 0) {
-			int64_t pts_diff = pts - previous_pts;
-			ALOGD("Received frame PTS: %" GST_TIME_FORMAT ", PTS diff: %ld", GST_TIME_ARGS(pts), pts_diff);
+			int64_t pts_diff = (pts - previous_pts) / 1e6;
+			int64_t time_diff = (now - previous_time) / 1e6;
+			ALOGD("Received frame PTS: %" GST_TIME_FORMAT ", PTS diff: %ld, Time diff: %ld",
+			      GST_TIME_ARGS(pts), pts_diff, time_diff);
 		}
 		previous_pts = pts;
+		previous_time = now;
 	}
 	return GST_PAD_PROBE_OK;
 }
@@ -430,7 +435,7 @@ on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc)
 //	    "amcviddec-c2androidavcdecoder ! "    // Software
 //	    "amcviddec-omxgoogleh264decoder ! "   // Software
 //	    "video/x-raw(memory:GLMemory),format=(string)RGBA,width=(int)3840,height=(int)1080,texture-target=(string)external-oes ! "
-"glsinkbin name=glsink");
+	    "glsinkbin name=glsink");
 	// clang-format on
 
 	sc->pipeline = gst_object_ref_sink(gst_parse_launch(pipeline_string, &error));

@@ -97,6 +97,10 @@ gst_bus_cb(GstBus *bus, GstMessage *message, gpointer user_data)
 	case GST_MESSAGE_EOS: {
 		g_error("Got EOS!!");
 	} break;
+	case GST_MESSAGE_LATENCY: {
+		g_warning("Handling latency");
+		gst_bin_recalculate_latency(pipeline);
+	} break;
 	default: break;
 	}
 	return TRUE;
@@ -113,6 +117,28 @@ get_webrtcbin_for_client(GstBin *pipeline, EmsClientId client_id)
 	g_free(name);
 
 	return webrtcbin;
+}
+
+static GstPadProbeReturn
+buffer_probe_cb(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
+{
+	if (info->type & GST_PAD_PROBE_TYPE_BUFFER) {
+		GstBuffer *buf = GST_PAD_PROBE_INFO_BUFFER(info);
+		GstClockTime pts = GST_BUFFER_PTS(buf);
+
+		static GstClockTime previous_pts = 0;
+		static int64_t previous_time = 0;
+		int64_t now = os_monotonic_get_ns();
+		if (previous_pts != 0) {
+			int64_t pts_diff = (pts - previous_pts) / 1e6;
+			int64_t time_diff = (now - previous_time) / 1e6;
+			g_print("Sent frame PTS: %" GST_TIME_FORMAT ", PTS diff: %ld, Time diff: %ld\n",
+			        GST_TIME_ARGS(pts), pts_diff, time_diff);
+		}
+		previous_pts = pts;
+		previous_time = now;
+	}
+	return GST_PAD_PROBE_OK;
 }
 
 static void
@@ -666,9 +692,9 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	    "x264enc tune=zerolatency bitrate=8192 key-int-max=60 ! " //
 	    "video/x-h264,profile=baseline ! "                        //
 #endif
-	    "h264parse ! "
+	    "h264parse name=parser ! "
 	    "rtph264pay config-interval=-1 aggregate-mode=zero-latency ! "
-	    "application/x-rtp,payload=96 ! "
+	    "application/x-rtp,payload=96,ssrc=(uint)3484078952 ! "
 	    "tee name=%s allow-not-linked=true",
 	    appsrc_name, WEBRTC_TEE_NAME);
 
@@ -699,6 +725,10 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	pipeline = gst_parse_launch(pipeline_str, &error);
 	g_assert_no_error(error);
 	g_free(pipeline_str);
+
+	GstPad *pad = gst_element_get_static_pad(gst_bin_get_by_name(GST_BIN(pipeline), "parser"), "src");
+	gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, (GstPadProbeCallback)buffer_probe_cb, NULL, NULL);
+	gst_object_unref(pad);
 
 	bus = gst_element_get_bus(pipeline);
 	gst_bus_add_watch(bus, gst_bus_cb, egp);

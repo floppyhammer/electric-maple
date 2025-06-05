@@ -13,6 +13,7 @@
 
 #include <json-glib/json-glib.h>
 #include "stdio.h"
+#include "os/os_time.h"
 #include "util/u_logging.h"
 
 #define USE_DECODEBIN
@@ -30,9 +31,8 @@ static GOptionEntry options[] = {{
                                  },
                                  {NULL}};
 
-// #define WEBSOCKET_URI_DEFAULT "ws://127.0.0.1:8080/ws"
-// #define WEBSOCKET_URI_DEFAULT "ws://10.11.24.190:8080/ws"
-#define WEBSOCKET_URI_DEFAULT "ws://10.11.9.31:8080/ws"
+#define WEBSOCKET_URI_DEFAULT "ws://127.0.0.1:8080/ws"
+
 //!@todo Don't use global state
 static SoupWebsocketConnection *ws = NULL;
 static GstElement *pipeline = NULL;
@@ -322,6 +322,28 @@ out:
 	g_object_unref(parser);
 }
 
+static GstPadProbeReturn
+buffer_probe_cb(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
+{
+	if (info->type & GST_PAD_PROBE_TYPE_BUFFER) {
+		GstBuffer *buf = GST_PAD_PROBE_INFO_BUFFER(info);
+		GstClockTime pts = GST_BUFFER_PTS(buf);
+
+		static GstClockTime previous_pts = 0;
+		static int64_t previous_time = 0;
+		int64_t now = os_monotonic_get_ns();
+		if (previous_pts != 0) {
+			int64_t pts_diff = (pts - previous_pts) / 1e6;
+			int64_t time_diff = (now - previous_time) / 1e6;
+			g_print("Received frame PTS: %" GST_TIME_FORMAT ", PTS diff: %ld, Time diff: %ld\n",
+			        GST_TIME_ARGS(pts), pts_diff, time_diff);
+		}
+		previous_pts = pts;
+		previous_time = now;
+	}
+	return GST_PAD_PROBE_OK;
+}
+
 static void
 websocket_connected_cb(GObject *session, GAsyncResult *res, gpointer user_data)
 {
@@ -342,7 +364,7 @@ websocket_connected_cb(GObject *session, GAsyncResult *res, gpointer user_data)
 		pipeline = gst_parse_launch(
 		    "webrtcbin name=webrtc bundle-policy=max-bundle latency=0 ! "
 		    "rtph264depay ! "
-		    "h264parse ! "
+		    "h264parse name=parser ! "
 #ifdef USE_DECODEBIN
 		    "decodebin3 ! "
 		    "videoconvert ! "
@@ -352,6 +374,10 @@ websocket_connected_cb(GObject *session, GAsyncResult *res, gpointer user_data)
 		    "autovideosink",
 		    &error);
 		g_assert_no_error(error);
+
+		GstPad *pad = gst_element_get_static_pad(gst_bin_get_by_name(GST_BIN(pipeline), "parser"), "src");
+		gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, (GstPadProbeCallback)buffer_probe_cb, NULL, NULL);
+		gst_object_unref(pad);
 
 		// Connect callbacks on sinks.
 		webrtcbin = gst_bin_get_by_name(GST_BIN(pipeline), "webrtc");
