@@ -371,6 +371,23 @@ on_new_sample_cb(GstAppSink *appsink, gpointer user_data)
 	return GST_FLOW_OK;
 }
 
+static GstPadProbeReturn
+buffer_probe_cb(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
+{
+	if (info->type & GST_PAD_PROBE_TYPE_BUFFER) {
+		GstBuffer *buf = GST_PAD_PROBE_INFO_BUFFER(info);
+		GstClockTime pts = GST_BUFFER_PTS(buf); // 获取PTS值（纳秒单位）
+
+		static GstClockTime previous_pts = 0;
+		if (previous_pts != 0) {
+			int64_t pts_diff = pts - previous_pts;
+			ALOGD("Received frame PTS: %" GST_TIME_FORMAT ", PTS diff: %ld", GST_TIME_ARGS(pts), pts_diff);
+		}
+		previous_pts = pts;
+	}
+	return GST_PAD_PROBE_OK;
+}
+
 static void
 on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc)
 {
@@ -401,10 +418,11 @@ on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc)
 	//        g_print("Decoder: %s\n", name);
 	//    }
 
+	// clang-format off
 	gchar *pipeline_string = g_strdup_printf(
 	    "webrtcbin name=webrtc bundle-policy=max-bundle latency=0 ! "
 	    "rtph264depay ! "
-	    "h264parse ! "
+	    "h264parse name=parser ! "
 	    "video/x-h264,stream-format=(string)byte-stream,alignment=(string)au,parsed=(boolean)true ! "
 	    "decodebin3 ! "
 //	    "amcviddec-c2qtiavcdecoder ! "        // Hardware
@@ -412,7 +430,7 @@ on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc)
 //	    "amcviddec-c2androidavcdecoder ! "    // Software
 //	    "amcviddec-omxgoogleh264decoder ! "   // Software
 //	    "video/x-raw(memory:GLMemory),format=(string)RGBA,width=(int)3840,height=(int)1080,texture-target=(string)external-oes ! "
-	    "glsinkbin name=glsink");
+"glsinkbin name=glsink");
 	// clang-format on
 
 	sc->pipeline = gst_object_ref_sink(gst_parse_launch(pipeline_string, &error));
@@ -426,6 +444,10 @@ on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc)
 
 	// Un-current the EGL context
 	em_stream_client_egl_end(sc);
+
+	GstPad *pad = gst_element_get_static_pad(gst_bin_get_by_name(GST_BIN(sc->pipeline), "parser"), "src");
+	gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, (GstPadProbeCallback)buffer_probe_cb, NULL, NULL);
+	gst_object_unref(pad);
 
 	// We convert the string SINK_CAPS above into a GstCaps that elements below can understand.
 	// the "video/x-raw(" GST_CAPS_FEATURE_MEMORY_GL_MEMORY ")," part of the caps is read :
