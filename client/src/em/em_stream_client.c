@@ -426,9 +426,7 @@ on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc)
 	// clang-format off
 	gchar *pipeline_string = g_strdup_printf(
 	    "webrtcbin name=webrtc bundle-policy=max-bundle latency=0 ! "
-	    "rtph264depay ! "
-	    "h264parse name=parser ! "
-	    "video/x-h264,stream-format=(string)byte-stream,alignment=(string)au,parsed=(boolean)true ! "
+	    "rtph264depay name=depay ! "
 	    "decodebin3 ! "
 //	    "amcviddec-c2qtiavcdecoder ! "        // Hardware
 //	    "amcviddec-omxqcomvideodecoderavc ! " // Hardware

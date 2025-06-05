@@ -363,8 +363,7 @@ websocket_connected_cb(GObject *session, GAsyncResult *res, gpointer user_data)
 
 		pipeline = gst_parse_launch(
 		    "webrtcbin name=webrtc bundle-policy=max-bundle latency=0 ! "
-		    "rtph264depay ! "
-		    "h264parse name=parser ! "
+		    "rtph264depay name=depay ! "
 #ifdef USE_DECODEBIN
 		    "decodebin3 ! "
 		    "videoconvert ! "
@@ -375,7 +374,7 @@ websocket_connected_cb(GObject *session, GAsyncResult *res, gpointer user_data)
 		    &error);
 		g_assert_no_error(error);
 
-		GstPad *pad = gst_element_get_static_pad(gst_bin_get_by_name(GST_BIN(pipeline), "parser"), "src");
+		GstPad *pad = gst_element_get_static_pad(gst_bin_get_by_name(GST_BIN(pipeline), "depay"), "src");
 		gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, (GstPadProbeCallback)buffer_probe_cb, NULL, NULL);
 		gst_object_unref(pad);
 
