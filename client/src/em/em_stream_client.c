@@ -27,6 +27,7 @@
 #include <gst/gstsample.h>
 #include <gst/gstutils.h>
 #include <gst/video/video-frame.h>
+#include <gst/webrtc/webrtc.h>
 
 #include <EGL/egl.h>
 #include <GLES2/gl2ext.h>
@@ -394,6 +395,12 @@ buffer_probe_cb(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 }
 
 static void
+on_new_transceiver(GstElement *webrtc, GstWebRTCRTPTransceiver *trans)
+{
+	g_object_set(trans, "fec-type", GST_WEBRTC_FEC_TYPE_ULP_RED, NULL);
+}
+
+static void
 on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc)
 {
 	g_assert_nonnull(sc);
@@ -445,10 +452,14 @@ on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc)
 		ALOGE("Error creating a pipeline from string: %s", error ? error->message : "Unknown");
 	}
 
+	GstElement *webrtcbin = gst_bin_get_by_name(GST_BIN(sc->pipeline), "webrtc");
+	g_signal_connect(webrtcbin, "on-new-transceiver", G_CALLBACK(on_new_transceiver), NULL);
+	gst_object_unref(webrtcbin);
+
 	// Un-current the EGL context
 	em_stream_client_egl_end(sc);
 
-	GstPad *pad = gst_element_get_static_pad(gst_bin_get_by_name(GST_BIN(sc->pipeline), "parser"), "src");
+	GstPad *pad = gst_element_get_static_pad(gst_bin_get_by_name(GST_BIN(sc->pipeline), "depay"), "src");
 	gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, (GstPadProbeCallback)buffer_probe_cb, NULL, NULL);
 	gst_object_unref(pad);
 
