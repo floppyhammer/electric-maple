@@ -106,6 +106,31 @@ gst_bus_cb(GstBus *bus, GstMessage *message, gpointer user_data)
 	return TRUE;
 }
 
+static void
+on_webrtcbin_get_stats(GstPromise *promise, GstElement *webrtcbin)
+{
+	g_return_if_fail(gst_promise_wait(promise) == GST_PROMISE_RESULT_REPLIED);
+
+	const GstStructure *stats = gst_promise_get_reply(promise);
+
+	gchar *stats_str = gst_structure_to_string(stats);
+	g_print("webrtcbin stats: %s\n", stats_str);
+
+	g_free(stats_str);
+}
+
+static gboolean
+webrtcbin_get_stats(GstElement *webrtcbin)
+{
+	GstPromise *promise =
+	    gst_promise_new_with_change_func((GstPromiseChangeFunc)on_webrtcbin_get_stats, webrtcbin, NULL);
+
+	g_signal_emit_by_name(webrtcbin, "get-stats", NULL, promise);
+	gst_promise_unref(promise);
+
+	return G_SOURCE_REMOVE;
+}
+
 static GstElement *
 get_webrtcbin_for_client(GstBin *pipeline, EmsClientId client_id)
 {
@@ -439,16 +464,8 @@ remove_webrtcbin_probe_cb(GstPad *pad, GstPadProbeInfo *info, gpointer user_data
 {
 	GstElement *webrtcbin = GST_ELEMENT(user_data);
 
-	// // Secondly, send an EOS event
-	// gboolean res = gst_element_send_event(webrtcbin, gst_event_new_eos());
-	// if (!res) {
-	// 	g_print("Error occurred! EOS signal cannot be sent!");
-	// }
-
-	gst_bin_remove(GST_BIN(GST_ELEMENT_PARENT(webrtcbin)), webrtcbin);
 	gst_element_set_state(webrtcbin, GST_STATE_NULL);
-
-	// gst_object_unref(webrtcbin);
+	gst_bin_remove(GST_BIN(GST_ELEMENT_PARENT(webrtcbin)), webrtcbin);
 
 	return GST_PAD_PROBE_REMOVE;
 }
@@ -457,15 +474,13 @@ static void
 webrtc_client_disconnected_cb(EmsSignalingServer *server, EmsClientId client_id, struct ems_gstreamer_pipeline *egp)
 {
 	GstBin *pipeline = GST_BIN(egp->base.pipeline);
-	GstElement *webrtcbin;
-
-	webrtcbin = get_webrtcbin_for_client(pipeline, client_id);
+	GstElement *webrtcbin = get_webrtcbin_for_client(pipeline, client_id);
 
 	if (webrtcbin) {
-		// Firstly, we block the dataflow into the webrtcbin
-		GstPad *sinkpad;
+		webrtcbin_get_stats(webrtcbin);
 
-		sinkpad = gst_element_get_static_pad(webrtcbin, "sink_0");
+		// Firstly, we block the dataflow into the webrtcbin
+		GstPad *sinkpad = gst_element_get_static_pad(webrtcbin, "sink_0");
 		if (sinkpad) {
 			gst_pad_add_probe(GST_PAD_PEER(sinkpad), GST_PAD_PROBE_TYPE_BLOCK_DOWNSTREAM,
 			                  remove_webrtcbin_probe_cb, webrtcbin, gst_object_unref);
@@ -727,9 +742,11 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	g_assert_no_error(error);
 	g_free(pipeline_str);
 
-	GstPad *pad = gst_element_get_static_pad(gst_bin_get_by_name(GST_BIN(pipeline), "parser"), "src");
+	GstElement *parser = gst_bin_get_by_name(GST_BIN(pipeline), "parser");
+	GstPad *pad = gst_element_get_static_pad(parser, "src");
 	gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, (GstPadProbeCallback)buffer_probe_cb, NULL, NULL);
 	gst_object_unref(pad);
+	gst_object_unref(parser);
 
 	bus = gst_element_get_bus(pipeline);
 	gst_bus_add_watch(bus, gst_bus_cb, egp);

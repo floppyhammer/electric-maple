@@ -38,8 +38,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#define APP_VIEW_W (1280)
-#define APP_VIEW_H (800)
+#define APP_VIEW_W (1920)
+#define APP_VIEW_H (1080)
 
 // TODO making this 1 causes readback failures
 // I assume this means there is some kind of buffer creation failing and we aren't handling the error right.
@@ -352,10 +352,9 @@ pack_blit_and_encode(struct ems_compositor *c,
 	struct vk_image_readback_to_xf *wrap = NULL;
 	struct vk_bundle *vk = &c->base.vk;
 
-//	ems_gstreamer_pipeline_dump(c->gstreamer_pipeline);
-
 	// Getting frame
 	if (!vk_image_readback_to_xf_pool_get_unused_frame(vk, c->pool, &wrap)) {
+		// ems_gstreamer_pipeline_dump(c->gstreamer_pipeline);
 		EMS_COMP_ERROR(c, "vk_image_readback_to_xf_pool_get_unused_frame: Failed!");
 		return;
 	}
