@@ -372,28 +372,6 @@ on_new_sample_cb(GstAppSink *appsink, gpointer user_data)
 	return GST_FLOW_OK;
 }
 
-static GstPadProbeReturn
-buffer_probe_cb(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
-{
-	if (info->type & GST_PAD_PROBE_TYPE_BUFFER) {
-		GstBuffer *buf = GST_PAD_PROBE_INFO_BUFFER(info);
-		GstClockTime pts = GST_BUFFER_PTS(buf);
-
-		static GstClockTime previous_pts = 0;
-		static int64_t previous_time = 0;
-		int64_t now = os_monotonic_get_ns();
-		if (previous_pts != 0) {
-			int64_t pts_diff = (pts - previous_pts) / 1e6;
-			int64_t time_diff = (now - previous_time) / 1e6;
-			ALOGD("Received frame PTS: %" GST_TIME_FORMAT ", PTS diff: %ld, Time diff: %ld",
-			      GST_TIME_ARGS(pts), pts_diff, time_diff);
-		}
-		previous_pts = pts;
-		previous_time = now;
-	}
-	return GST_PAD_PROBE_OK;
-}
-
 static void
 on_new_transceiver(GstElement *webrtc, GstWebRTCRTPTransceiver *trans)
 {
@@ -406,9 +384,6 @@ on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc)
 	g_assert_nonnull(sc);
 	g_assert_nonnull(emconn);
 	GError *error = NULL;
-
-	// decodebin3 seems to .. hang?
-	// omxh264dec doesn't seem to exist
 
 	// We'll need an active egl context below before setting up gstgl (as explained previously)
 	if (!em_stream_client_egl_begin_pbuffer(sc)) {
@@ -433,13 +408,15 @@ on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc)
 	// clang-format off
 	gchar *pipeline_string = g_strdup_printf(
 	    "webrtcbin name=webrtc bundle-policy=max-bundle latency=0 ! "
-	    "rtph264depay name=depay ! "
 	    "decodebin3 ! "
+
+//	    "rtph264depay name=depay ! "
 //	    "amcviddec-c2qtiavcdecoder ! "        // Hardware
 //	    "amcviddec-omxqcomvideodecoderavc ! " // Hardware
 //	    "amcviddec-c2androidavcdecoder ! "    // Software
 //	    "amcviddec-omxgoogleh264decoder ! "   // Software
 //	    "video/x-raw(memory:GLMemory),format=(string)RGBA,width=(int)3840,height=(int)1080,texture-target=(string)external-oes ! "
+
 	    "glsinkbin name=glsink");
 	// clang-format on
 
@@ -458,10 +435,6 @@ on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc)
 
 	// Un-current the EGL context
 	em_stream_client_egl_end(sc);
-
-	GstPad *pad = gst_element_get_static_pad(gst_bin_get_by_name(GST_BIN(sc->pipeline), "depay"), "src");
-	gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, (GstPadProbeCallback)buffer_probe_cb, NULL, NULL);
-	gst_object_unref(pad);
 
 	// We convert the string SINK_CAPS above into a GstCaps that elements below can understand.
 	// the "video/x-raw(" GST_CAPS_FEATURE_MEMORY_GL_MEMORY ")," part of the caps is read :
