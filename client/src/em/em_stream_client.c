@@ -467,6 +467,8 @@ on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc)
 
 	g_autoptr(GstElement) glsinkbin = gst_bin_get_by_name(GST_BIN(sc->pipeline), "glsink");
 	g_object_set(glsinkbin, "sink", sc->appsink, NULL);
+	// Disable clock sync to reduce latency
+	g_object_set(glsinkbin, "sync", FALSE, NULL);
 
 	g_autoptr(GstBus) bus = gst_element_get_bus(sc->pipeline);
 	// We set this up to inject the EGL context
