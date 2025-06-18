@@ -209,10 +209,14 @@ webrtc_on_ice_candidate_cb(GstElement *webrtcbin, guint mlineindex, gchar *candi
 }
 
 static void
-on_incoming_stream(GstElement *webrtc, GstPad *pad, gpointer user_data)
+on_new_transceiver(GstElement *webrtc, GstWebRTCRTPTransceiver *trans)
 {
-	g_print("Got incoming stream\n");
+	g_object_set(trans, "fec-type", GST_WEBRTC_FEC_TYPE_ULP_RED, NULL);
+}
 
+static void
+on_pad_added(GstElement *webrtc, GstPad *pad, gpointer user_data)
+{
 	if (GST_PAD_DIRECTION(pad) != GST_PAD_SRC)
 		return;
 
@@ -363,7 +367,6 @@ websocket_connected_cb(GObject *session, GAsyncResult *res, gpointer user_data)
 
 		pipeline = gst_parse_launch(
 		    "webrtcbin name=webrtc bundle-policy=max-bundle latency=0 ! "
-		    "rtph264depay name=depay ! "
 #ifdef USE_DECODEBIN
 		    "decodebin3 ! "
 		    "videoconvert ! "
@@ -374,17 +377,19 @@ websocket_connected_cb(GObject *session, GAsyncResult *res, gpointer user_data)
 		    &error);
 		g_assert_no_error(error);
 
-		GstPad *pad = gst_element_get_static_pad(gst_bin_get_by_name(GST_BIN(pipeline), "depay"), "src");
-		gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, (GstPadProbeCallback)buffer_probe_cb, NULL, NULL);
-		gst_object_unref(pad);
+		// GstPad *pad = gst_element_get_static_pad(gst_bin_get_by_name(GST_BIN(pipeline), "depay"), "src");
+		// gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, (GstPadProbeCallback)buffer_probe_cb, NULL, NULL);
+		// gst_object_unref(pad);
 
 		// Connect callbacks on sinks.
 		webrtcbin = gst_bin_get_by_name(GST_BIN(pipeline), "webrtc");
 
 		g_signal_connect(webrtcbin, "on-data-channel", G_CALLBACK(webrtc_on_data_channel_cb), NULL);
 		g_signal_connect(webrtcbin, "on-ice-candidate", G_CALLBACK(webrtc_on_ice_candidate_cb), NULL);
-		// Incoming streams will be exposed via this signal
-		g_signal_connect(webrtcbin, "pad-added", G_CALLBACK(on_incoming_stream), NULL);
+		g_signal_connect(webrtcbin, "on-new-transceiver", G_CALLBACK(on_new_transceiver), NULL);
+		g_signal_connect(webrtcbin, "pad-added", G_CALLBACK(on_pad_added), NULL);
+
+		gst_object_unref(webrtcbin);
 
 		bus = gst_element_get_bus(pipeline);
 		gst_bus_add_watch(bus, gst_bus_cb, pipeline);

@@ -144,28 +144,6 @@ get_webrtcbin_for_client(GstBin *pipeline, EmsClientId client_id)
 	return webrtcbin;
 }
 
-static GstPadProbeReturn
-buffer_probe_cb(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
-{
-	if (info->type & GST_PAD_PROBE_TYPE_BUFFER) {
-		GstBuffer *buf = GST_PAD_PROBE_INFO_BUFFER(info);
-		GstClockTime pts = GST_BUFFER_PTS(buf);
-
-		static GstClockTime previous_pts = 0;
-		static int64_t previous_time = 0;
-		int64_t now = os_monotonic_get_ns();
-		if (previous_pts != 0) {
-			int64_t pts_diff = (pts - previous_pts) / 1e6;
-			int64_t time_diff = (now - previous_time) / 1e6;
-			g_print("Sent frame PTS: %" GST_TIME_FORMAT ", PTS diff: %ld, Time diff: %ld\n",
-			        GST_TIME_ARGS(pts), pts_diff, time_diff);
-		}
-		previous_pts = pts;
-		previous_time = now;
-	}
-	return GST_PAD_PROBE_OK;
-}
-
 static void
 connect_webrtc_to_tee(GstElement *webrtcbin)
 {
@@ -179,6 +157,7 @@ connect_webrtc_to_tee(GstElement *webrtcbin)
 
 	GstPadTemplate *pad_template = gst_element_class_get_pad_template(GST_ELEMENT_GET_CLASS(webrtcbin), "sink_%u");
 
+	// GstCaps *caps = gst_caps_from_string("application/x-rtp,encoding-name=VP8,media=video,payload=96");
 	GstCaps *caps = gst_caps_from_string(
 	    "application/x-rtp, "
 	    "payload=96,encoding-name=H264,clock-rate=90000,media=video,packetization-mode=(string)1,profile-level-id=("
@@ -646,7 +625,7 @@ ems_gstreamer_pipeline_stop(struct gstreamer_pipeline *gp)
 	U_LOG_T("Sending EOS");
 	gst_element_send_event(egp->base.pipeline, gst_event_new_eos());
 
-	// Wait for EOS message on the pipeline bus.
+	// Wait for an EOS message on the pipeline bus.
 	U_LOG_T("Waiting for EOS");
 	GstMessage *msg = NULL;
 	msg = gst_bus_timed_pop_filtered(GST_ELEMENT_BUS(egp->base.pipeline), GST_CLOCK_TIME_NONE,
@@ -703,11 +682,14 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	    "videoscale ! "
 	    "video/x-raw,format=NV12,framerate=60/1 ! "
 #ifdef EM_USE_ENCODEBIN
+	    // "encodebin2 profile=\"video/x-vp8|element-properties,deadline=1,target-bitrate=8192000\" ! "
 	    "encodebin2 profile=\"video/x-h264|element-properties,tune=zerolatency,bitrate=8192\" ! "
 #else
 	    "x264enc tune=zerolatency bitrate=8192 key-int-max=60 ! " //
 	    "video/x-h264,profile=baseline ! "                        //
 #endif
+	    // "rtpvp8pay ! "
+	    // "application/x-rtp,encoding-name=VP8,media=video,payload=96,ssrc=(uint)3484078952 ! "
 	    "h264parse name=parser ! "
 	    "rtph264pay config-interval=-1 aggregate-mode=zero-latency ! "
 	    "application/x-rtp,payload=96,ssrc=(uint)3484078952 ! "
@@ -741,12 +723,6 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	pipeline = gst_parse_launch(pipeline_str, &error);
 	g_assert_no_error(error);
 	g_free(pipeline_str);
-
-	GstElement *parser = gst_bin_get_by_name(GST_BIN(pipeline), "parser");
-	GstPad *pad = gst_element_get_static_pad(parser, "src");
-	gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, (GstPadProbeCallback)buffer_probe_cb, NULL, NULL);
-	gst_object_unref(pad);
-	gst_object_unref(parser);
 
 	bus = gst_element_get_bus(pipeline);
 	gst_bus_add_watch(bus, gst_bus_cb, egp);
