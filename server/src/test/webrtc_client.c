@@ -31,7 +31,7 @@ static GOptionEntry options[] = {{
                                  },
                                  {NULL}};
 
-#define WEBSOCKET_URI_DEFAULT "ws://127.0.0.1:8080/ws"
+#define WEBSOCKET_URI_DEFAULT "ws://127.0.0.1:5000/ws"
 
 //!@todo Don't use global state
 static SoupWebsocketConnection *ws = NULL;

@@ -737,7 +737,7 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 
 	g_print(
 	    "Output streams:\n"
-	    "\tWebRTC: http://127.0.0.1:8080\n");
+	    "\tWebRTC: http://127.0.0.1:%d\n", EMS_DEFAULT_PORT);
 
 	// Setup pipeline.
 	egp->base.pipeline = pipeline;
