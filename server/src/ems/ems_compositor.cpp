@@ -201,7 +201,6 @@ compositor_init_vulkan(struct ems_compositor *c)
 	vk_args.client_gpu_index = -1;      // Auto
 	vk_args.timeline_semaphore = true;  // Flag is optional, not a hard requirement.
 
-
 	struct comp_vulkan_results vk_res = {};
 	bool bundle_ret = comp_vulkan_init_bundle(vk, &vk_args, &vk_res);
 
@@ -434,7 +433,6 @@ pack_blit_and_encode(struct ems_compositor *c,
 	{
 		// Bring views from TRANSFER ready to COMPUTE ready.
 		for (int view = 0; view < 2; view++) {
-
 			const xrt_layer_projection_view_data *data = (view == 0) ? lvd : rvd;
 			struct comp_swapchain *sc = (view == 0) ? lsc : rsc;
 

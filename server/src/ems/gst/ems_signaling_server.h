@@ -21,7 +21,7 @@ G_DECLARE_FINAL_TYPE(EmsSignalingServer, ems_signaling_server, EMS, SIGNALING_SE
 
 typedef gpointer EmsClientId;
 
-const static int EMS_DEFAULT_PORT = 5000;
+const static int EMS_DEFAULT_PORT = 52356;
 
 EmsSignalingServer *
 ems_signaling_server_new();
