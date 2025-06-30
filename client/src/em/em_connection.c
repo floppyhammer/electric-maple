@@ -576,12 +576,14 @@ out:
 static void
 em_conn_websocket_connected_cb(GObject *session, GAsyncResult *res, EmConnection *em_conn)
 {
-
 	GError *error = NULL;
 
 	g_assert(!em_conn->ws);
 
-	em_conn->ws = g_object_ref_sink(soup_session_websocket_connect_finish(SOUP_SESSION(session), res, &error));
+	SoupWebsocketConnection *conn = soup_session_websocket_connect_finish(SOUP_SESSION(session), res, &error);
+	if (conn) {
+		em_conn->ws = g_object_ref_sink(conn);
+	}
 
 	if (error) {
 		ALOGE("Websocket connection failed, error: '%s'", error->message);
@@ -590,7 +592,6 @@ em_conn_websocket_connected_cb(GObject *session, GAsyncResult *res, EmConnection
 		return;
 	}
 	g_assert_no_error(error);
-	GstBus *bus;
 
 	ALOGI("RYLIE: Websocket connected");
 	g_signal_connect(em_conn->ws, "message", G_CALLBACK(em_conn_on_ws_message_cb), em_conn);
@@ -641,7 +642,9 @@ em_connection_set_pipeline(EmConnection *em_conn, GstPipeline *pipeline)
 	                 G_CALLBACK(em_conn_webrtc_deep_notify_callback), em_conn);
 }
 
-enum em_status em_connection_get_status(EmConnection *em_conn) {
+enum em_status
+em_connection_get_status(EmConnection *em_conn)
+{
 	return em_conn->status;
 }
 
@@ -653,6 +656,10 @@ em_conn_connect_internal(EmConnection *em_conn, enum em_status status)
 		em_conn->ws_cancel = g_cancellable_new();
 	}
 	g_cancellable_reset(em_conn->ws_cancel);
+
+	// Set connection timeout
+	soup_session_set_timeout(em_conn->soup_session, 5);
+
 	ALOGI("RYLIE: calling soup_session_websocket_connect_async. websocket_uri = %s", em_conn->websocket_uri);
 #if SOUP_MAJOR_VERSION == 2
 	soup_session_websocket_connect_async(em_conn->soup_session,                                     // session

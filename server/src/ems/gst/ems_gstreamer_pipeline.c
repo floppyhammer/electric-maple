@@ -239,7 +239,7 @@ data_channel_open_cb(GstWebRTCDataChannel *datachannel, struct ems_gstreamer_pip
 {
 	U_LOG_I("data channel opened");
 
-	egp->timeout_src_id = g_timeout_add_seconds(3, G_SOURCE_FUNC(datachannel_send_message), datachannel);
+	// egp->timeout_src_id = g_timeout_add_seconds(3, G_SOURCE_FUNC(datachannel_send_message), datachannel);
 }
 
 static void
