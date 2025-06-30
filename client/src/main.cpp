@@ -132,10 +132,10 @@ initialize_handtracking(struct em_state &state)
 	memset(&createInfoEXT, 0, sizeof(createInfoEXT));
 	createInfoEXT.type = XR_TYPE_HAND_TRACKER_CREATE_INFO_EXT;
 	createInfoEXT.handJointSet = XR_HAND_JOINT_SET_DEFAULT_EXT;
-	// create left
+	// Create left
 	createInfoEXT.hand = XR_HAND_LEFT_EXT;
 	CheckXrResult(pfnXrCreateHandTrackerEXT(state.session, &createInfoEXT, &state.input.xrHandTrackerEXTLeft));
-	// create right
+	// Create right
 	createInfoEXT.hand = XR_HAND_RIGHT_EXT;
 	CheckXrResult(pfnXrCreateHandTrackerEXT(state.session, &createInfoEXT, &state.input.xrHandTrackerEXTRight));
 }
@@ -363,19 +363,20 @@ poll_events(struct android_app *app, struct em_state &state)
 		CheckXrResult(xrGetActionStateFloat(state.session, &getInfo, &grabValue));
 		if (grabValue.isActive == XR_TRUE) {
 			state.input.handGrab[hand] = grabValue.currentState;
-//			ALOGE("state.input.handGrab %f", grabValue.currentState);
-//			if (grabValue.currentState > 0.9f) {
-//				XrHapticVibration vibration{XR_TYPE_HAPTIC_VIBRATION};
-//				vibration.amplitude = 0.5;
-//				vibration.duration = XR_MIN_HAPTIC_DURATION;
-//				vibration.frequency = XR_FREQUENCY_UNSPECIFIED;
-//
-//				XrHapticActionInfo hapticActionInfo{XR_TYPE_HAPTIC_ACTION_INFO};
-//				hapticActionInfo.action = state.input.vibrateAction;
-//				hapticActionInfo.subactionPath = state.input.handSubactionPath[hand];
-//				CheckXrResult(xrApplyHapticFeedback(state.session, &hapticActionInfo,
-//				                                    (XrHapticBaseHeader *)&vibration));
-//			}
+			//			ALOGE("state.input.handGrab %f", grabValue.currentState);
+			//			if (grabValue.currentState > 0.9f) {
+			//				XrHapticVibration vibration{XR_TYPE_HAPTIC_VIBRATION};
+			//				vibration.amplitude = 0.5;
+			//				vibration.duration = XR_MIN_HAPTIC_DURATION;
+			//				vibration.frequency = XR_FREQUENCY_UNSPECIFIED;
+			//
+			//				XrHapticActionInfo hapticActionInfo{XR_TYPE_HAPTIC_ACTION_INFO};
+			//				hapticActionInfo.action = state.input.vibrateAction;
+			//				hapticActionInfo.subactionPath =
+			// state.input.handSubactionPath[hand];
+			// CheckXrResult(xrApplyHapticFeedback(state.session, &hapticActionInfo,
+			//(XrHapticBaseHeader *)&vibration));
+			//			}
 		}
 
 		getInfo.action = state.input.poseAction;
@@ -442,10 +443,12 @@ android_main(struct android_app *app)
 
 	// Create OpenXR instance
 
-	const char *extensions[] = {XR_KHR_OPENGL_ES_ENABLE_EXTENSION_NAME,
-	                            XR_KHR_ANDROID_CREATE_INSTANCE_EXTENSION_NAME,
-	                            XR_KHR_CONVERT_TIMESPEC_TIME_EXTENSION_NAME,
-	                            XR_EXT_HAND_TRACKING_EXTENSION_NAME,};
+	const char *extensions[] = {
+	    XR_KHR_OPENGL_ES_ENABLE_EXTENSION_NAME,
+	    XR_KHR_ANDROID_CREATE_INSTANCE_EXTENSION_NAME,
+	    XR_KHR_CONVERT_TIMESPEC_TIME_EXTENSION_NAME,
+	    XR_EXT_HAND_TRACKING_EXTENSION_NAME,
+	};
 
 	XrInstanceCreateInfoAndroidKHR androidInfo = {};
 	androidInfo.type = XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR;
@@ -466,11 +469,14 @@ android_main(struct android_app *app)
 	instanceInfo.enabledExtensionCount = sizeof(extensions) / sizeof(extensions[0]);
 	instanceInfo.enabledExtensionNames = extensions;
 
+	ALOGI("Creating OpenXR instance");
 	result = xrCreateInstance(&instanceInfo, &_state.instance);
 
 	if (XR_FAILED(result)) {
 		ALOGE("Failed to initialize OpenXR instance");
 		return;
+	} else {
+		ALOGI("OpenXR instance created");
 	}
 
 	// OpenXR system
@@ -548,13 +554,13 @@ android_main(struct android_app *app)
 	//
 
 	gst_debug_set_default_threshold(GST_LEVEL_WARNING);
-//	gst_debug_set_threshold_for_name("decodebin2", GST_LEVEL_INFO);
-//	gst_debug_set_threshold_for_name("webrtcbin", GST_LEVEL_INFO);
-//	gst_debug_set_threshold_for_name("webrtcbindatachannel", GST_LEVEL_INFO);
-//	gst_debug_set_threshold_for_name("amcvideodec", GST_LEVEL_INFO);
+	//	gst_debug_set_threshold_for_name("decodebin2", GST_LEVEL_INFO);
+	gst_debug_set_threshold_for_name("webrtcbin", GST_LEVEL_INFO);
+	//	gst_debug_set_threshold_for_name("webrtcbindatachannel", GST_LEVEL_INFO);
+	//	gst_debug_set_threshold_for_name("amcvideodec", GST_LEVEL_INFO);
 
 	// Set up gstreamer
-	gst_init(0, NULL);
+	gst_init(NULL, NULL);
 
 	// Set rank for decoder c2qtiavcdecoder
 	GstRegistry *plugins_register = gst_registry_get();

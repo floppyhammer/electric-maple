@@ -14,6 +14,7 @@
 #include <glib-object.h>
 #include <gst/gstpipeline.h>
 #include <stdbool.h>
+#include "em_status.h"
 
 G_BEGIN_DECLS
 
@@ -40,7 +41,7 @@ em_connection_new_localhost();
  * @memberof EmConnection
  */
 void
-em_connection_connect(EmConnection *emconn);
+em_connection_connect(EmConnection *em_conn);
 
 
 /*!
@@ -49,7 +50,7 @@ em_connection_connect(EmConnection *emconn);
  * @memberof EmConnection
  */
 void
-em_connection_disconnect(EmConnection *emconn);
+em_connection_disconnect(EmConnection *em_conn);
 
 
 /*!
@@ -58,7 +59,7 @@ em_connection_disconnect(EmConnection *emconn);
  * @memberof EmConnection
  */
 bool
-em_connection_send_bytes(EmConnection *emconn, GBytes *bytes);
+em_connection_send_bytes(EmConnection *em_conn, GBytes *bytes);
 
 /*!
  * Assign a pipeline for use.
@@ -66,6 +67,8 @@ em_connection_send_bytes(EmConnection *emconn, GBytes *bytes);
  * Will be started when the websocket connection comes up in order to negotiate using the webrtcbin.
  */
 void
-em_connection_set_pipeline(EmConnection *emconn, GstPipeline *pipeline);
+em_connection_set_pipeline(EmConnection *em_conn, GstPipeline *pipeline);
+
+enum em_status em_connection_get_status(EmConnection *em_conn);
 
 G_END_DECLS

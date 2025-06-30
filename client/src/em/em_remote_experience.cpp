@@ -218,7 +218,8 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 	std::array<em_proto_HandJointLocation, XR_HAND_JOINT_COUNT_EXT> hand_joint_locations_right{};
 
 	// Get hand joint locations
-	if (inputState.pfnXrLocateHandJointsEXT != nullptr) {
+	if (inputState.pfnXrLocateHandJointsEXT != nullptr && inputState.xrHandTrackerEXTLeft != nullptr &&
+	    inputState.xrHandTrackerEXTRight != nullptr) {
 		for (auto hand : {inputState.xrHandTrackerEXTLeft, inputState.xrHandTrackerEXTRight}) {
 			XrHandJointLocationEXT jointLocations[XR_HAND_JOINT_COUNT_EXT];
 			XrHandJointLocationsEXT locationsEXT = {.type = XR_TYPE_HAND_JOINT_LOCATIONS_EXT,
@@ -556,7 +557,9 @@ em_remote_experience_poll_and_render_frame(EmRemoteExperience *exp, InputState &
 
 	em_stream_client_egl_end(exp->stream_client);
 
-	em_remote_experience_report_pose(exp, frameState.predictedDisplayTime, inputState);
+	if (em_connection_get_status(exp->connection) == EM_STATUS_CONNECTED) {
+		em_remote_experience_report_pose(exp, frameState.predictedDisplayTime, inputState);
+	}
 
 	return prResult;
 }

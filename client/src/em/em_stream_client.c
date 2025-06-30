@@ -343,9 +343,9 @@ on_new_sample_cb(GstAppSink *appsink, gpointer user_data)
 {
 	EmStreamClient *sc = (EmStreamClient *)user_data;
 
-//	GstElement *webrtcbin = gst_bin_get_by_name(GST_BIN(sc->pipeline), "webrtc");
-//	GstPromise *promise = gst_promise_new_with_change_func((GstPromiseChangeFunc)on_stats, NULL, NULL);
-//	g_signal_emit_by_name(webrtcbin, "get-stats", NULL, promise);
+	//	GstElement *webrtcbin = gst_bin_get_by_name(GST_BIN(sc->pipeline), "webrtc");
+	//	GstPromise *promise = gst_promise_new_with_change_func((GstPromiseChangeFunc)on_stats, NULL, NULL);
+	//	g_signal_emit_by_name(webrtcbin, "get-stats", NULL, promise);
 
 	// TODO record the frame ID, get frame pose
 	struct timespec ts;
@@ -366,7 +366,7 @@ on_new_sample_cb(GstAppSink *appsink, gpointer user_data)
 		sc->received_first_frame = true;
 	}
 	if (prevSample) {
-//		ALOGI("Discarding unused, replaced sample");
+		//		ALOGI("Discarding unused, replaced sample");
 		gst_sample_unref(prevSample);
 	}
 	return GST_FLOW_OK;
@@ -408,7 +408,7 @@ on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc)
 	// clang-format off
 	gchar *pipeline_string = g_strdup_printf(
 	    "webrtcbin name=webrtc bundle-policy=max-bundle latency=0 ! "
-	    "rtph264depay name=depay ! " // Not necessary theoretically, but this can fix codec configuration crash
+	    "rtph265depay name=depay ! " // Not necessary theoretically, but this can fix codec configuration crash
 	    "decodebin3 ! "
 
 //	    "amcviddec-c2qtiavcdecoder ! "        // Hardware
@@ -645,8 +645,8 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 	}
 
 	// Check pipeline
-//	gchar *data = gst_debug_bin_to_dot_data(GST_BIN(sc->pipeline), GST_DEBUG_GRAPH_SHOW_ALL);
-//	g_free(data);
+	//	gchar *data = gst_debug_bin_to_dot_data(GST_BIN(sc->pipeline), GST_DEBUG_GRAPH_SHOW_ALL);
+	//	g_free(data);
 
 	if (sample == NULL) {
 		if (gst_app_sink_is_eos(GST_APP_SINK(sc->appsink))) {
@@ -665,7 +665,7 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 	gst_video_info_from_caps(&info, caps);
 	gint width = GST_VIDEO_INFO_WIDTH(&info);
 	gint height = GST_VIDEO_INFO_HEIGHT(&info);
-//	ALOGI("%s: frame %d (w) x %d (h)", __FUNCTION__, width, height);
+	//	ALOGI("%s: frame %d (w) x %d (h)", __FUNCTION__, width, height);
 
 	// TODO: Handle resize?
 #if 0
@@ -720,7 +720,7 @@ em_stream_client_release_sample(EmStreamClient *sc, struct em_sample *ems)
 {
 
 	struct em_sc_sample *impl = (struct em_sc_sample *)ems;
-//	ALOGI("RYLIE: Releasing sample with texture ID %d", ems->frame_texture_id);
+	//	ALOGI("RYLIE: Releasing sample with texture ID %d", ems->frame_texture_id);
 	gst_sample_unref(impl->sample);
 	free(impl);
 }
