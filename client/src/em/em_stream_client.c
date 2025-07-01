@@ -376,6 +376,17 @@ static void
 on_new_transceiver(GstElement *webrtc, GstWebRTCRTPTransceiver *trans)
 {
 	g_object_set(trans, "fec-type", GST_WEBRTC_FEC_TYPE_ULP_RED, NULL);
+
+	// Adjust UDP buffer size (IMPORTANT)
+	GstWebRTCICETransport *ice_transport = NULL;
+	g_object_get(trans, "ice-transport", &ice_transport, NULL);
+
+	if (ice_transport) {
+		g_object_set(ice_transport, "recv-buffer-size", 8 * 1024 * 1024, // Receiver 8MB
+		             "send-buffer-size", 4 * 1024 * 1024,                // Sender 4MB
+		             NULL);
+		g_object_unref(ice_transport);
+	}
 }
 
 static void

@@ -43,7 +43,7 @@
 
 // TODO making this 1 causes readback failures
 // I assume this means there is some kind of buffer creation failing and we aren't handling the error right.
-#define READBACK_DIV_FACTOR (2)
+#define READBACK_DIV_FACTOR (1)
 
 #define READBACK_W2 (APP_VIEW_W / READBACK_DIV_FACTOR)
 #define READBACK_W (READBACK_W2 * 2)
