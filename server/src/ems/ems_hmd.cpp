@@ -188,25 +188,28 @@ struct ems_hmd *ems_hmd_create(ems_instance &emsi) {
     // TODO: Find out the framerate that the remote device runs at
     eh->base.hmd->screens[0].nominal_frame_interval_ns = time_s_to_ns(1.0f / 60.0f);
 
-    // TODO: Find out the remote device's actual FOV. Or maybe remove this because I think get_view_poses lets us
-    // set the FOV dynamically.
+    // TODO: Find out the remote device's actual FOV.
+    //  Or maybe remove this because I think get_view_poses lets us set the FOV dynamically.
 
-    eh->base.hmd->distortion.fov[0] = (xrt_fov){
-        .angle_left = -0.855f,
-        .angle_right = 0.785f,
-        .angle_up = 0.838f,
-        .angle_down = -0.873f,
+    struct xrt_fov fov_left = {
+        .angle_left = -0.316011f,
+        .angle_right = 0.361546f,
+        .angle_up = 0.225283f,
+        .angle_down = -0.165940f,
     };
-    eh->base.hmd->distortion.fov[1] = (xrt_fov){
-        .angle_left = -0.785f,
-        .angle_right = 0.855f,
-        .angle_up = 0.838f,
-        .angle_down = -0.873f,
+    struct xrt_fov fov_right = {
+        .angle_left = -0.345102f,
+        .angle_right = 0.345085f,
+        .angle_up = 0.223300f,
+        .angle_down = -0.175499f,
     };
+
+    eh->base.hmd->distortion.fov[0] = fov_left;
+    eh->base.hmd->distortion.fov[1] = fov_right;
 
     // TODO: Ditto, figure out the device's actual resolution
-    const int panel_w = 1080;
-    const int panel_h = 1200;
+    const int panel_w = 1920;
+    const int panel_h = 1080;
 
     // Single "screen" (always the case)
     eh->base.hmd->screens[0].w_pixels = panel_w * 2;
