@@ -8,10 +8,9 @@
  * @ingroup aux_util
  */
 
-#include "util/u_misc.h"
-#include "util/u_debug.h"
-
 #include "gstreamer/gst_pipeline.h"
+#include "util/u_debug.h"
+#include "util/u_misc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,20 +19,16 @@ struct gstreamer_pipeline;
 
 struct ems_callbacks;
 
-void
-ems_gstreamer_pipeline_play(struct gstreamer_pipeline *gp);
+void ems_gstreamer_pipeline_play(struct gstreamer_pipeline *gp);
 
-void
-ems_gstreamer_pipeline_stop(struct gstreamer_pipeline *gp);
+void ems_gstreamer_pipeline_stop(struct gstreamer_pipeline *gp);
 
-void
-ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
-                              const char *appsrc_name,
-                              struct ems_callbacks *callbacks_collection,
-                              struct gstreamer_pipeline **out_gp);
+void ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
+                                   const char *appsrc_name,
+                                   struct ems_callbacks *callbacks_collection,
+                                   struct gstreamer_pipeline **out_gp);
 
-void
-ems_gstreamer_pipeline_dump(struct gstreamer_pipeline *gp);
+void ems_gstreamer_pipeline_dump(struct gstreamer_pipeline *gp);
 
 #ifdef __cplusplus
 }

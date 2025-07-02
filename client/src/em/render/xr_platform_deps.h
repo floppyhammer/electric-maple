@@ -9,13 +9,11 @@
  * @ingroup em_client
  */
 
-#ifdef __ANDROID__
+// clang-format off
 #include <jni.h>
 #include <EGL/egl.h>
-#endif
-
 #include <GLES3/gl3.h>
-
-
+#include <GLES2/gl2ext.h>
+// clang-format on
 #include <openxr/openxr.h>
 #include <openxr/openxr_platform.h>

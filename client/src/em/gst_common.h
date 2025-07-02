@@ -15,25 +15,15 @@
 
 #pragma once
 
-#include <GLES3/gl3.h>
-#include <GLES3/gl3ext.h>
-#include <EGL/egl.h>
-#ifdef __ANDROID__
-#include <jni.h>
-#endif
-
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <openxr/openxr.h>
 #include <openxr/openxr_platform.h>
-
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-
-#include <string.h>
 #include <stdbool.h>
+#include <string.h>
+#include <sys/socket.h>
 
-struct em_sample
-{
-	GLuint frame_texture_id;
-	GLenum frame_texture_target;
+struct em_sample {
+    GLuint frame_texture_id;
+    GLenum frame_texture_target;
 };

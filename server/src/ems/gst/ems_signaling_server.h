@@ -23,14 +23,11 @@ typedef gpointer EmsClientId;
 
 const static int EMS_DEFAULT_PORT = 52356;
 
-EmsSignalingServer *
-ems_signaling_server_new();
+EmsSignalingServer *ems_signaling_server_new();
 
-void
-ems_signaling_server_send_sdp_offer(EmsSignalingServer *server, EmsClientId client_id, const gchar *msg);
+void ems_signaling_server_send_sdp_offer(EmsSignalingServer *server, EmsClientId client_id, const gchar *msg);
 
-void
-ems_signaling_server_send_candidate(EmsSignalingServer *server,
-                                    EmsClientId client_id,
-                                    guint mlineindex,
-                                    const gchar *candidate);
+void ems_signaling_server_send_candidate(EmsSignalingServer *server,
+                                         EmsClientId client_id,
+                                         guint mlineindex,
+                                         const gchar *candidate);

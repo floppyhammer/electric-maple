@@ -10,10 +10,10 @@
  */
 #pragma once
 
-
 #include <glib-object.h>
 #include <gst/gstpipeline.h>
 #include <stdbool.h>
+
 #include "em_status.h"
 
 G_BEGIN_DECLS
@@ -29,45 +29,37 @@ G_DECLARE_FINAL_TYPE(EmConnection, em_connection, EM, CONNECTION, GObject)
  *
  * @memberof EmConnection
  */
-EmConnection *
-em_connection_new(const gchar *websocket_uri);
+EmConnection *em_connection_new(const gchar *websocket_uri);
 
-EmConnection *
-em_connection_new_localhost();
+EmConnection *em_connection_new_localhost();
 
 /*!
  * Actually start connecting to the server
  *
  * @memberof EmConnection
  */
-void
-em_connection_connect(EmConnection *em_conn);
-
+void em_connection_connect(EmConnection *em_conn);
 
 /*!
  * Drop the server connection, if any.
  *
  * @memberof EmConnection
  */
-void
-em_connection_disconnect(EmConnection *em_conn);
-
+void em_connection_disconnect(EmConnection *em_conn);
 
 /*!
  * Send a message to the server
  *
  * @memberof EmConnection
  */
-bool
-em_connection_send_bytes(EmConnection *em_conn, GBytes *bytes);
+bool em_connection_send_bytes(EmConnection *em_conn, GBytes *bytes);
 
 /*!
  * Assign a pipeline for use.
  *
  * Will be started when the websocket connection comes up in order to negotiate using the webrtcbin.
  */
-void
-em_connection_set_pipeline(EmConnection *em_conn, GstPipeline *pipeline);
+void em_connection_set_pipeline(EmConnection *em_conn, GstPipeline *pipeline);
 
 enum em_status em_connection_get_status(EmConnection *em_conn);
 
