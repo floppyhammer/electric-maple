@@ -418,6 +418,39 @@ static void em_conn_webrtc_on_data_channel_cb(GstElement *webrtcbin,
     g_signal_emit(em_conn, signals[SIGNAL_CONNECTED], 0);
 }
 
+static void em_conn_webrtc_on_prepare_data_channel(GstElement *webrtcbin,
+                                                   GstWebRTCDataChannel *channel,
+                                                   gboolean is_local,
+                                                   gpointer udata) {
+    // Adjust receive buffer size (IMPORTANT)
+    {
+        GstWebRTCSCTPTransport *sctp_transport = NULL;
+        g_object_get(webrtcbin, "sctp-transport", &sctp_transport, NULL);
+        if (!sctp_transport) {
+            g_error("Failed to get sctp_transport!");
+        }
+
+        GstWebRTCDTLSTransport *dtls_transport = NULL;
+        g_object_get(sctp_transport, "transport", &dtls_transport, NULL);
+        if (!dtls_transport) {
+            g_error("Failed to get dtls_transport!");
+        }
+
+        GstWebRTCICETransport *ice_transport = NULL;
+        g_object_get(dtls_transport, "transport", &ice_transport, NULL);
+
+        if (ice_transport) {
+            g_object_set(ice_transport, "receive-buffer-size", 8 * 1024 * 1024, NULL);
+        } else {
+            g_error("Failed to get ice_transport!");
+        }
+
+        g_object_unref(ice_transport);
+        g_object_unref(dtls_transport);
+        g_object_unref(sctp_transport);
+    }
+}
+
 void em_conn_send_sdp_answer(EmConnection *em_conn, const gchar *sdp) {
     JsonBuilder *builder;
     JsonNode *root;
@@ -654,6 +687,10 @@ void em_connection_set_pipeline(EmConnection *em_conn, GstPipeline *pipeline) {
                      "deep-notify::connection-state",
                      G_CALLBACK(em_conn_webrtc_deep_notify_callback),
                      em_conn);
+    g_signal_connect(em_conn->webrtcbin,
+                     "prepare-data-channel",
+                     G_CALLBACK(em_conn_webrtc_on_prepare_data_channel),
+                     NULL);
 }
 
 enum em_status em_connection_get_status(EmConnection *em_conn) {

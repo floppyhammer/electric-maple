@@ -669,7 +669,6 @@ EmPollRenderResult em_remote_experience_inner_poll_and_render_frame(EmRemoteExpe
 
     if (exp->prev_sample != NULL) {
         em_stream_client_release_sample(exp->stream_client, exp->prev_sample);
-        exp->prev_sample = NULL;
     }
     exp->prev_sample = sample;
 
