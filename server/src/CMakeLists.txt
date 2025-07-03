@@ -3,4 +3,4 @@
 # SPDX-License-Identifier: BSL-1.0
 
 add_subdirectory(ems)
-add_subdirectory(test)
+add_subdirectory(test_client)
