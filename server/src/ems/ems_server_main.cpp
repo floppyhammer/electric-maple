@@ -20,9 +20,7 @@
     #include "util/u_windows.h"
 #endif
 
-// #include "target_lists.h"
-
-// Insert the on load constructor to init trace marker.
+// Insert on load constructor to init trace marker.
 U_TRACE_TARGET_SETUP(U_TRACE_WHICH_SERVICE)
 
 // TODO(chesterton's fence) Shouldn't we just include ipc_server.h here?

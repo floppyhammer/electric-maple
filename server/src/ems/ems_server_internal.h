@@ -90,10 +90,14 @@ struct ems_instance {
     //! Shared tracking origin for all devices.
     struct xrt_tracking_origin tracking_origin;
 
-    // convenience
+    // For convenience
     struct ems_hmd *head;
     struct ems_motion_controller *left;
     struct ems_motion_controller *right;
+
+    // Device index for hand controllers
+    int32_t left_index;
+    int32_t right_index;
 
     //! Callbacks collection
     struct ems_callbacks *callbacks;

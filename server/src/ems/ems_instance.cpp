@@ -51,8 +51,14 @@ void ems_instance_system_devices_destroy(struct xrt_system_devices *xsysd) {
 
 static xrt_result_t ems_instance_system_devices_get_roles(struct xrt_system_devices *xsysd,
                                                           struct xrt_system_roles *out_roles) {
+    struct ems_instance *emsi = from_xsysd(xsysd);
+
     struct xrt_system_roles roles = XRT_SYSTEM_ROLES_INIT;
     roles.generation_id = 1; // Never changes.
+
+    // Assign hand controllers
+    roles.left = emsi->left_index;
+    roles.right = emsi->right_index;
 
     *out_roles = roles;
 
@@ -157,7 +163,9 @@ void ems_instance_system_devices_init(struct ems_instance *emsi) {
     // Set up the device base as the only device.
     emsi->xsysd_base.xdevs[0] = head;
     emsi->xsysd_base.xdevs[1] = left;
+    emsi->left_index = 1;
     emsi->xsysd_base.xdevs[2] = right;
+    emsi->right_index = 2;
     emsi->xsysd_base.xdev_count = 3;
     emsi->xsysd_base.static_roles.head = head;
     emsi->xsysd_base.static_roles.hand_tracking.left = left;
