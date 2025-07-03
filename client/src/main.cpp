@@ -364,23 +364,8 @@ bool poll_events(struct android_app *app, struct em_state &state) {
 
         XrActionStateFloat grabValue{XR_TYPE_ACTION_STATE_FLOAT};
         CheckXrResult(xrGetActionStateFloat(state.session, &getInfo, &grabValue));
-        if (grabValue.isActive == XR_TRUE) {
-            state.input.handGrab[hand] = grabValue.currentState;
-            //			ALOGE("state.input.handGrab %f", grabValue.currentState);
-            //			if (grabValue.currentState > 0.9f) {
-            //				XrHapticVibration vibration{XR_TYPE_HAPTIC_VIBRATION};
-            //				vibration.amplitude = 0.5;
-            //				vibration.duration = XR_MIN_HAPTIC_DURATION;
-            //				vibration.frequency = XR_FREQUENCY_UNSPECIFIED;
-            //
-            //				XrHapticActionInfo hapticActionInfo{XR_TYPE_HAPTIC_ACTION_INFO};
-            //				hapticActionInfo.action = state.input.vibrateAction;
-            //				hapticActionInfo.subactionPath =
-            // state.input.handSubactionPath[hand];
-            // CheckXrResult(xrApplyHapticFeedback(state.session, &hapticActionInfo,
-            //(XrHapticBaseHeader *)&vibration));
-            //			}
-        }
+
+        state.input.handGrab[hand] = grabValue.currentState;
 
         getInfo.action = state.input.poseAction;
         XrActionStatePose poseState{XR_TYPE_ACTION_STATE_POSE};

@@ -79,11 +79,9 @@ static xrt_result_t controller_update_inputs(struct xrt_device *xdev) {
         return XRT_SUCCESS;
     }
 
-    if (emc->hand_grab > 0.5) {
-        xdev->inputs[0].active = true;
-        xdev->inputs[0].timestamp = now;
-        xdev->inputs[0].value.vec1 = {emc->hand_grab};
-    }
+    xdev->inputs[0].active = true;
+    xdev->inputs[0].timestamp = now;
+    xdev->inputs[0].value.vec1 = {emc->hand_grab};
 
     return XRT_SUCCESS;
 }
