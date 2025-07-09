@@ -1,3 +1,4 @@
+# SPDX-FileCopyrightText: 2023-2025, Collabora, Ltd.
 # SPDX-FileCopyrightText: 2023, Pluto VR, Inc.
 #
 # SPDX-License-Identifier: CC0-1.0
@@ -29,3 +30,12 @@ logcat.*.txt
 # GraphViz from gstreamer
 *.dot
 *.dot.pdf
+
+# IDE Files
+.idea/
+client/.gradle/
+client/.idea/
+client/app/.cxx/
+client/app/release/
+server/.cache/
+server/.vscode/
