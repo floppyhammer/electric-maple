@@ -1,4 +1,4 @@
-# Electric Maple streaming server
+# Electric-Maple streaming server
 
 <!--
 Copyright 2023, Collabora, Ltd.
