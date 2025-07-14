@@ -32,7 +32,15 @@ int main(int argc, char *argv[]) {
     u_trace_marker_init();
     u_metrics_init();
 
-    int ret = ipc_server_main(argc, argv);
+    struct ipc_server_main_info ismi = {
+        .udgci =
+            {
+                .window_title = "EMS",
+                .open = U_DEBUG_GUI_OPEN_AUTO,
+            },
+    };
+
+    int ret = ipc_server_main(argc, argv, &ismi);
 
     u_metrics_close();
 

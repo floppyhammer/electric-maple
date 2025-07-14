@@ -168,19 +168,20 @@ void ems_instance_system_devices_init(struct ems_instance *emsi) {
     emsi->right_index = 2;
     emsi->xsysd_base.xdev_count = 3;
     emsi->xsysd_base.static_roles.head = head;
-    emsi->xsysd_base.static_roles.hand_tracking.left = left;
-    emsi->xsysd_base.static_roles.hand_tracking.right = right;
+    emsi->xsysd_base.static_roles.hand_tracking.unobstructed.left = left;
+    emsi->xsysd_base.static_roles.hand_tracking.unobstructed.right = right;
 
     u_builder_create_space_overseer_legacy( //
         &emsi->usys->broadcast,             // broadcast
         head,                               // head
         left,                               // left
         right,                              // right
-        emsi->xsysd_base.xdevs,             // xdevs
-        emsi->xsysd_base.xdev_count,        // xdev_count
-        false,                              // root_is_unbounded
-        true,                               // per_app_local_spaces
-        &emsi->xso);                        // out_xso
+        nullptr,
+        emsi->xsysd_base.xdevs,      // xdevs
+        emsi->xsysd_base.xdev_count, // xdev_count
+        false,                       // root_is_unbounded
+        true,                        // per_app_local_spaces
+        &emsi->xso);                 // out_xso
 }
 
 void ems_instance_init(struct ems_instance *emsi) {

@@ -105,20 +105,20 @@ static xrt_result_t ems_hmd_get_tracked_pose(struct xrt_device *xdev,
     return XRT_SUCCESS;
 }
 
-static void ems_hmd_get_view_poses(struct xrt_device *xdev,
-                                   const struct xrt_vec3 *default_eye_relation,
-                                   int64_t at_timestamp_ns,
-                                   uint32_t view_count,
-                                   struct xrt_space_relation *out_head_relation,
-                                   struct xrt_fov *out_fovs,
-                                   struct xrt_pose *out_poses) {
-    u_device_get_view_poses(xdev,
-                            default_eye_relation,
-                            at_timestamp_ns,
-                            view_count,
-                            out_head_relation,
-                            out_fovs,
-                            out_poses);
+static xrt_result_t ems_hmd_get_view_poses(struct xrt_device *xdev,
+                                           const struct xrt_vec3 *default_eye_relation,
+                                           int64_t at_timestamp_ns,
+                                           uint32_t view_count,
+                                           struct xrt_space_relation *out_head_relation,
+                                           struct xrt_fov *out_fovs,
+                                           struct xrt_pose *out_poses) {
+    return u_device_get_view_poses(xdev,
+                                   default_eye_relation,
+                                   at_timestamp_ns,
+                                   view_count,
+                                   out_head_relation,
+                                   out_fovs,
+                                   out_poses);
 }
 
 static void ems_hmd_handle_data(enum ems_callbacks_event event, const UpMessageSuper *messageSuper, void *userdata) {
@@ -165,8 +165,8 @@ struct ems_hmd *ems_hmd_create(ems_instance &emsi) {
     eh->base.name = XRT_DEVICE_GENERIC_HMD;
     eh->base.device_type = XRT_DEVICE_TYPE_HMD;
     eh->base.tracking_origin = &emsi.tracking_origin;
-    eh->base.orientation_tracking_supported = true;
-    eh->base.position_tracking_supported = false;
+    eh->base.supported.orientation_tracking = true;
+    eh->base.supported.position_tracking = false;
 
     // Private data.
     eh->instance = &emsi;
