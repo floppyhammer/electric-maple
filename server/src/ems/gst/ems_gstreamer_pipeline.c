@@ -307,6 +307,8 @@ static gboolean check_pipeline_dot_data(struct ems_gstreamer_pipeline *egp) {
 static void webrtc_client_connected_cb(EmsSignalingServer *server,
                                        EmsClientId client_id,
                                        struct ems_gstreamer_pipeline *egp) {
+    U_LOG_I("WebRTC client connected: %p", client_id);
+
     GstBin *pipeline = GST_BIN(egp->base.pipeline);
 
     gchar *name = g_strdup_printf("webrtcbin_%p", client_id);
@@ -366,7 +368,7 @@ static void webrtc_sdp_answer_cb(EmsSignalingServer *server,
     GstWebRTCSessionDescription *desc = NULL;
 
     if (gst_sdp_message_new_from_text(sdp, &sdp_msg) != GST_SDP_OK) {
-        g_debug("Error parsing SDP description");
+        U_LOG_I("Error parsing SDP description");
         goto out;
     }
 
@@ -409,7 +411,7 @@ static void webrtc_candidate_cb(EmsSignalingServer *server,
         }
     }
 
-    g_debug("Remote candidate: %s", candidate);
+    U_LOG_I("Remote candidate: %s", candidate);
 }
 
 static GstPadProbeReturn remove_webrtcbin_probe_cb(GstPad *pad, GstPadProbeInfo *info, gpointer user_data) {
@@ -424,6 +426,8 @@ static GstPadProbeReturn remove_webrtcbin_probe_cb(GstPad *pad, GstPadProbeInfo 
 static void webrtc_client_disconnected_cb(EmsSignalingServer *server,
                                           EmsClientId client_id,
                                           struct ems_gstreamer_pipeline *egp) {
+    U_LOG_I("WebRTC client disconnected: %p", client_id);
+
     GstBin *pipeline = GST_BIN(egp->base.pipeline);
     GstElement *webrtcbin = get_webrtcbin_for_client(pipeline, client_id);
 
@@ -469,7 +473,7 @@ static gboolean restart_source(gpointer user_data) {
     g_assert(ret != GST_STATE_CHANGE_FAILURE);
     gst_object_unref(e);
 
-    g_debug("Restarted source after EOS");
+    U_LOG_I("Restarted source after EOS");
 
     return G_SOURCE_REMOVE;
 }
@@ -497,7 +501,7 @@ static gboolean print_stats(gpointer user_data) {
 
     g_object_get(src, "stats", &s, NULL);
     char *str = gst_structure_to_string(s);
-    // g_debug ("%s", str);
+    U_LOG_I("%s", str);
     g_free(str);
     gst_structure_free(s);
 
@@ -596,9 +600,9 @@ void gstAndroidLog(GstDebugCategory *category,
                    gpointer data) {
     if (level <= gst_debug_category_get_threshold(category)) {
         if (level == GST_LEVEL_ERROR) {
-            U_LOG_IFL_E(U_LOGGING_ERROR, "%s, %s: %s", file, function, gst_debug_message_get(message));
+            U_LOG_E("%s, %s: %s", file, function, gst_debug_message_get(message));
         } else {
-            U_LOG_IFL_E(U_LOGGING_DEBUG, "%s, %s: %s", file, function, gst_debug_message_get(message));
+            U_LOG_D("%s, %s: %s", file, function, gst_debug_message_get(message));
         }
     }
 }
