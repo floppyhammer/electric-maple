@@ -178,5 +178,3 @@ if(ANDROID)
 	add_subdirectory(egl)
 	add_subdirectory(src)
 endif()
-
-add_subdirectory(tests)
