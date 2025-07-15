@@ -310,9 +310,9 @@ static void webrtc_client_connected_cb(EmsSignalingServer *server,
     GstBin *pipeline = GST_BIN(egp->base.pipeline);
 
     gchar *name = g_strdup_printf("webrtcbin_%p", client_id);
+    GstElement *webrtcbin = gst_element_factory_make("webrtcbin", name);
     g_free(name);
 
-    GstElement *webrtcbin = gst_element_factory_make("webrtcbin", name);
     g_object_set(webrtcbin, "bundle-policy", GST_WEBRTC_BUNDLE_POLICY_MAX_BUNDLE, NULL);
     g_object_set_data(G_OBJECT(webrtcbin), "client_id", client_id);
     gst_bin_add(pipeline, webrtcbin);
