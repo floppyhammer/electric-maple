@@ -8,6 +8,8 @@
  * @ingroup aux_util
  */
 
+#pragma once
+
 #include "gstreamer/gst_pipeline.h"
 #include "util/u_debug.h"
 #include "util/u_misc.h"

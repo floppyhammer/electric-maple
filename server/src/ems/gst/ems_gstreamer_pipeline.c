@@ -42,6 +42,12 @@
 
 #define WEBRTC_TEE_NAME "webrtctee"
 
+#ifdef ANDROID
+    #define DEFAULT_BITRATE "40960000"
+#else
+    #define DEFAULT_BITRATE "4096"
+#endif
+
 EmsSignalingServer *signaling_server = NULL;
 
 struct ems_gstreamer_pipeline {
@@ -119,11 +125,8 @@ static gboolean webrtcbin_get_stats(GstElement *webrtcbin) {
 }
 
 static GstElement *get_webrtcbin_for_client(GstBin *pipeline, EmsClientId client_id) {
-    gchar *name;
-    GstElement *webrtcbin;
-
-    name = g_strdup_printf("webrtcbin_%p", client_id);
-    webrtcbin = gst_bin_get_by_name(pipeline, name);
+    gchar *name = g_strdup_printf("webrtcbin_%p", client_id);
+    GstElement *webrtcbin = gst_bin_get_by_name(pipeline, name);
     g_free(name);
 
     return webrtcbin;
@@ -170,14 +173,13 @@ static void connect_webrtc_to_tee(GstElement *webrtcbin) {
 
 static void on_offer_created(GstPromise *promise, GstElement *webrtcbin) {
     GstWebRTCSessionDescription *offer = NULL;
-    gchar *sdp;
 
     gst_structure_get(gst_promise_get_reply(promise), "offer", GST_TYPE_WEBRTC_SESSION_DESCRIPTION, &offer, NULL);
     gst_promise_unref(promise);
 
     g_signal_emit_by_name(webrtcbin, "set-local-description", offer, NULL);
 
-    sdp = gst_sdp_message_as_text(offer->sdp);
+    gchar *sdp = gst_sdp_message_as_text(offer->sdp);
     ems_signaling_server_send_sdp_offer(signaling_server, g_object_get_data(G_OBJECT(webrtcbin), "client_id"), sdp);
     g_free(sdp);
 
@@ -370,10 +372,9 @@ static void webrtc_sdp_answer_cb(EmsSignalingServer *server,
 
     desc = gst_webrtc_session_description_new(GST_WEBRTC_SDP_TYPE_ANSWER, sdp_msg);
     if (desc) {
-        GstElement *webrtcbin;
         GstPromise *promise;
 
-        webrtcbin = get_webrtcbin_for_client(pipeline, client_id);
+        GstElement *webrtcbin = get_webrtcbin_for_client(pipeline, client_id);
         if (!webrtcbin) {
             goto out;
         }
@@ -401,9 +402,7 @@ static void webrtc_candidate_cb(EmsSignalingServer *server,
     GstBin *pipeline = GST_BIN(egp->base.pipeline);
 
     if (strlen(candidate)) {
-        GstElement *webrtcbin;
-
-        webrtcbin = get_webrtcbin_for_client(pipeline, client_id);
+        GstElement *webrtcbin = get_webrtcbin_for_client(pipeline, client_id);
         if (webrtcbin) {
             g_signal_emit_by_name(webrtcbin, "add-ice-candidate", mlineindex, candidate);
             gst_object_unref(webrtcbin);
@@ -459,16 +458,14 @@ static void free_restart_data(gpointer user_data) {
 
 static gboolean restart_source(gpointer user_data) {
     struct RestartData *rd = user_data;
-    GstElement *e;
-    GstStateChangeReturn ret;
 
     gst_element_set_state(rd->src, GST_STATE_NULL);
     gst_element_set_locked_state(rd->src, TRUE);
-    e = gst_bin_get_by_name(GST_BIN(rd->pipeline), "srtqueue");
+    GstElement *e = gst_bin_get_by_name(GST_BIN(rd->pipeline), "srtqueue");
     gst_bin_add(GST_BIN(rd->pipeline), rd->src);
     if (!gst_element_link(rd->src, e)) g_assert_not_reached();
     gst_element_set_locked_state(rd->src, FALSE);
-    ret = gst_element_set_state(rd->src, GST_STATE_PLAYING);
+    GstStateChangeReturn ret = gst_element_set_state(rd->src, GST_STATE_PLAYING);
     g_assert(ret != GST_STATE_CHANGE_FAILURE);
     gst_object_unref(e);
 
@@ -479,16 +476,14 @@ static gboolean restart_source(gpointer user_data) {
 
 static GstPadProbeReturn src_event_cb(GstPad *pad, GstPadProbeInfo *info, gpointer user_data) {
     GstElement *pipeline = user_data;
-    GstElement *src;
-    struct RestartData *rd;
 
     if (GST_EVENT_TYPE(GST_PAD_PROBE_INFO_EVENT(info)) != GST_EVENT_EOS) return GST_PAD_PROBE_PASS;
 
-    src = gst_pad_get_parent_element(pad);
+    GstElement *src = gst_pad_get_parent_element(pad);
 
     gst_bin_remove(GST_BIN(pipeline), src);
 
-    rd = g_new(struct RestartData, 1);
+    struct RestartData *rd = g_new(struct RestartData, 1);
     rd->src = src;
     rd->pipeline = pipeline;
     g_idle_add_full(G_PRIORITY_HIGH_IDLE, restart_source, rd, free_restart_data);
@@ -499,10 +494,9 @@ static GstPadProbeReturn src_event_cb(GstPad *pad, GstPadProbeInfo *info, gpoint
 static gboolean print_stats(gpointer user_data) {
     GstElement *src = user_data;
     GstStructure *s;
-    char *str;
 
     g_object_get(src, "stats", &s, NULL);
-    str = gst_structure_to_string(s);
+    char *str = gst_structure_to_string(s);
     // g_debug ("%s", str);
     g_free(str);
     gst_structure_free(s);
@@ -524,7 +518,7 @@ static void break_apart(struct xrt_frame_node *node) {
      * from this function you are not allowed to call any other nodes in the
      * graph. But it must be safe for other nodes to call any normal
      * functions on us. Once the context is done calling break_aprt on all
-     * objects it will call destroy on them.
+     * objects, it will call destroy() on them.
      */
 
     (void)gp;
@@ -534,7 +528,7 @@ static void destroy(struct xrt_frame_node *node) {
     struct gstreamer_pipeline *gp = container_of(node, struct gstreamer_pipeline, node);
 
     /*
-     * All of the nodes has been broken apart and none of our functions will
+     * All the nodes have been broken apart, and none of our functions will
      * be called, it's now safe to destroy and free ourselves.
      */
 
@@ -613,10 +607,7 @@ void ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
                                    const char *appsrc_name,
                                    struct ems_callbacks *callbacks_collection,
                                    struct gstreamer_pipeline **out_gp) {
-    gchar *pipeline_str;
-    GstElement *pipeline;
     GError *error = NULL;
-    GstBus *bus;
 
     // In case this function is called many times
     if (signaling_server) {
@@ -625,16 +616,17 @@ void ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 
     signaling_server = ems_signaling_server_new();
 
-    pipeline_str = g_strdup_printf(
+    gchar *pipeline_str = g_strdup_printf(
         "appsrc name=%s ! "
         "videoconvert ! "
         "videorate ! "
         "video/x-raw,format=NV12,framerate=60/1 ! "
-        "encodebin2 profile=\"video/x-h265|element-properties,tune=zerolatency,bitrate=4096\" ! "
+        "encodebin2 profile=\"video/x-h265|element-properties,tune=zerolatency,bitrate=%s\" ! "
         "rtph265pay config-interval=-1 aggregate-mode=zero-latency ! "
         "application/x-rtp,payload=96,ssrc=(uint)3484078952 ! "
         "tee name=%s allow-not-linked=true",
         appsrc_name,
+        DEFAULT_BITRATE,
         WEBRTC_TEE_NAME);
 
     // No webrtc bin yet until later!
@@ -647,6 +639,12 @@ void ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
     egp->base.xfctx = xfctx;
     egp->callbacks = callbacks_collection;
 
+    // setenv("GST_TRACERS", "latency(flags=pipeline+element+reported)", 1);
+    // setenv("GST_DEBUG", "GST_TRACER:7", 1);
+    // setenv("GST_DEBUG_FILE", "./latency.log", 1);
+
+    gst_init(NULL, NULL);
+
 #ifdef __ANDROID__
     gst_debug_add_log_function(&gstAndroidLog, NULL, NULL);
 #endif
@@ -655,17 +653,11 @@ void ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
     gst_debug_set_threshold_for_name("webrtcbin", GST_LEVEL_INFO);
     gst_debug_set_threshold_for_name("webrtcbindatachannel", GST_LEVEL_INFO);
 
-    // setenv("GST_TRACERS", "latency(flags=pipeline+element+reported)", 1);
-    // setenv("GST_DEBUG", "GST_TRACER:7", 1);
-    // setenv("GST_DEBUG_FILE", "./latency.log", 1);
-
-    gst_init(NULL, NULL);
-
-    pipeline = gst_parse_launch(pipeline_str, &error);
+    GstElement *pipeline = gst_parse_launch(pipeline_str, &error);
     g_assert_no_error(error);
     g_free(pipeline_str);
 
-    bus = gst_element_get_bus(pipeline);
+    GstBus *bus = gst_element_get_bus(pipeline);
     gst_bus_add_watch(bus, gst_bus_cb, egp);
     gst_object_unref(bus);
 
@@ -673,22 +665,8 @@ void ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
     g_signal_connect(signaling_server, "sdp-answer", G_CALLBACK(webrtc_sdp_answer_cb), egp);
     g_signal_connect(signaling_server, "candidate", G_CALLBACK(webrtc_candidate_cb), egp);
 
-    // loop = g_main_loop_new (NULL, FALSE);
-    // g_unix_signal_add (SIGINT, sigint_handler, loop);
-
-    g_print(
-        "Output streams:\n"
-        "\tWebRTC: http://127.0.0.1:%d\n",
-        EMS_DEFAULT_PORT);
-
     // Setup pipeline.
     egp->base.pipeline = pipeline;
-    // GstElement *appsrc = gst_element_factory_make("appsrc", appsrc_name);
-    // GstElement *conv = gst_element_factory_make("videoconvert", "conv");
-    // GstElement *scale = gst_element_factory_make("videoscale", "scale");
-    // GstElement *videosink = gst_element_factory_make("autovideosink", "videosink");
-
-    // g_signal_connect(source, "need-data", G_CALLBACK(start_feed), data);
 
     /*
      * Add ourselves to the context so we are destroyed.

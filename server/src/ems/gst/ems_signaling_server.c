@@ -25,6 +25,8 @@
 
 #include "util/u_logging.h"
 
+const static int EMS_DEFAULT_PORT = 52356;
+
 struct _EmsSignalingServer {
     GObject parent;
 
@@ -67,8 +69,8 @@ static void http_cb(SoupServer *server,     //
                     const char *path,       //
                     GHashTable *query,      //
                     gpointer user_data) {
-    // We're not serving any HTTP traffic - if somebody (erroneously) submits an HTTP request, tell them to get
-    // lost.
+    // We're not serving any HTTP traffic - if somebody (erroneously) submits an HTTP request,
+    // tell them to get lost.
     U_LOG_E("Got an erroneous HTTP request from %s", soup_server_message_get_remote_host(msg));
     soup_server_message_set_status(msg, SOUP_STATUS_NOT_FOUND, NULL);
 }
@@ -125,9 +127,8 @@ static void message_cb(SoupWebsocketConnection *connection, gint type, GBytes *m
 static void ems_signaling_server_remove_websocket_connection(EmsSignalingServer *server,
                                                              SoupWebsocketConnection *connection) {
     g_info("%s", __func__);
-    EmsClientId client_id;
 
-    client_id = g_object_get_data(G_OBJECT(connection), "client_id");
+    EmsClientId client_id = g_object_get_data(G_OBJECT(connection), "client_id");
 
     server->websocket_connections = g_slist_remove(server->websocket_connections, client_id);
 
@@ -192,7 +193,6 @@ static void ems_signaling_server_send_to_websocket_client(EmsSignalingServer *se
                                                           EmsClientId client_id,
                                                           JsonNode *msg) {
     SoupWebsocketConnection *connection = client_id;
-    SoupWebsocketState socket_state;
     g_info("%s", __func__);
 
     if (!g_slist_find(server->websocket_connections, connection)) {
@@ -200,7 +200,7 @@ static void ems_signaling_server_send_to_websocket_client(EmsSignalingServer *se
         return;
     }
 
-    socket_state = soup_websocket_connection_get_state(connection);
+    SoupWebsocketState socket_state = soup_websocket_connection_get_state(connection);
 
     if (socket_state == SOUP_WEBSOCKET_STATE_OPEN) {
         gchar *msg_str = json_to_string(msg, TRUE);
@@ -214,12 +214,9 @@ static void ems_signaling_server_send_to_websocket_client(EmsSignalingServer *se
 }
 
 void ems_signaling_server_send_sdp_offer(EmsSignalingServer *server, EmsClientId client_id, const gchar *sdp) {
-    JsonBuilder *builder;
-    JsonNode *root;
-
     g_debug("Send offer: %s", sdp);
 
-    builder = json_builder_new();
+    JsonBuilder *builder = json_builder_new();
     json_builder_begin_object(builder);
     json_builder_set_member_name(builder, "msg");
     json_builder_add_string_value(builder, "offer");
@@ -228,7 +225,7 @@ void ems_signaling_server_send_sdp_offer(EmsSignalingServer *server, EmsClientId
     json_builder_add_string_value(builder, sdp);
     json_builder_end_object(builder);
 
-    root = json_builder_get_root(builder);
+    JsonNode *root = json_builder_get_root(builder);
 
     ems_signaling_server_send_to_websocket_client(server, client_id, root);
 
@@ -240,12 +237,9 @@ void ems_signaling_server_send_candidate(EmsSignalingServer *server,
                                          EmsClientId client_id,
                                          guint mlineindex,
                                          const gchar *candidate) {
-    JsonBuilder *builder;
-    JsonNode *root;
-
     g_debug("Send candidate: %u %s", mlineindex, candidate);
 
-    builder = json_builder_new();
+    JsonBuilder *builder = json_builder_new();
     json_builder_begin_object(builder);
     json_builder_set_member_name(builder, "msg");
     json_builder_add_string_value(builder, "candidate");
@@ -259,7 +253,7 @@ void ems_signaling_server_send_candidate(EmsSignalingServer *server,
     json_builder_end_object(builder);
     json_builder_end_object(builder);
 
-    root = json_builder_get_root(builder);
+    JsonNode *root = json_builder_get_root(builder);
 
     ems_signaling_server_send_to_websocket_client(server, client_id, root);
 
@@ -269,7 +263,6 @@ void ems_signaling_server_send_candidate(EmsSignalingServer *server,
 
 static void ems_signaling_server_dispose(GObject *object) {
     EmsSignalingServer *self = EMS_SIGNALING_SERVER(object);
-    GDir *dir;
 
     soup_server_disconnect(self->soup_server);
     g_clear_object(&self->soup_server);
