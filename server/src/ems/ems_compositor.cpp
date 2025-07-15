@@ -37,8 +37,6 @@
 #define APP_VIEW_W (1920)
 #define APP_VIEW_H (1080)
 
-// TODO making this 1 causes readback failures
-// I assume this means there is some kind of buffer creation failing and we aren't handling the error right.
 #define READBACK_DIV_FACTOR (1)
 
 #define READBACK_W2 (APP_VIEW_W / READBACK_DIV_FACTOR)
@@ -331,7 +329,6 @@ void pack_blit_and_encode(struct ems_compositor *c,
 
     // Getting frame
     if (!vk_image_readback_to_xf_pool_get_unused_frame(vk, c->pool, &wrap)) {
-        // ems_gstreamer_pipeline_dump(c->gstreamer_pipeline);
         EMS_COMP_ERROR(c, "vk_image_readback_to_xf_pool_get_unused_frame: Failed!");
         return;
     }

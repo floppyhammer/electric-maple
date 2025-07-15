@@ -28,8 +28,6 @@ void ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
                                    struct ems_callbacks *callbacks_collection,
                                    struct gstreamer_pipeline **out_gp);
 
-void ems_gstreamer_pipeline_dump(struct gstreamer_pipeline *gp);
-
 #ifdef __cplusplus
 }
 #endif

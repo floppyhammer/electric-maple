@@ -42,18 +42,16 @@
 
 #define WEBRTC_TEE_NAME "webrtctee"
 
-#define EM_USE_ENCODEBIN
-
 EmsSignalingServer *signaling_server = NULL;
 
 struct ems_gstreamer_pipeline {
     struct gstreamer_pipeline base;
 
-    // struct GstElement *pipeline;
     GstElement *webrtc;
 
     GObject *data_channel;
     guint timeout_src_id;
+    guint timeout_src_id_dot_data;
 
     struct ems_callbacks *callbacks;
 };
@@ -293,24 +291,31 @@ static void data_channel_message_string_cb(GstWebRTCDataChannel *datachannel,
     U_LOG_I("Received data channel message: %s\n", str);
 }
 
+static gboolean check_pipeline_dot_data(struct ems_gstreamer_pipeline *egp) {
+    if (!egp || !egp->base.pipeline) {
+        return G_SOURCE_CONTINUE;
+    }
+
+    gchar *dot_data = gst_debug_bin_to_dot_data(GST_BIN(egp->base.pipeline), GST_DEBUG_GRAPH_SHOW_ALL);
+    g_free(dot_data);
+
+    return G_SOURCE_CONTINUE;
+}
+
 static void webrtc_client_connected_cb(EmsSignalingServer *server,
                                        EmsClientId client_id,
                                        struct ems_gstreamer_pipeline *egp) {
     GstBin *pipeline = GST_BIN(egp->base.pipeline);
-    gchar *name;
-    GstElement *webrtcbin;
-    GstCaps *caps;
-    GstStateChangeReturn ret;
-    GstWebRTCRTPTransceiver *transceiver;
 
-    name = g_strdup_printf("webrtcbin_%p", client_id);
+    gchar *name = g_strdup_printf("webrtcbin_%p", client_id);
+    g_free(name);
 
-    webrtcbin = gst_element_factory_make("webrtcbin", name);
+    GstElement *webrtcbin = gst_element_factory_make("webrtcbin", name);
     g_object_set(webrtcbin, "bundle-policy", GST_WEBRTC_BUNDLE_POLICY_MAX_BUNDLE, NULL);
     g_object_set_data(G_OBJECT(webrtcbin), "client_id", client_id);
     gst_bin_add(pipeline, webrtcbin);
 
-    ret = gst_element_set_state(webrtcbin, GST_STATE_READY);
+    GstStateChangeReturn ret = gst_element_set_state(webrtcbin, GST_STATE_READY);
     g_assert(ret != GST_STATE_CHANGE_FAILURE);
 
     g_signal_connect(webrtcbin, "on-data-channel", G_CALLBACK(webrtc_on_data_channel_cb), NULL);
@@ -347,7 +352,7 @@ static void webrtc_client_connected_cb(EmsSignalingServer *server,
     ret = gst_element_set_state(webrtcbin, GST_STATE_PLAYING);
     g_assert(ret != GST_STATE_CHANGE_FAILURE);
 
-    g_free(name);
+    egp->timeout_src_id_dot_data = g_timeout_add_seconds(3, G_SOURCE_FUNC(check_pipeline_dot_data), egp);
 }
 
 static void webrtc_sdp_answer_cb(EmsSignalingServer *server,
@@ -624,25 +629,15 @@ void ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
         "appsrc name=%s ! "
         "videoconvert ! "
         "videorate ! "
-        "videoscale ! "
         "video/x-raw,format=NV12,framerate=60/1 ! "
-#ifdef EM_USE_ENCODEBIN
-        // "encodebin2 profile=\"video/x-vp8|element-properties,deadline=1,target-bitrate=4096000\" ! "
         "encodebin2 profile=\"video/x-h265|element-properties,tune=zerolatency,bitrate=4096\" ! "
-#else
-        "x264enc tune=zerolatency bitrate=4096 key-int-max=60 ! " //
-        "video/x-h264,profile=baseline ! "                        //
-#endif
-        // "rtpvp8pay ! "
-        // "application/x-rtp,encoding-name=VP8,media=video,payload=96,ssrc=(uint)3484078952 ! "
-        "h265parse name=parser ! "
         "rtph265pay config-interval=-1 aggregate-mode=zero-latency ! "
         "application/x-rtp,payload=96,ssrc=(uint)3484078952 ! "
         "tee name=%s allow-not-linked=true",
         appsrc_name,
         WEBRTC_TEE_NAME);
 
-    // no webrtc bin yet until later!
+    // No webrtc bin yet until later!
 
     g_print("EMS gstreamer pipeline: %s\n", pipeline_str);
 
@@ -660,9 +655,9 @@ void ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
     gst_debug_set_threshold_for_name("webrtcbin", GST_LEVEL_INFO);
     gst_debug_set_threshold_for_name("webrtcbindatachannel", GST_LEVEL_INFO);
 
-    setenv("GST_TRACERS", "latency(flags=pipeline+element+reported)", 1);
-    setenv("GST_DEBUG", "GST_TRACER:7", 1);
-    setenv("GST_DEBUG_FILE", "./latency.log", 1);
+    // setenv("GST_TRACERS", "latency(flags=pipeline+element+reported)", 1);
+    // setenv("GST_DEBUG", "GST_TRACER:7", 1);
+    // setenv("GST_DEBUG_FILE", "./latency.log", 1);
 
     gst_init(NULL, NULL);
 
@@ -702,9 +697,4 @@ void ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
     xrt_frame_context_add(xfctx, &egp->base.node);
 
     *out_gp = &egp->base;
-}
-
-void ems_gstreamer_pipeline_dump(struct gstreamer_pipeline *gp) {
-    gchar *data = gst_debug_bin_to_dot_data(GST_BIN(gp->pipeline), GST_DEBUG_GRAPH_SHOW_ALL);
-    g_free(data);
 }

@@ -122,11 +122,11 @@ static void em_remote_experience_report_pose(EmRemoteExperience *exp,
         // Get HMD location.
         XrSpaceLocation hmdLocalLocation = {};
         hmdLocalLocation.type = XR_TYPE_SPACE_LOCATION;
-        hmdLocalLocation.next = NULL;
+        hmdLocalLocation.next = nullptr;
         result =
             xrLocateSpace(exp->xr_owned.viewSpace, exp->xr_owned.worldSpace, predictedDisplayTime, &hmdLocalLocation);
         if (result != XR_SUCCESS) {
-            ALOGE("Bad!");
+            ALOGE("Failed to locate HMD location!");
             return;
         }
 
@@ -144,6 +144,12 @@ static void em_remote_experience_report_pose(EmRemoteExperience *exp,
         tracking.P_localSpace_viewSpace.orientation.x = hmdLocalPose.orientation.x;
         tracking.P_localSpace_viewSpace.orientation.y = hmdLocalPose.orientation.y;
         tracking.P_localSpace_viewSpace.orientation.z = hmdLocalPose.orientation.z;
+
+//        ALOGD("HMD orientation: %f, %f, %f, %f",
+//              hmdLocalPose.orientation.w,
+//              hmdLocalPose.orientation.x,
+//              hmdLocalPose.orientation.y,
+//              hmdLocalPose.orientation.z);
     }
 
     // Get left hand location.
