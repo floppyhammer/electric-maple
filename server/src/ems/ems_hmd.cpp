@@ -209,7 +209,9 @@ struct ems_hmd *
 ems_hmd_create(ems_instance &emsi)
 {
 	// We only want the HMD parts and one input.
-	enum u_device_alloc_flags flags = (enum u_device_alloc_flags)(U_DEVICE_ALLOC_HMD);
+	// Also disable Monado's built-in tracking algorithms.
+	enum u_device_alloc_flags flags =
+	    (enum u_device_alloc_flags)(U_DEVICE_ALLOC_HMD | U_DEVICE_ALLOC_TRACKING_NONE);
 
 	struct ems_hmd *eh = U_DEVICE_ALLOCATE(struct ems_hmd, flags, 1, 0);
 

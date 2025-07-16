@@ -315,8 +315,8 @@ ems_motion_controller_create(ems_instance &emsi, enum xrt_device_name device_nam
 	default: U_LOG_E("Device type not supported!"); return nullptr;
 	}
 
-	// We don't need anything special from allocate except inputs and outputs.
-	u_device_alloc_flags flags{};
+	// This indicates you won't be using Monado's built-in tracking algorithms.
+	u_device_alloc_flags flags = U_DEVICE_ALLOC_TRACKING_NONE;
 	struct ems_motion_controller *emc =
 	    U_DEVICE_ALLOCATE(struct ems_motion_controller, flags, input_count, output_count);
 
