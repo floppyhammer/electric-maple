@@ -109,7 +109,7 @@ static void on_webrtcbin_get_stats(GstPromise *promise, GstElement *webrtcbin) {
     const GstStructure *stats = gst_promise_get_reply(promise);
 
     gchar *stats_str = gst_structure_to_string(stats);
-    g_print("webrtcbin stats: %s\n", stats_str);
+    U_LOG_I("webrtcbin stats: %s", stats_str);
 
     g_free(stats_str);
 }
@@ -602,7 +602,7 @@ void gstAndroidLog(GstDebugCategory *category,
         if (level == GST_LEVEL_ERROR) {
             U_LOG_E("%s, %s: %s", file, function, gst_debug_message_get(message));
         } else {
-            U_LOG_D("%s, %s: %s", file, function, gst_debug_message_get(message));
+            U_LOG_W("%s, %s: %s", file, function, gst_debug_message_get(message));
         }
     }
 }
@@ -635,7 +635,7 @@ void ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 
     // No webrtc bin yet until later!
 
-    g_print("EMS gstreamer pipeline: %s\n", pipeline_str);
+    U_LOG_I("EMS gstreamer pipeline: %s", pipeline_str);
 
     struct ems_gstreamer_pipeline *egp = U_TYPED_CALLOC(struct ems_gstreamer_pipeline);
     egp->base.node.break_apart = break_apart;

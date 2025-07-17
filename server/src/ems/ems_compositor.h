@@ -115,7 +115,7 @@ struct ems_compositor {
     struct vk_cmd_pool cmd_pool = {};
 
     struct vk_image_readback_to_xf_pool *pool = nullptr;
-    int image_sequence; // FIXME: should reset it upon client disconnection
+    int image_sequence;
     struct u_sink_debug debug_sink;
 
     struct {
@@ -130,7 +130,7 @@ struct ems_compositor {
     // This is the base of gstreamer_sink, so they're basically the same pointer
     struct xrt_frame_sink *frame_sink;
 
-    uint64_t offset_ns; // FIXME: should reset it upon client disconnection
+    uint64_t offset_ns;
 };
 
 /*

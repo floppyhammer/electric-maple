@@ -322,7 +322,6 @@ void pack_blit_and_encode(struct ems_compositor *c,
         c->offset_ns = now;
         c->gstreamer_sink->offset_ns = now;
     }
-    VkResult ret;
 
     struct vk_image_readback_to_xf *wrap = NULL;
     struct vk_bundle *vk = &c->base.vk;
@@ -342,7 +341,7 @@ void pack_blit_and_encode(struct ems_compositor *c,
     // For submitting commands.
     vk_cmd_pool_lock(&c->cmd_pool);
 
-    ret = vk_cmd_pool_create_and_begin_cmd_buffer_locked(vk, &c->cmd_pool, flags, &cmd);
+    VkResult ret = vk_cmd_pool_create_and_begin_cmd_buffer_locked(vk, &c->cmd_pool, flags, &cmd);
     if (ret != VK_SUCCESS) {
         EMS_COMP_ERROR(c, "vk_cmd_pool_create_and_begin_cmd_buffer_locked: %s", vk_result_string(ret));
         // Error, unref the frame and return.
@@ -422,7 +421,7 @@ void pack_blit_and_encode(struct ems_compositor *c,
                 .layerCount = 1,
             };
 
-            // Barrier to make source back what it was before
+            // Barrier to make the source image back what it was before.
             vk_cmd_image_barrier_locked(              //
                 vk,                                   // vk_bundle
                 cmd,                                  // cmd_buffer

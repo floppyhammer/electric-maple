@@ -545,14 +545,14 @@ void android_main(struct android_app *app) {
     // Start of remote-rendering-specific code
     //
 
-    gst_debug_set_default_threshold(GST_LEVEL_WARNING);
-    //	gst_debug_set_threshold_for_name("decodebin2", GST_LEVEL_INFO);
-    gst_debug_set_threshold_for_name("webrtcbin", GST_LEVEL_INFO);
-    //	gst_debug_set_threshold_for_name("webrtcbindatachannel", GST_LEVEL_INFO);
-    //	gst_debug_set_threshold_for_name("amcvideodec", GST_LEVEL_INFO);
-
     // Set up gstreamer
     gst_init(NULL, NULL);
+
+    gst_debug_set_default_threshold(GST_LEVEL_WARNING);
+    gst_debug_set_threshold_for_name("*decode*", GST_LEVEL_TRACE);
+    gst_debug_set_threshold_for_name("amc*", GST_LEVEL_TRACE);
+    //	gst_debug_set_threshold_for_name("webrtcbindatachannel", GST_LEVEL_INFO);
+    //	gst_debug_set_threshold_for_name("amc", GST_LEVEL_INFO);
 
     // Set rank for decoder c2qtiavcdecoder
     GstRegistry *plugins_register = gst_registry_get();
