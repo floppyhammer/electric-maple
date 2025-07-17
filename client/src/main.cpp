@@ -549,8 +549,8 @@ void android_main(struct android_app *app) {
     gst_init(NULL, NULL);
 
     gst_debug_set_default_threshold(GST_LEVEL_WARNING);
-    gst_debug_set_threshold_for_name("*decode*", GST_LEVEL_TRACE);
-    gst_debug_set_threshold_for_name("amc*", GST_LEVEL_TRACE);
+//    gst_debug_set_threshold_for_name("*decode*", GST_LEVEL_TRACE);
+//    gst_debug_set_threshold_for_name("amc*", GST_LEVEL_TRACE);
     //	gst_debug_set_threshold_for_name("webrtcbindatachannel", GST_LEVEL_INFO);
     //	gst_debug_set_threshold_for_name("amc", GST_LEVEL_INFO);
 
