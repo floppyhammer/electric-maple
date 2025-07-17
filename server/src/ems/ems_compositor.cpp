@@ -820,7 +820,12 @@ xrt_result_t ems_compositor_create_system(ems_instance &emsi, struct xrt_system_
 
     // Bounce image for scaling.
     {
+        // Use a linear image to fix gamma correction on Android.
+#ifdef ANDROID
+        VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
+#else
         VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
+#endif
         VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         VkExtent2D extent = {READBACK_W, READBACK_H};
         VkResult ret;
