@@ -94,7 +94,7 @@ static xrt_result_t controller_update_inputs(struct xrt_device *xdev) {
 
     xdev->inputs[0].active = true;
     xdev->inputs[0].timestamp = now;
-    xdev->inputs[0].value.vec1 = {emc->hand_grab};
+    xdev->inputs[0].value.vec1 = {emc->grab_action};
 
     // AIM for ray casting.
     xdev->inputs[3].active = true;
@@ -215,7 +215,7 @@ static void controller_handle_data(enum ems_callbacks_event event, const UpMessa
                messageSuper->hand_joint_locations_left,
                sizeof(em_proto_HandJointLocation) * XRT_HAND_JOINT_COUNT);
 
-        emc->hand_grab = message->tracking.controller_grip_value_left;
+        emc->grab_action = message->tracking.controller_grab_value_left;
     } else if (emc->base.device_type == XRT_DEVICE_TYPE_RIGHT_HAND_CONTROLLER) {
         if (message->tracking.has_controller_grip_right) {
             emc->grip_pose = convert_pose(message->tracking.controller_grip_right);
@@ -238,7 +238,7 @@ static void controller_handle_data(enum ems_callbacks_event event, const UpMessa
                messageSuper->hand_joint_locations_right,
                sizeof(em_proto_HandJointLocation) * XRT_HAND_JOINT_COUNT);
 
-        emc->hand_grab = message->tracking.controller_grip_value_right;
+        emc->grab_action = message->tracking.controller_grab_value_right;
     } else {
         return;
     }

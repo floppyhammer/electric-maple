@@ -173,13 +173,14 @@ static void em_remote_experience_report_pose(EmRemoteExperience *exp,
 
         XrPosef handLocalPose = handLocalLocation.pose;
 
-        tracking.has_controller_grip_left = inputState.handActive[Side::LEFT];
-        tracking.controller_grip_left = convert_pose(handLocalPose);
+        // No grip controllers for now.
+        //        tracking.has_controller_grip_left = inputState.handActive[Side::LEFT];
+        //        tracking.controller_grip_left = convert_pose(handLocalPose);
 
         tracking.has_controller_aim_left = inputState.handActive[Side::LEFT];
         tracking.controller_aim_left = convert_pose(handLocalPose);
 
-        tracking.controller_grip_value_left = inputState.handGrab[Side::LEFT];
+        tracking.controller_grab_value_left = inputState.handGrab[Side::LEFT];
     }
 
     // Get right hand location.
@@ -198,13 +199,13 @@ static void em_remote_experience_report_pose(EmRemoteExperience *exp,
 
         XrPosef handLocalPose = handLocalLocation.pose;
 
-        tracking.has_controller_grip_right = inputState.handActive[Side::RIGHT];
-        tracking.controller_grip_right = convert_pose(handLocalPose);
+//        tracking.has_controller_grip_right = inputState.handActive[Side::RIGHT];
+//        tracking.controller_grip_right = convert_pose(handLocalPose);
 
         tracking.has_controller_aim_right = inputState.handActive[Side::RIGHT];
         tracking.controller_aim_right = convert_pose(handLocalPose);
 
-        tracking.controller_grip_value_right = inputState.handGrab[Side::RIGHT];
+        tracking.controller_grab_value_right = inputState.handGrab[Side::RIGHT];
     }
 
     std::array<em_proto_HandJointLocation, XR_HAND_JOINT_COUNT_EXT> hand_joint_locations_left{};

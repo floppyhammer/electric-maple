@@ -56,8 +56,9 @@ message TrackingMessage {
 	repeated HandJointLocation hand_joint_locations_left = 10;
     repeated HandJointLocation hand_joint_locations_right = 11;
 
-	float controller_grip_value_left = 12;
-    float controller_grip_value_right = 13;
+    // GRAB is different from GRIP
+	float controller_grab_value_left = 12;
+    float controller_grab_value_right = 13;
 }
 
 message InputThumbstick {

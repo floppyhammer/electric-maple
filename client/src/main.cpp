@@ -358,19 +358,28 @@ bool poll_events(struct android_app *app, struct em_state &state) {
 
     // Get pose and grab action state and start haptic vibrate when hand is 90% squeezed.
     for (auto hand : {Side::LEFT, Side::RIGHT}) {
-        XrActionStateGetInfo getInfo{XR_TYPE_ACTION_STATE_GET_INFO};
-        getInfo.action = state.input.grabAction;
-        getInfo.subactionPath = state.input.handSubactionPath[hand];
+        // GRAB value
+        {
+            XrActionStateGetInfo getInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+            getInfo.action = state.input.grabAction;
+            getInfo.subactionPath = state.input.handSubactionPath[hand];
 
-        XrActionStateFloat grabValue{XR_TYPE_ACTION_STATE_FLOAT};
-        CheckXrResult(xrGetActionStateFloat(state.session, &getInfo, &grabValue));
+            XrActionStateFloat grabValue{XR_TYPE_ACTION_STATE_FLOAT};
+            CheckXrResult(xrGetActionStateFloat(state.session, &getInfo, &grabValue));
 
-        state.input.handGrab[hand] = grabValue.currentState;
+            state.input.handGrab[hand] = grabValue.currentState;
+        }
 
-        getInfo.action = state.input.poseAction;
-        XrActionStatePose poseState{XR_TYPE_ACTION_STATE_POSE};
-        CheckXrResult(xrGetActionStatePose(state.session, &getInfo, &poseState));
-        state.input.handActive[hand] = poseState.isActive;
+        // AIM pose
+        {
+            XrActionStateGetInfo getInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+            getInfo.action = state.input.poseAction;
+            getInfo.subactionPath = state.input.handSubactionPath[hand];
+
+            XrActionStatePose poseState{XR_TYPE_ACTION_STATE_POSE};
+            CheckXrResult(xrGetActionStatePose(state.session, &getInfo, &poseState));
+            state.input.handActive[hand] = poseState.isActive;
+        }
     }
 
     return true;
@@ -549,8 +558,8 @@ void android_main(struct android_app *app) {
     gst_init(NULL, NULL);
 
     gst_debug_set_default_threshold(GST_LEVEL_WARNING);
-//    gst_debug_set_threshold_for_name("*decode*", GST_LEVEL_TRACE);
-//    gst_debug_set_threshold_for_name("amc*", GST_LEVEL_TRACE);
+    //    gst_debug_set_threshold_for_name("*decode*", GST_LEVEL_TRACE);
+    //    gst_debug_set_threshold_for_name("amc*", GST_LEVEL_TRACE);
     //	gst_debug_set_threshold_for_name("webrtcbindatachannel", GST_LEVEL_INFO);
     //	gst_debug_set_threshold_for_name("amc", GST_LEVEL_INFO);
 

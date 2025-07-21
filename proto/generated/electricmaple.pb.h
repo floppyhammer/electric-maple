@@ -12,128 +12,129 @@
 /* Enum definitions */
 /* todo: make this bitflags, make this support "inferred" */
 typedef enum _em_proto_TrackedStatus {
-  em_proto_TrackedStatus_UNTRACKED = 0,
-  em_proto_TrackedStatus_TRACKED = 1
+    em_proto_TrackedStatus_UNTRACKED = 0,
+    em_proto_TrackedStatus_TRACKED = 1
 } em_proto_TrackedStatus;
 
 /* Struct definitions */
 typedef struct _em_proto_Quaternion {
-  float w;
-  float x;
-  float y;
-  float z;
+    float w;
+    float x;
+    float y;
+    float z;
 } em_proto_Quaternion;
 
 typedef struct _em_proto_Vec3 {
-  float x;
-  float y;
-  float z;
+    float x;
+    float y;
+    float z;
 } em_proto_Vec3;
 
 typedef struct _em_proto_Vec2 {
-  float x;
-  float y;
+    float x;
+    float y;
 } em_proto_Vec2;
 
 typedef struct _em_proto_Pose {
-  bool has_position;
-  em_proto_Vec3 position;
-  bool has_orientation;
-  em_proto_Quaternion orientation;
+    bool has_position;
+    em_proto_Vec3 position;
+    bool has_orientation;
+    em_proto_Quaternion orientation;
 } em_proto_Pose;
 
 typedef struct _em_proto_HandJointLocation {
-  float index;
-  bool has_pose;
-  em_proto_Pose pose;
-  float radius;
+    float index;
+    bool has_pose;
+    em_proto_Pose pose;
+    float radius;
 } em_proto_HandJointLocation;
 
 typedef struct _em_proto_TrackingMessage {
-  bool has_P_localSpace_viewSpace;
-  em_proto_Pose P_localSpace_viewSpace;
-  bool has_P_viewSpace_view0;
-  em_proto_Pose P_viewSpace_view0; /* Left view */
-  bool has_P_viewSpace_view1;
-  em_proto_Pose P_viewSpace_view1; /* Right view */
-  bool has_controller_grip_left;
-  em_proto_Pose controller_grip_left;
-  bool has_controller_aim_left;
-  em_proto_Pose controller_aim_left;
-  bool has_controller_grip_right;
-  em_proto_Pose controller_grip_right;
-  bool has_controller_aim_right;
-  em_proto_Pose controller_aim_right;
-  int64_t timestamp;
-  int64_t sequence_idx;
-  pb_callback_t hand_joint_locations_left;
-  pb_callback_t hand_joint_locations_right;
-  float controller_grip_value_left;
-  float controller_grip_value_right;
+    bool has_P_localSpace_viewSpace;
+    em_proto_Pose P_localSpace_viewSpace;
+    bool has_P_viewSpace_view0;
+    em_proto_Pose P_viewSpace_view0; /* Left view */
+    bool has_P_viewSpace_view1;
+    em_proto_Pose P_viewSpace_view1; /* Right view */
+    bool has_controller_grip_left;
+    em_proto_Pose controller_grip_left;
+    bool has_controller_aim_left;
+    em_proto_Pose controller_aim_left;
+    bool has_controller_grip_right;
+    em_proto_Pose controller_grip_right;
+    bool has_controller_aim_right;
+    em_proto_Pose controller_aim_right;
+    int64_t timestamp;
+    int64_t sequence_idx;
+    pb_callback_t hand_joint_locations_left;
+    pb_callback_t hand_joint_locations_right;
+    /* GRAB is different from GRIP */
+    float controller_grab_value_left;
+    float controller_grab_value_right;
 } em_proto_TrackingMessage;
 
 typedef struct _em_proto_InputThumbstick {
-  bool has_xy;
-  em_proto_Vec2 xy;
-  bool click;
-  bool touch; /* bool proximity = 4; */
+    bool has_xy;
+    em_proto_Vec2 xy;
+    bool click;
+    bool touch; /* bool proximity = 4; */
 } em_proto_InputThumbstick;
 
 typedef struct _em_proto_InputValueTouch {
-  float value;
-  bool touch;
+    float value;
+    bool touch;
 } em_proto_InputValueTouch;
 
 typedef struct _em_proto_InputClickTouch {
-  bool click;
-  bool touch;
+    bool click;
+    bool touch;
 } em_proto_InputClickTouch;
 
 typedef struct _em_proto_TouchControllerCommon {
-  bool has_thumbstick;
-  em_proto_InputThumbstick thumbstick;
-  bool has_trigger;
-  em_proto_InputValueTouch trigger;
-  bool has_squeeze;
-  em_proto_InputValueTouch squeeze; /* no "touch" */
-  bool thumbrest_touch;
+    bool has_thumbstick;
+    em_proto_InputThumbstick thumbstick;
+    bool has_trigger;
+    em_proto_InputValueTouch trigger;
+    bool has_squeeze;
+    em_proto_InputValueTouch squeeze; /* no "touch" */
+    bool thumbrest_touch;
 } em_proto_TouchControllerCommon;
 
 typedef struct _em_proto_TouchControllerLeft {
-  bool has_x;
-  em_proto_InputClickTouch x;
-  bool has_y;
-  em_proto_InputClickTouch y;
-  bool has_menu;
-  em_proto_InputClickTouch menu; /* no "touch" */
-  bool has_common;
-  em_proto_TouchControllerCommon common;
+    bool has_x;
+    em_proto_InputClickTouch x;
+    bool has_y;
+    em_proto_InputClickTouch y;
+    bool has_menu;
+    em_proto_InputClickTouch menu; /* no "touch" */
+    bool has_common;
+    em_proto_TouchControllerCommon common;
 } em_proto_TouchControllerLeft;
 
 typedef struct _em_proto_TouchControllerRight {
-  bool has_a;
-  em_proto_InputClickTouch a;
-  bool has_b;
-  em_proto_InputClickTouch b;
-  bool has_system;
-  em_proto_InputClickTouch system; /* no "touch", probably not accessible */
-  bool has_common;
-  em_proto_TouchControllerCommon common;
+    bool has_a;
+    em_proto_InputClickTouch a;
+    bool has_b;
+    em_proto_InputClickTouch b;
+    bool has_system;
+    em_proto_InputClickTouch system; /* no "touch", probably not accessible */
+    bool has_common;
+    em_proto_TouchControllerCommon common;
 } em_proto_TouchControllerRight;
 
 typedef struct _em_proto_UpFrameMessage {
-  int64_t frame_sequence_id;
-  int64_t decode_complete_time; /* nanoseconds, in client OpenXR time domain */
-  int64_t begin_frame_time; /* nanoseconds, in client OpenXR time domain */
-  int64_t display_time; /* nanoseconds, in client OpenXR time domain */
+    int64_t frame_sequence_id;
+    int64_t decode_complete_time; /* nanoseconds, in client OpenXR time domain */
+    int64_t begin_frame_time; /* nanoseconds, in client OpenXR time domain */
+    int64_t display_time; /* nanoseconds, in client OpenXR time domain */
 } em_proto_UpFrameMessage;
 
 typedef struct _em_proto_UpMessage {
-  int64_t up_message_id;
-  bool has_tracking;
-  em_proto_TrackingMessage tracking;
-  bool has_frame;
-  em_proto_UpFrameMessage frame;
+    int64_t up_message_id;
+    bool has_tracking;
+    em_proto_TrackingMessage tracking;
+    bool has_frame;
+    em_proto_UpFrameMessage frame;
 } em_proto_UpMessage;
 
 typedef struct UpMessageSuper_
@@ -145,15 +146,15 @@ typedef struct UpMessageSuper_
 } UpMessageSuper;
 
 typedef struct _em_proto_DownFrameDataMessage {
-  int64_t frame_sequence_id;
-  bool has_P_localSpace_viewSpace;
-  em_proto_Pose P_localSpace_viewSpace;
-  int64_t display_time; /* TODO fovs here */
+    int64_t frame_sequence_id;
+    bool has_P_localSpace_viewSpace;
+    em_proto_Pose P_localSpace_viewSpace;
+    int64_t display_time; /* TODO fovs here */
 } em_proto_DownFrameDataMessage;
 
 typedef struct _em_proto_DownMessage {
-  bool has_frame_data;
-  em_proto_DownFrameDataMessage frame_data;
+    bool has_frame_data;
+    em_proto_DownFrameDataMessage frame_data;
 } em_proto_DownMessage;
 
 
@@ -243,8 +244,8 @@ extern "C" {
 #define em_proto_TrackingMessage_sequence_idx_tag 9
 #define em_proto_TrackingMessage_hand_joint_locations_left_tag 10
 #define em_proto_TrackingMessage_hand_joint_locations_right_tag 11
-#define em_proto_TrackingMessage_controller_grip_value_left_tag 12
-#define em_proto_TrackingMessage_controller_grip_value_right_tag 13
+#define em_proto_TrackingMessage_controller_grab_value_left_tag 12
+#define em_proto_TrackingMessage_controller_grab_value_right_tag 13
 #define em_proto_InputThumbstick_xy_tag          1
 #define em_proto_InputThumbstick_click_tag       2
 #define em_proto_InputThumbstick_touch_tag       3
@@ -326,8 +327,8 @@ X(a, STATIC,   SINGULAR, INT64,    timestamp,         8) \
 X(a, STATIC,   SINGULAR, INT64,    sequence_idx,      9) \
 X(a, CALLBACK, REPEATED, MESSAGE,  hand_joint_locations_left,  10) \
 X(a, CALLBACK, REPEATED, MESSAGE,  hand_joint_locations_right,  11) \
-X(a, STATIC,   SINGULAR, FLOAT,    controller_grip_value_left,  12) \
-X(a, STATIC,   SINGULAR, FLOAT,    controller_grip_value_right,  13)
+X(a, STATIC,   SINGULAR, FLOAT,    controller_grab_value_left,  12) \
+X(a, STATIC,   SINGULAR, FLOAT,    controller_grab_value_right,  13)
 #define em_proto_TrackingMessage_CALLBACK pb_default_field_callback
 #define em_proto_TrackingMessage_DEFAULT NULL
 #define em_proto_TrackingMessage_P_localSpace_viewSpace_MSGTYPE em_proto_Pose
