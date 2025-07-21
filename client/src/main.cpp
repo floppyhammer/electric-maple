@@ -209,8 +209,8 @@ void initialize_actions(struct em_state &state) {
     CheckXrResult(xrStringToPath(state.instance, "/user/hand/left/input/squeeze/click", &squeezeClickPath[Side::LEFT]));
     CheckXrResult(
         xrStringToPath(state.instance, "/user/hand/right/input/squeeze/click", &squeezeClickPath[Side::RIGHT]));
-    CheckXrResult(xrStringToPath(state.instance, "/user/hand/left/input/grip/pose", &posePath[Side::LEFT]));
-    CheckXrResult(xrStringToPath(state.instance, "/user/hand/right/input/grip/pose", &posePath[Side::RIGHT]));
+    CheckXrResult(xrStringToPath(state.instance, "/user/hand/left/input/aim/pose", &posePath[Side::LEFT]));
+    CheckXrResult(xrStringToPath(state.instance, "/user/hand/right/input/aim/pose", &posePath[Side::RIGHT]));
     CheckXrResult(xrStringToPath(state.instance, "/user/hand/left/output/haptic", &hapticPath[Side::LEFT]));
     CheckXrResult(xrStringToPath(state.instance, "/user/hand/right/output/haptic", &hapticPath[Side::RIGHT]));
     CheckXrResult(xrStringToPath(state.instance, "/user/hand/left/input/menu/click", &menuClickPath[Side::LEFT]));
@@ -243,6 +243,7 @@ void initialize_actions(struct em_state &state) {
         CheckXrResult(xrSuggestInteractionProfileBindings(state.instance, &suggestedBindings));
     }
 
+    // AIM
     XrActionSpaceCreateInfo actionSpaceInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO};
     actionSpaceInfo.action = state.input.poseAction;
     actionSpaceInfo.poseInActionSpace.orientation.w = 1.f;
@@ -356,7 +357,7 @@ bool poll_events(struct android_app *app, struct em_state &state) {
     syncInfo.activeActionSets = &activeActionSet;
     CheckXrResult(xrSyncActions(state.session, &syncInfo));
 
-    // Get pose and grab action state and start haptic vibrate when hand is 90% squeezed.
+    // Get GRIP & AIM pose and GRAB action state and start haptic vibrate when hand is 90% squeezed.
     for (auto hand : {Side::LEFT, Side::RIGHT}) {
         // GRAB value
         {

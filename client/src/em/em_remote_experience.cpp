@@ -157,8 +157,8 @@ static void em_remote_experience_report_pose(EmRemoteExperience *exp,
         //              hmdLocalPose.orientation.z);
     }
 
-    // Get left hand location.
     {
+        // Get left AIM location.
         XrSpaceLocation handLocalLocation = {};
         handLocalLocation.type = XR_TYPE_SPACE_LOCATION;
         handLocalLocation.next = NULL;
@@ -183,8 +183,8 @@ static void em_remote_experience_report_pose(EmRemoteExperience *exp,
         tracking.controller_grab_value_left = inputState.handGrab[Side::LEFT];
     }
 
-    // Get right hand location.
     {
+        // Get right AIM location.
         XrSpaceLocation handLocalLocation = {};
         handLocalLocation.type = XR_TYPE_SPACE_LOCATION;
         handLocalLocation.next = NULL;
