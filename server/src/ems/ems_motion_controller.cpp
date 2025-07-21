@@ -52,6 +52,19 @@ DEBUG_GET_ONCE_LOG_OPTION(sample_log, "EMS_LOG", U_LOGGING_WARN)
 #define EMS_DEBUG(p, ...) U_LOG_XDEV_IFL_D(&p->base, p->log_level, __VA_ARGS__)
 #define EMS_ERROR(p, ...) U_LOG_XDEV_IFL_E(&p->base, p->log_level, __VA_ARGS__)
 
+xrt_pose convert_pose(_em_proto_Pose pose) {
+    //    assert(pose.has_position && pose.has_orientation);
+    xrt_pose new_pose{};
+    new_pose.position = {pose.position.x, pose.position.y, pose.position.z};
+
+    new_pose.orientation.w = pose.orientation.w;
+    new_pose.orientation.x = pose.orientation.x;
+    new_pose.orientation.y = pose.orientation.y;
+    new_pose.orientation.z = pose.orientation.z;
+
+    return new_pose;
+}
+
 static void controller_destroy(struct xrt_device *xdev) {
     struct ems_motion_controller *emc = ems_motion_controller(xdev);
 
@@ -83,6 +96,10 @@ static xrt_result_t controller_update_inputs(struct xrt_device *xdev) {
     xdev->inputs[0].timestamp = now;
     xdev->inputs[0].value.vec1 = {emc->hand_grab};
 
+    // AIM for ray casting.
+    xdev->inputs[3].active = true;
+    xdev->inputs[3].timestamp = now;
+
     return XRT_SUCCESS;
 }
 
@@ -105,33 +122,20 @@ static xrt_result_t controller_get_hand_tracking(struct xrt_device *xdev,
         return XRT_ERROR_INPUT_UNSUPPORTED;
     }
 
-    // Get the pose of the hand.
-    struct xrt_space_relation relation;
-    xrt_device_get_tracked_pose(xdev, XRT_INPUT_WMR_GRIP_POSE, requested_timestamp_ns, &relation);
-
-    out_value->hand_pose.pose = emc->pose;
+    out_value->hand_pose.pose = emc->grip_pose;
     m_space_relation_ident(&out_value->hand_pose);
 
     out_value->is_active = true;
 
-    for (int i = 0; i < 26; i++) {
-        auto &joint_pose = out_value->values.hand_joint_set_default[i].relation.pose;
-        joint_pose.position.x = emc->hand_joints[i].pose.position.x;
-        joint_pose.position.y = emc->hand_joints[i].pose.position.y;
-        joint_pose.position.z = emc->hand_joints[i].pose.position.z;
+    for (int i = 0; i < XRT_HAND_JOINT_COUNT; i++) {
+        auto &joint_set = out_value->values.hand_joint_set_default[i];
+        joint_set.relation.pose = convert_pose(emc->hand_joints[i].pose);
 
-        joint_pose.orientation.x = emc->hand_joints[i].pose.orientation.x;
-        joint_pose.orientation.y = emc->hand_joints[i].pose.orientation.y;
-        joint_pose.orientation.z = emc->hand_joints[i].pose.orientation.z;
-        joint_pose.orientation.w = emc->hand_joints[i].pose.orientation.w;
+        joint_set.relation.relation_flags = (enum xrt_space_relation_flags)(
+            XRT_SPACE_RELATION_ORIENTATION_VALID_BIT | XRT_SPACE_RELATION_POSITION_VALID_BIT |
+            XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT | XRT_SPACE_RELATION_POSITION_TRACKED_BIT);
 
-        out_value->values.hand_joint_set_default[i].radius = emc->hand_joints[i].radius;
-
-        out_value->values.hand_joint_set_default[i].relation.relation_flags = (enum xrt_space_relation_flags)( //
-            XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |                                                         //
-            XRT_SPACE_RELATION_POSITION_VALID_BIT |                                                            //
-            XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT |                                                       //
-            XRT_SPACE_RELATION_POSITION_TRACKED_BIT);                                                          //
+        joint_set.radius = emc->hand_joints[i].radius;
     }
 
     // This is a lie
@@ -147,23 +151,31 @@ static xrt_result_t controller_get_tracked_pose(struct xrt_device *xdev,
     struct ems_motion_controller *emc = ems_motion_controller(xdev);
 
     switch (name) {
-        case XRT_INPUT_WMR_GRIP_POSE:
-        case XRT_INPUT_WMR_AIM_POSE:
-            break;
+        case XRT_INPUT_WMR_GRIP_POSE: {
+            //            math_quat_normalize(&emc->grip_pose.orientation);
+            //            out_relation->pose = emc->grip_pose;
+            //            out_relation->relation_flags = (enum xrt_space_relation_flags) ( //
+            //                    XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |                  //
+            //                    XRT_SPACE_RELATION_POSITION_VALID_BIT |                     //
+            //                    XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT |                //
+            //                    XRT_SPACE_RELATION_POSITION_TRACKED_BIT);                   //
+        } break;
+        case XRT_INPUT_WMR_AIM_POSE: {
+            math_quat_normalize(&emc->aim_pose.orientation);
+            out_relation->pose = emc->aim_pose;
+            out_relation->relation_flags = (enum xrt_space_relation_flags)( //
+                XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |                  //
+                XRT_SPACE_RELATION_POSITION_VALID_BIT |                     //
+                XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT |                //
+                XRT_SPACE_RELATION_POSITION_TRACKED_BIT);                   //
+        } break;
         default: {
-            EMS_ERROR(emc, "unknown input name: %d", name);
+            EMS_ERROR(emc, "Unknown input name: %d", name);
             return XRT_ERROR_INPUT_UNSUPPORTED;
         }
     }
 
     // Estimate pose at timestamp at_timestamp_ns!
-    math_quat_normalize(&emc->pose.orientation);
-    out_relation->pose = emc->pose;
-    out_relation->relation_flags = (enum xrt_space_relation_flags)( //
-        XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |                  //
-        XRT_SPACE_RELATION_POSITION_VALID_BIT |                     //
-        XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT |                //
-        XRT_SPACE_RELATION_POSITION_TRACKED_BIT);                   //
 
     return XRT_SUCCESS;
 }
@@ -176,7 +188,7 @@ static xrt_result_t controller_get_view_poses(struct xrt_device *xdev,
                                               struct xrt_fov *out_fovs,
                                               struct xrt_pose *out_poses) {
     assert(false);
-    return XRT_SUCCESS;
+    return XRT_ERROR_POSE_NOT_ACTIVE;
 }
 
 /// Fetch remote input data.
@@ -190,55 +202,53 @@ static void controller_handle_data(enum ems_callbacks_event event, const UpMessa
         return;
     }
 
-    xrt_pose pose = {};
-    float hand_grab = 0;
-
     if (emc->base.device_type == XRT_DEVICE_TYPE_LEFT_HAND_CONTROLLER) {
-        if (!message->tracking.has_controller_grip_left) {
-            return;
+        if (message->tracking.has_controller_grip_left) {
+            emc->grip_pose = convert_pose(message->tracking.controller_grip_left);
         }
 
-        pose.position = {message->tracking.controller_grip_left.position.x,
-                         message->tracking.controller_grip_left.position.y,
-                         message->tracking.controller_grip_left.position.z};
+        if (message->tracking.has_controller_aim_left) {
+            emc->aim_pose = convert_pose(message->tracking.controller_aim_left);
+        }
 
-        pose.orientation.w = message->tracking.controller_grip_left.orientation.w;
-        pose.orientation.x = message->tracking.controller_grip_left.orientation.x;
-        pose.orientation.y = message->tracking.controller_grip_left.orientation.y;
-        pose.orientation.z = message->tracking.controller_grip_left.orientation.z;
+        memcpy(emc->hand_joints,
+               messageSuper->hand_joint_locations_left,
+               sizeof(em_proto_HandJointLocation) * XRT_HAND_JOINT_COUNT);
 
-        memcpy(emc->hand_joints, messageSuper->hand_joint_locations_left, sizeof(em_proto_HandJointLocation) * 26);
-
-        hand_grab = message->tracking.controller_grip_value_left;
+        emc->hand_grab = message->tracking.controller_grip_value_left;
     } else if (emc->base.device_type == XRT_DEVICE_TYPE_RIGHT_HAND_CONTROLLER) {
-        if (!message->tracking.has_controller_grip_right) {
-            return;
+        if (message->tracking.has_controller_grip_right) {
+            emc->grip_pose = convert_pose(message->tracking.controller_grip_right);
         }
 
-        pose.position = {message->tracking.controller_grip_right.position.x,
-                         message->tracking.controller_grip_right.position.y,
-                         message->tracking.controller_grip_right.position.z};
+        if (message->tracking.has_controller_aim_right) {
+            emc->aim_pose = convert_pose(message->tracking.controller_aim_right);
 
-        pose.orientation.w = message->tracking.controller_grip_right.orientation.w;
-        pose.orientation.x = message->tracking.controller_grip_right.orientation.x;
-        pose.orientation.y = message->tracking.controller_grip_right.orientation.y;
-        pose.orientation.z = message->tracking.controller_grip_right.orientation.z;
+            U_LOG_E("aim_pose %f %f %f, %f %f %f %f",
+                    emc->aim_pose.position.x,
+                    emc->aim_pose.position.y,
+                    emc->aim_pose.position.z,
+                    emc->aim_pose.orientation.x,
+                    emc->aim_pose.orientation.y,
+                    emc->aim_pose.orientation.z,
+                    emc->aim_pose.orientation.w);
+        }
 
-        memcpy(emc->hand_joints, messageSuper->hand_joint_locations_right, sizeof(em_proto_HandJointLocation) * 26);
+        memcpy(emc->hand_joints,
+               messageSuper->hand_joint_locations_right,
+               sizeof(em_proto_HandJointLocation) * XRT_HAND_JOINT_COUNT);
 
-        hand_grab = message->tracking.controller_grip_value_right;
+        emc->hand_grab = message->tracking.controller_grip_value_right;
     } else {
         return;
     }
 
     // U_LOG_E("handLocalPose %f %f %f", pose.position.x, pose.position.y, pose.position.z);
+    // printf("hand grab %f\n", hand_grab);
 
     // TODO handle timestamp, etc
 
     emc->active = true;
-    emc->pose = pose;
-    emc->hand_grab = hand_grab;
-    // printf("hand grab %f\n", hand_grab);
 }
 
 /*
@@ -331,9 +341,10 @@ struct ems_motion_controller *ems_motion_controller_create(ems_instance &emsi,
 
     // Private fields.
     emc->instance = &emsi;
-    emc->pose = default_pose;
+    emc->grip_pose = default_pose;
+    emc->aim_pose = default_pose;
     emc->log_level = debug_get_log_option_sample_log();
-    emc->hand_joints = new struct _em_proto_HandJointLocation[26];
+    emc->hand_joints = new struct _em_proto_HandJointLocation[XRT_HAND_JOINT_COUNT];
 
     // Print name.
     snprintf(emc->base.str, XRT_DEVICE_NAME_LEN, "Hand %s Controller (Electric Maple)", hand_str);
@@ -362,7 +373,8 @@ struct ems_motion_controller *ems_motion_controller_create(ems_instance &emsi,
 
     // Lastly, setup variable tracking.
     u_var_add_root(emc, emc->base.str, true);
-    u_var_add_pose(emc, &emc->pose, "pose");
+    u_var_add_pose(emc, &emc->grip_pose, "grip_pose");
+    u_var_add_pose(emc, &emc->aim_pose, "aim_pose");
     u_var_add_log_level(emc, &emc->log_level, "log_level");
 
     return emc;

@@ -110,6 +110,21 @@ bool ProtoMessage_encode_hand_joint_locations(pb_ostream_t *ostream, const pb_fi
     return true;
 }
 
+_em_proto_Pose convert_pose(XrPosef pose) {
+    _em_proto_Pose new_pose{};
+
+    new_pose.has_position = true;
+    new_pose.position = {pose.position.x, pose.position.y, pose.position.z};
+
+    new_pose.has_orientation = true;
+    new_pose.orientation.w = pose.orientation.w;
+    new_pose.orientation.x = pose.orientation.x;
+    new_pose.orientation.y = pose.orientation.y;
+    new_pose.orientation.z = pose.orientation.z;
+
+    return new_pose;
+}
+
 /// Send pose data back to server.
 static void em_remote_experience_report_pose(EmRemoteExperience *exp,
                                              XrTime predictedDisplayTime,
@@ -133,23 +148,13 @@ static void em_remote_experience_report_pose(EmRemoteExperience *exp,
         XrPosef hmdLocalPose = hmdLocalLocation.pose;
 
         tracking.has_P_localSpace_viewSpace = true;
+        tracking.P_localSpace_viewSpace = convert_pose(hmdLocalPose);
 
-        tracking.P_localSpace_viewSpace.has_position = true;
-        tracking.P_localSpace_viewSpace.position.x = hmdLocalPose.position.x;
-        tracking.P_localSpace_viewSpace.position.y = hmdLocalPose.position.y;
-        tracking.P_localSpace_viewSpace.position.z = hmdLocalPose.position.z;
-
-        tracking.P_localSpace_viewSpace.has_orientation = true;
-        tracking.P_localSpace_viewSpace.orientation.w = hmdLocalPose.orientation.w;
-        tracking.P_localSpace_viewSpace.orientation.x = hmdLocalPose.orientation.x;
-        tracking.P_localSpace_viewSpace.orientation.y = hmdLocalPose.orientation.y;
-        tracking.P_localSpace_viewSpace.orientation.z = hmdLocalPose.orientation.z;
-
-//        ALOGD("HMD orientation: %f, %f, %f, %f",
-//              hmdLocalPose.orientation.w,
-//              hmdLocalPose.orientation.x,
-//              hmdLocalPose.orientation.y,
-//              hmdLocalPose.orientation.z);
+        //        ALOGD("HMD orientation: %f, %f, %f, %f",
+        //              hmdLocalPose.orientation.w,
+        //              hmdLocalPose.orientation.x,
+        //              hmdLocalPose.orientation.y,
+        //              hmdLocalPose.orientation.z);
     }
 
     // Get left hand location.
@@ -162,24 +167,17 @@ static void em_remote_experience_report_pose(EmRemoteExperience *exp,
                                predictedDisplayTime,
                                &handLocalLocation);
         if (result != XR_SUCCESS) {
-            ALOGE("Bad!");
+            ALOGE("Failed to locate left hand space!");
             return;
         }
 
         XrPosef handLocalPose = handLocalLocation.pose;
 
         tracking.has_controller_grip_left = inputState.handActive[Side::LEFT];
+        tracking.controller_grip_left = convert_pose(handLocalPose);
 
-        tracking.controller_grip_left.has_position = true;
-        tracking.controller_grip_left.position.x = handLocalPose.position.x;
-        tracking.controller_grip_left.position.y = handLocalPose.position.y;
-        tracking.controller_grip_left.position.z = handLocalPose.position.z;
-
-        tracking.controller_grip_left.has_orientation = true;
-        tracking.controller_grip_left.orientation.w = handLocalPose.orientation.w;
-        tracking.controller_grip_left.orientation.x = handLocalPose.orientation.x;
-        tracking.controller_grip_left.orientation.y = handLocalPose.orientation.y;
-        tracking.controller_grip_left.orientation.z = handLocalPose.orientation.z;
+        tracking.has_controller_aim_left = inputState.handActive[Side::LEFT];
+        tracking.controller_aim_left = convert_pose(handLocalPose);
 
         tracking.controller_grip_value_left = inputState.handGrab[Side::LEFT];
     }
@@ -194,24 +192,17 @@ static void em_remote_experience_report_pose(EmRemoteExperience *exp,
                                predictedDisplayTime,
                                &handLocalLocation);
         if (result != XR_SUCCESS) {
-            ALOGE("Bad!");
+            ALOGE("Failed to locate right hand space!");
             return;
         }
 
         XrPosef handLocalPose = handLocalLocation.pose;
 
         tracking.has_controller_grip_right = inputState.handActive[Side::RIGHT];
+        tracking.controller_grip_right = convert_pose(handLocalPose);
 
-        tracking.controller_grip_right.has_position = true;
-        tracking.controller_grip_right.position.x = handLocalPose.position.x;
-        tracking.controller_grip_right.position.y = handLocalPose.position.y;
-        tracking.controller_grip_right.position.z = handLocalPose.position.z;
-
-        tracking.controller_grip_right.has_orientation = true;
-        tracking.controller_grip_right.orientation.w = handLocalPose.orientation.w;
-        tracking.controller_grip_right.orientation.x = handLocalPose.orientation.x;
-        tracking.controller_grip_right.orientation.y = handLocalPose.orientation.y;
-        tracking.controller_grip_right.orientation.z = handLocalPose.orientation.z;
+        tracking.has_controller_aim_right = inputState.handActive[Side::RIGHT];
+        tracking.controller_aim_right = convert_pose(handLocalPose);
 
         tracking.controller_grip_value_right = inputState.handGrab[Side::RIGHT];
     }
@@ -251,16 +242,7 @@ static void em_remote_experience_report_pose(EmRemoteExperience *exp,
 
                 const auto &joint_pose = locationsEXT.jointLocations[i].pose;
 
-                hand_joint_locations[i].pose.has_position = true;
-                hand_joint_locations[i].pose.position.x = joint_pose.position.x;
-                hand_joint_locations[i].pose.position.y = joint_pose.position.y;
-                hand_joint_locations[i].pose.position.z = joint_pose.position.z;
-
-                hand_joint_locations[i].pose.has_orientation = true;
-                hand_joint_locations[i].pose.orientation.w = joint_pose.orientation.w;
-                hand_joint_locations[i].pose.orientation.x = joint_pose.orientation.x;
-                hand_joint_locations[i].pose.orientation.y = joint_pose.orientation.y;
-                hand_joint_locations[i].pose.orientation.z = joint_pose.orientation.z;
+                hand_joint_locations[i].pose = convert_pose(joint_pose);
 
                 hand_joint_locations[i].radius = locationsEXT.jointLocations[i].radius;
             }
@@ -296,9 +278,11 @@ static void em_remote_experience_dispose(EmRemoteExperience *exp) {
             exp->prev_sample = nullptr;
         }
     }
+
     if (exp->connection) {
         em_connection_disconnect(exp->connection);
     }
+
     // stream client is not gobject (yet?)
     em_stream_client_destroy(&exp->stream_client);
     g_clear_object(&exp->connection);

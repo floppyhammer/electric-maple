@@ -57,7 +57,9 @@ struct ems_motion_controller {
     //! Has to come first.
     struct xrt_device base;
 
-    struct xrt_pose pose;
+    struct xrt_pose grip_pose;
+
+    struct xrt_pose aim_pose;
 
     // Should outlive us
     struct ems_instance *instance;
