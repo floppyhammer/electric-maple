@@ -36,12 +36,11 @@ const int COUNT = 2;
 struct InputState {
     XrActionSet actionSet{XR_NULL_HANDLE};
     XrAction grabAction{XR_NULL_HANDLE};
-    XrAction poseAction{XR_NULL_HANDLE};
+    XrAction aimPoseAction{XR_NULL_HANDLE};
     XrAction vibrateAction{XR_NULL_HANDLE};
     XrAction quitAction{XR_NULL_HANDLE};
     std::array<XrPath, Side::COUNT> handSubactionPath;
-    /// poseAction(AIM) hand space
-    std::array<XrSpace, Side::COUNT> handSpace;
+    std::array<XrSpace, Side::COUNT> handAimSpace;
     std::array<float, Side::COUNT> handGrab = {{1.0f, 1.0f}};
     std::array<XrBool32, Side::COUNT> handActive;
     PFN_xrLocateHandJointsEXT pfnXrLocateHandJointsEXT = nullptr;

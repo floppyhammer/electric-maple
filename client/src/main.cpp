@@ -164,11 +164,11 @@ void initialize_actions(struct em_state &state) {
 
         // Create an input action getting the left and right hand poses.
         actionInfo.actionType = XR_ACTION_TYPE_POSE_INPUT;
-        strcpy(actionInfo.actionName, "hand_pose");
-        strcpy(actionInfo.localizedActionName, "Hand Pose");
+        strcpy(actionInfo.actionName, "hand_aim_pose");
+        strcpy(actionInfo.localizedActionName, "Hand Aim Pose");
         actionInfo.countSubactionPaths = uint32_t(state.input.handSubactionPath.size());
         actionInfo.subactionPaths = state.input.handSubactionPath.data();
-        CheckXrResult(xrCreateAction(state.input.actionSet, &actionInfo, &state.input.poseAction));
+        CheckXrResult(xrCreateAction(state.input.actionSet, &actionInfo, &state.input.aimPoseAction));
 
         // Create output actions for vibrating the left and right controller.
         actionInfo.actionType = XR_ACTION_TYPE_VIBRATION_OUTPUT;
@@ -193,7 +193,7 @@ void initialize_actions(struct em_state &state) {
     std::array<XrPath, Side::COUNT> squeezeValuePath;
     std::array<XrPath, Side::COUNT> squeezeForcePath;
     std::array<XrPath, Side::COUNT> squeezeClickPath;
-    std::array<XrPath, Side::COUNT> posePath;
+    std::array<XrPath, Side::COUNT> aimPosePath;
     std::array<XrPath, Side::COUNT> hapticPath;
     std::array<XrPath, Side::COUNT> menuClickPath;
     std::array<XrPath, Side::COUNT> bClickPath;
@@ -209,8 +209,8 @@ void initialize_actions(struct em_state &state) {
     CheckXrResult(xrStringToPath(state.instance, "/user/hand/left/input/squeeze/click", &squeezeClickPath[Side::LEFT]));
     CheckXrResult(
         xrStringToPath(state.instance, "/user/hand/right/input/squeeze/click", &squeezeClickPath[Side::RIGHT]));
-    CheckXrResult(xrStringToPath(state.instance, "/user/hand/left/input/aim/pose", &posePath[Side::LEFT]));
-    CheckXrResult(xrStringToPath(state.instance, "/user/hand/right/input/aim/pose", &posePath[Side::RIGHT]));
+    CheckXrResult(xrStringToPath(state.instance, "/user/hand/left/input/aim/pose", &aimPosePath[Side::LEFT]));
+    CheckXrResult(xrStringToPath(state.instance, "/user/hand/right/input/aim/pose", &aimPosePath[Side::RIGHT]));
     CheckXrResult(xrStringToPath(state.instance, "/user/hand/left/output/haptic", &hapticPath[Side::LEFT]));
     CheckXrResult(xrStringToPath(state.instance, "/user/hand/right/output/haptic", &hapticPath[Side::RIGHT]));
     CheckXrResult(xrStringToPath(state.instance, "/user/hand/left/input/menu/click", &menuClickPath[Side::LEFT]));
@@ -230,8 +230,8 @@ void initialize_actions(struct em_state &state) {
         std::vector<XrActionSuggestedBinding> bindings{{// Fall back to a click input for the grab action.
                                                         {state.input.grabAction, selectPath[Side::LEFT]},
                                                         {state.input.grabAction, selectPath[Side::RIGHT]},
-                                                        {state.input.poseAction, posePath[Side::LEFT]},
-                                                        {state.input.poseAction, posePath[Side::RIGHT]},
+                                                        {state.input.aimPoseAction, aimPosePath[Side::LEFT]},
+                                                        {state.input.aimPoseAction, aimPosePath[Side::RIGHT]},
                                                         {state.input.quitAction, menuClickPath[Side::LEFT]},
                                                         {state.input.quitAction, menuClickPath[Side::RIGHT]},
                                                         {state.input.vibrateAction, hapticPath[Side::LEFT]},
@@ -245,12 +245,12 @@ void initialize_actions(struct em_state &state) {
 
     // AIM
     XrActionSpaceCreateInfo actionSpaceInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO};
-    actionSpaceInfo.action = state.input.poseAction;
+    actionSpaceInfo.action = state.input.aimPoseAction;
     actionSpaceInfo.poseInActionSpace.orientation.w = 1.f;
     actionSpaceInfo.subactionPath = state.input.handSubactionPath[Side::LEFT];
-    CheckXrResult(xrCreateActionSpace(state.session, &actionSpaceInfo, &state.input.handSpace[Side::LEFT]));
+    CheckXrResult(xrCreateActionSpace(state.session, &actionSpaceInfo, &state.input.handAimSpace[Side::LEFT]));
     actionSpaceInfo.subactionPath = state.input.handSubactionPath[Side::RIGHT];
-    CheckXrResult(xrCreateActionSpace(state.session, &actionSpaceInfo, &state.input.handSpace[Side::RIGHT]));
+    CheckXrResult(xrCreateActionSpace(state.session, &actionSpaceInfo, &state.input.handAimSpace[Side::RIGHT]));
 
     XrSessionActionSetsAttachInfo attachInfo{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
     attachInfo.countActionSets = 1;
@@ -374,7 +374,7 @@ bool poll_events(struct android_app *app, struct em_state &state) {
         // AIM pose
         {
             XrActionStateGetInfo getInfo{XR_TYPE_ACTION_STATE_GET_INFO};
-            getInfo.action = state.input.poseAction;
+            getInfo.action = state.input.aimPoseAction;
             getInfo.subactionPath = state.input.handSubactionPath[hand];
 
             XrActionStatePose poseState{XR_TYPE_ACTION_STATE_POSE};

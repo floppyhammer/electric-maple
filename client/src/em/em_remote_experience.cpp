@@ -162,7 +162,7 @@ static void em_remote_experience_report_pose(EmRemoteExperience *exp,
         XrSpaceLocation handLocalLocation = {};
         handLocalLocation.type = XR_TYPE_SPACE_LOCATION;
         handLocalLocation.next = NULL;
-        result = xrLocateSpace(inputState.handSpace[Side::LEFT],
+        result = xrLocateSpace(inputState.handAimSpace[Side::LEFT],
                                exp->xr_owned.worldSpace,
                                predictedDisplayTime,
                                &handLocalLocation);
@@ -188,7 +188,7 @@ static void em_remote_experience_report_pose(EmRemoteExperience *exp,
         XrSpaceLocation handLocalLocation = {};
         handLocalLocation.type = XR_TYPE_SPACE_LOCATION;
         handLocalLocation.next = NULL;
-        result = xrLocateSpace(inputState.handSpace[Side::RIGHT],
+        result = xrLocateSpace(inputState.handAimSpace[Side::RIGHT],
                                exp->xr_owned.worldSpace,
                                predictedDisplayTime,
                                &handLocalLocation);
