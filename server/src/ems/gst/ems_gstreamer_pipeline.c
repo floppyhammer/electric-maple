@@ -146,7 +146,7 @@ static void connect_webrtc_to_tee(GstElement *webrtcbin) {
     // GstCaps *caps = gst_caps_from_string("application/x-rtp,encoding-name=VP8,media=video,payload=96");
     GstCaps *caps = gst_caps_from_string(
         "application/x-rtp, "
-        "payload=96,encoding-name=H265,clock-rate=90000,media=video,packetization-mode=(string)1,profile-level-id=("
+        "payload=96,encoding-name=H264,clock-rate=90000,media=video,packetization-mode=(string)1,profile-level-id=("
         "string)42e01f");
 
     GstPad *sink_pad = gst_element_request_pad(webrtcbin, pad_template, "sink_0", caps);
@@ -625,8 +625,8 @@ void ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
         "videoconvert ! "
         "videorate ! "
         "video/x-raw,format=NV12,framerate=60/1 ! "
-        "encodebin2 profile=\"video/x-h265|element-properties,tune=zerolatency,bitrate=%s\" ! "
-        "rtph265pay config-interval=-1 aggregate-mode=zero-latency ! "
+        "encodebin2 profile=\"video/x-h264|element-properties,tune=4,bitrate=%s\" ! "
+        "rtph264pay config-interval=-1 aggregate-mode=zero-latency ! "
         "application/x-rtp,payload=96,ssrc=(uint)3484078952 ! "
         "tee name=%s allow-not-linked=true",
         appsrc_name,
