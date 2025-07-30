@@ -700,6 +700,12 @@ static xrt_result_t ems_compositor_get_swapchain_create_properties(struct xrt_co
     return XRT_SUCCESS;
 }
 
+static xrt_result_t ems_compositor_request_display_refresh_rate(struct xrt_compositor *xc,
+                                                                float display_refresh_rate_hz) {
+    // Do nothing
+    return XRT_SUCCESS;
+}
+
 static void ems_compositor_destroy(struct xrt_compositor *xc) {
     struct ems_compositor *c = ems_compositor(xc);
     struct vk_bundle *vk = get_vk(c);
@@ -764,6 +770,8 @@ xrt_result_t ems_compositor_create_system(ems_instance &emsi, struct xrt_system_
     c->base.base.base.layer_commit = ems_compositor_layer_commit;
     // c->base.base.base. = ems_compositor_poll_events;
     c->base.base.base.destroy = ems_compositor_destroy;
+    // This is to fix crash when running some XR apps.
+    c->base.base.base.request_display_refresh_rate = ems_compositor_request_display_refresh_rate;
 
     // Note that we don't want to set e.g. layer_stereo_projection - comp_base handles that stuff for us.
     c->settings.log_level = debug_get_log_option_log();
@@ -785,7 +793,7 @@ xrt_result_t ems_compositor_create_system(ems_instance &emsi, struct xrt_system_
     if (!compositor_init_pacing(c) ||         //
         !compositor_init_vulkan(c) ||         //
         !compositor_init_sys_info(c, xdev) || //
-        !compositor_init_info(c)) {           //
+        !compositor_init_info(c)) {
         EMS_COMP_DEBUG(c, "Failed to init compositor %p", (void *)c);
         c->base.base.base.destroy(&c->base.base.base);
 
