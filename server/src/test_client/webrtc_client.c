@@ -132,7 +132,7 @@ void send_sdp_answer(const gchar *sdp) {
     JsonNode *root;
     gchar *msg_str;
 
-    g_print("Send answer: %s\n", sdp);
+    g_print("Send SDP answer: %s\n", sdp);
 
     builder = json_builder_new();
     json_builder_begin_object(builder);

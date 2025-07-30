@@ -51,31 +51,6 @@ EmsSignalingServer *ems_signaling_server_new() {
     return EMS_SIGNALING_SERVER(g_object_new(EMS_TYPE_SIGNALING_SERVER, NULL));
 }
 
-#if !SOUP_CHECK_VERSION(3, 0, 0)
-static void http_cb(SoupServer *server,
-                    SoupMessage *msg,
-                    const char *path,
-                    GHashTable *query,
-                    SoupClientContext *client,
-                    gpointer user_data) {
-    // We're not serving any HTTP traffic - if somebody (erroneously) submits an HTTP request, tell them to get
-    // lost.
-    U_LOG_E("Got an erroneous HTTP request from %s", soup_client_context_get_host(client));
-    soup_message_set_status(msg, SOUP_STATUS_NOT_FOUND);
-}
-#else
-static void http_cb(SoupServer *server,     //
-                    SoupServerMessage *msg, //
-                    const char *path,       //
-                    GHashTable *query,      //
-                    gpointer user_data) {
-    // We're not serving any HTTP traffic - if somebody (erroneously) submits an HTTP request,
-    // tell them to get lost.
-    U_LOG_E("Got an erroneous HTTP request from %s", soup_server_message_get_remote_host(msg));
-    soup_server_message_set_status(msg, SOUP_STATUS_NOT_FOUND, NULL);
-}
-#endif
-
 static void ems_signaling_server_handle_message(EmsSignalingServer *server,
                                                 SoupWebsocketConnection *connection,
                                                 GBytes *message) {
@@ -120,8 +95,18 @@ out:
     g_object_unref(parser);
 }
 
-static void message_cb(SoupWebsocketConnection *connection, gint type, GBytes *message, gpointer user_data) {
-    ems_signaling_server_handle_message(EMS_SIGNALING_SERVER(user_data), connection, message);
+static void ws_message_cb(SoupWebsocketConnection *connection, gint type, GBytes *message, gpointer user_data) {
+    switch (type) {
+        case SOUP_WEBSOCKET_DATA_BINARY: {
+            g_debug("Received unknown binary message from client %p, ignoring", connection);
+            break;
+        }
+        case SOUP_WEBSOCKET_DATA_TEXT: {
+            ems_signaling_server_handle_message(EMS_SIGNALING_SERVER(user_data), connection, message);
+        } break;
+        default:
+            g_assert_not_reached();
+    }
 }
 
 static void ems_signaling_server_remove_websocket_connection(EmsSignalingServer *server,
@@ -135,24 +120,50 @@ static void ems_signaling_server_remove_websocket_connection(EmsSignalingServer 
     g_signal_emit(server, signals[SIGNAL_WS_CLIENT_DISCONNECTED], 0, client_id);
 }
 
-static void closed_cb(SoupWebsocketConnection *connection, gpointer user_data) {
-    g_debug("Connection closed");
+static void ws_closed_cb(SoupWebsocketConnection *connection, gpointer user_data) {
+    g_debug("WebSocket connection closed");
 
     ems_signaling_server_remove_websocket_connection(EMS_SIGNALING_SERVER(user_data), connection);
 }
 
 static void ems_signaling_server_add_websocket_connection(EmsSignalingServer *server,
                                                           SoupWebsocketConnection *connection) {
-    g_info("%s", __func__);
+    g_info("New WebSocket connection %s", __func__);
+
     g_object_ref(connection);
     server->websocket_connections = g_slist_append(server->websocket_connections, connection);
     g_object_set_data(G_OBJECT(connection), "client_id", connection);
 
-    g_signal_connect(connection, "message", (GCallback)message_cb, server);
-    g_signal_connect(connection, "closed", (GCallback)closed_cb, server);
+    g_signal_connect(connection, "message", (GCallback)ws_message_cb, server);
+    g_signal_connect(connection, "closed", (GCallback)ws_closed_cb, server);
 
     g_signal_emit(server, signals[SIGNAL_WS_CLIENT_CONNECTED], 0, connection);
 }
+
+#if !SOUP_CHECK_VERSION(3, 0, 0)
+static void http_cb(SoupServer *server,
+                    SoupMessage *msg,
+                    const char *path,
+                    GHashTable *query,
+                    SoupClientContext *client,
+                    gpointer user_data) {
+    // We're not serving any HTTP traffic - if somebody (erroneously) submits an HTTP request, tell them to get
+    // lost.
+    U_LOG_E("Got an erroneous HTTP request from %s", soup_client_context_get_host(client));
+    soup_message_set_status(msg, SOUP_STATUS_NOT_FOUND);
+}
+#else
+static void http_cb(SoupServer *server,     //
+                    SoupServerMessage *msg, //
+                    const char *path,       //
+                    GHashTable *query,      //
+                    gpointer user_data) {
+    // We're not serving any HTTP traffic - if somebody (erroneously) submits an HTTP request,
+    // tell them to get lost.
+    U_LOG_E("Got an erroneous HTTP request from %s", soup_server_message_get_remote_host(msg));
+    soup_server_message_set_status(msg, SOUP_STATUS_NOT_FOUND, NULL);
+}
+#endif
 
 #if !SOUP_CHECK_VERSION(3, 0, 0)
 static void websocket_cb(SoupServer *server,
@@ -177,14 +188,13 @@ static void websocket_cb(SoupServer *server,
 #endif
 
 static void ems_signaling_server_init(EmsSignalingServer *server) {
-    GError *error = NULL;
-
     server->soup_server = soup_server_new(NULL, NULL);
-    g_assert_no_error(error);
+    g_assert(server->soup_server != NULL);
 
     soup_server_add_handler(server->soup_server, NULL, http_cb, server, NULL);
     soup_server_add_websocket_handler(server->soup_server, "/ws", NULL, NULL, websocket_cb, server, NULL);
 
+    GError *error = NULL;
     soup_server_listen_all(server->soup_server, EMS_DEFAULT_PORT, 0, &error);
     g_assert_no_error(error);
 }
@@ -193,10 +203,9 @@ static void ems_signaling_server_send_to_websocket_client(EmsSignalingServer *se
                                                           EmsClientId client_id,
                                                           JsonNode *msg) {
     SoupWebsocketConnection *connection = client_id;
-    g_info("%s", __func__);
 
     if (!g_slist_find(server->websocket_connections, connection)) {
-        g_warning("Unknown websocket connection.");
+        g_warning("Failed to send a WebSocket message, unknown connection!");
         return;
     }
 
@@ -209,12 +218,12 @@ static void ems_signaling_server_send_to_websocket_client(EmsSignalingServer *se
 
         g_free(msg_str);
     } else {
-        g_warning("Trying to send message using websocket that isn't open.");
+        g_warning("Trying to send a message using WebSocket that isn't open.");
     }
 }
 
 void ems_signaling_server_send_sdp_offer(EmsSignalingServer *server, EmsClientId client_id, const gchar *sdp) {
-    g_debug("Send offer: %s", sdp);
+    g_debug("Send SDP offer: %s", sdp);
 
     JsonBuilder *builder = json_builder_new();
     json_builder_begin_object(builder);
@@ -237,7 +246,7 @@ void ems_signaling_server_send_candidate(EmsSignalingServer *server,
                                          EmsClientId client_id,
                                          guint mlineindex,
                                          const gchar *candidate) {
-    g_debug("Send candidate: %u %s", mlineindex, candidate);
+    g_debug("Send ICE candidate: %u %s", mlineindex, candidate);
 
     JsonBuilder *builder = json_builder_new();
     json_builder_begin_object(builder);

@@ -304,6 +304,7 @@ static gboolean check_pipeline_dot_data(struct ems_gstreamer_pipeline *egp) {
     return G_SOURCE_CONTINUE;
 }
 
+/// When a WebSocket connection is established, we start creating a WebRTC connection.
 static void webrtc_client_connected_cb(EmsSignalingServer *server,
                                        EmsClientId client_id,
                                        struct ems_gstreamer_pipeline *egp) {
