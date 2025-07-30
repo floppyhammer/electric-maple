@@ -34,8 +34,8 @@
 #include "vk/vk_cmd_pool.h"
 #include "vk/vk_image_readback_to_xf_pool.h"
 
-#define APP_VIEW_W (1920)
-#define APP_VIEW_H (1080)
+#define APP_VIEW_W (1280)
+#define APP_VIEW_H (800)
 
 #define READBACK_DIV_FACTOR (1)
 
