@@ -93,28 +93,28 @@ G_DEFINE_TYPE(EmStreamClient, em_stream_client, G_TYPE_OBJECT);
 
 enum
 {
-	// action signals
-	// SIGNAL_CONNECT,
-	// SIGNAL_DISCONNECT,
-	// SIGNAL_SET_PIPELINE,
-	// signals
-	// SIGNAL_WEBSOCKET_CONNECTED,
-	// SIGNAL_WEBSOCKET_FAILED,
-	// SIGNAL_CONNECTED,
-	// SIGNAL_STATUS_CHANGE,
-	// SIGNAL_ON_NEED_PIPELINE,
-	// SIGNAL_ON_DROP_PIPELINE,
-	// SIGNAL_DISCONNECTED,
-	N_SIGNALS
+    // action signals
+    // SIGNAL_CONNECT,
+    // SIGNAL_DISCONNECT,
+    // SIGNAL_SET_PIPELINE,
+    // signals
+    // SIGNAL_WEBSOCKET_CONNECTED,
+    // SIGNAL_WEBSOCKET_FAILED,
+    // SIGNAL_CONNECTED,
+    // SIGNAL_STATUS_CHANGE,
+    // SIGNAL_ON_NEED_PIPELINE,
+    // SIGNAL_ON_DROP_PIPELINE,
+    // SIGNAL_DISCONNECTED,
+    N_SIGNALS
 };
 
 static guint signals[N_SIGNALS];
 
 typedef enum
 {
-	PROP_CONNECTION = 1,
-	// PROP_STATUS,
-	N_PROPERTIES
+    PROP_CONNECTION = 1,
+    // PROP_STATUS,
+    N_PROPERTIES
 } EmStreamClientProperty;
 #endif
 
@@ -154,25 +154,25 @@ static void em_stream_client_free_egl_mutex(EmStreamClient *sc);
 static void
 em_stream_client_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
 {
-	switch ((EmStreamClientProperty)property_id) {
+    switch ((EmStreamClientProperty)property_id) {
 
-	case PROP_CONNECTION:
-		em_stream_client_set_connection(EM_STREAM_CLIENT(object), EM_CONNECTION(g_value_get_object(value)));
-		break;
+    case PROP_CONNECTION:
+        em_stream_client_set_connection(EM_STREAM_CLIENT(object), EM_CONNECTION(g_value_get_object(value)));
+        break;
 
-	default: G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec); break;
-	}
+    default: G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec); break;
+    }
 }
 
 static void
 em_stream_client_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
 {
 
-	switch ((EmStreamClientProperty)property_id) {
-	case PROP_CONNECTION: g_value_set_object(value, EM_STREAM_CLIENT(object)->connection); break;
+    switch ((EmStreamClientProperty)property_id) {
+    case PROP_CONNECTION: g_value_set_object(value, EM_STREAM_CLIENT(object)->connection); break;
 
-	default: G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec); break;
-	}
+    default: G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec); break;
+    }
 }
 
 #endif
@@ -186,6 +186,7 @@ static void em_stream_client_init(EmStreamClient *sc) {
     g_mutex_init(&sc->sample_mutex);
     ALOGI("%s: done creating stuff", __FUNCTION__);
 }
+
 static void em_stream_client_dispose(EmStreamClient *self) {
     // May be called multiple times during destruction.
     // Stop things and clear ref counted things here.
@@ -214,27 +215,27 @@ static void em_stream_client_finalize(EmStreamClient *self) {
 static void
 em_stream_client_class_init(EmStreamClientClass *klass)
 {
-	ALOGE("RYLIE: %s: Begin", __FUNCTION__);
+    ALOGE("RYLIE: %s: Begin", __FUNCTION__);
 
-	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+    GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 
-	gobject_class->dispose = em_stream_client_dispose;
-	gobject_class->finalize = em_stream_client_finalize;
+    gobject_class->dispose = em_stream_client_dispose;
+    gobject_class->finalize = em_stream_client_finalize;
 
-	// gobject_class->set_property = em_stream_client_set_property;
-	// gobject_class->get_property = em_stream_client_get_property;
+    // gobject_class->set_property = em_stream_client_set_property;
+    // gobject_class->get_property = em_stream_client_get_property;
 
-	/**
-	 * EmStreamClient:connection:
-	 *
-	 * The websocket URI for the signaling server
-	 */
-	// g_object_class_install_property(
-	//     gobject_class, PROP_CONNECTION,
-	//     g_param_spec_object("connection", "Connection", "EmConnection object for XR streaming",
-	//     EM_TYPE_CONNECTION,
-	//                         G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
-	ALOGE("RYLIE: %s: End", __FUNCTION__);
+    /**
+     * EmStreamClient:connection:
+     *
+     * The websocket URI for the signaling server
+     */
+    // g_object_class_install_property(
+    //     gobject_class, PROP_CONNECTION,
+    //     g_param_spec_object("connection", "Connection", "EmConnection object for XR streaming",
+    //     EM_TYPE_CONNECTION,
+    //                         G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+    ALOGE("RYLIE: %s: End", __FUNCTION__);
 }
 
 #endif
@@ -380,18 +381,18 @@ static void on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc) {
     //    }
 
     // clang-format off
-	gchar *pipeline_string = g_strdup_printf(
-	    "webrtcbin name=webrtc bundle-policy=max-bundle latency=5 ! "
-//	    "rtph265depay name=depay ! " // Not necessary theoretically, but this can fix codec configuration crash
-	    "decodebin3 ! "
+    gchar *pipeline_string = g_strdup_printf(
+            "webrtcbin name=webrtc bundle-policy=max-bundle latency=5 ! "
+            //	    "rtph265depay name=depay ! " // Not necessary theoretically, but this can fix codec configuration crash
+            "decodebin3 ! "
 
-//	    "amcviddec-c2qtiavcdecoder ! "        // Hardware
-//	    "amcviddec-omxqcomvideodecoderavc ! " // Hardware
-//	    "amcviddec-c2androidavcdecoder ! "    // Software
-//	    "amcviddec-omxgoogleh264decoder ! "   // Software
-//	    "video/x-raw(memory:GLMemory),format=(string)RGBA,width=(int)3840,height=(int)1080,texture-target=(string)external-oes ! "
+            //	    "amcviddec-c2qtiavcdecoder ! "        // Hardware
+            //	    "amcviddec-omxqcomvideodecoderavc ! " // Hardware
+            //	    "amcviddec-c2androidavcdecoder ! "    // Software
+            //	    "amcviddec-omxgoogleh264decoder ! "   // Software
+            //	    "video/x-raw(memory:GLMemory),format=(string)RGBA,width=(int)3840,height=(int)1080,texture-target=(string)external-oes ! "
 
-	    "glsinkbin name=glsink");
+            "glsinkbin name=glsink");
     // clang-format on
 
     sc->pipeline = gst_object_ref_sink(gst_parse_launch(pipeline_string, &error));
@@ -485,15 +486,15 @@ static void *em_stream_client_thread_func(void *ptr) {
  */
 EmStreamClient *em_stream_client_new() {
 #if 0
-	ALOGI("%s: before g_object_new", __FUNCTION__);
-	gpointer self_untyped = g_object_new(EM_TYPE_STREAM_CLIENT, NULL);
-	if (self_untyped == NULL) {
-		ALOGE("%s: g_object_new failed to allocate", __FUNCTION__);
-		return NULL;
-	}
-	EmStreamClient *self = EM_STREAM_CLIENT(self_untyped);
+    ALOGI("%s: before g_object_new", __FUNCTION__);
+    gpointer self_untyped = g_object_new(EM_TYPE_STREAM_CLIENT, NULL);
+    if (self_untyped == NULL) {
+        ALOGE("%s: g_object_new failed to allocate", __FUNCTION__);
+        return NULL;
+    }
+    EmStreamClient *self = EM_STREAM_CLIENT(self_untyped);
 
-	ALOGI("%s: after g_object_new", __FUNCTION__);
+    ALOGI("%s: after g_object_new", __FUNCTION__);
 #endif
     EmStreamClient *self = calloc(1, sizeof(EmStreamClient));
     em_stream_client_init(self);
@@ -623,10 +624,10 @@ struct em_sample *em_stream_client_try_pull_sample(EmStreamClient *sc, struct ti
 
     // TODO: Handle resize?
 #if 0
-	if (width != sc->width || height != sc->height) {
-		sc->width = width;
-		sc->height = height;
-	}
+    if (width != sc->width || height != sc->height) {
+        sc->width = width;
+        sc->height = height;
+    }
 #endif
 
     struct em_sc_sample *ret = calloc(1, sizeof(struct em_sc_sample));

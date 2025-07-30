@@ -199,8 +199,8 @@ static void em_remote_experience_report_pose(EmRemoteExperience *exp,
 
         XrPosef handLocalPose = handLocalLocation.pose;
 
-//        tracking.has_controller_grip_right = inputState.handActive[Side::RIGHT];
-//        tracking.controller_grip_right = convert_pose(handLocalPose);
+        //        tracking.has_controller_grip_right = inputState.handActive[Side::RIGHT];
+        //        tracking.controller_grip_right = convert_pose(handLocalPose);
 
         tracking.has_controller_aim_right = inputState.handActive[Side::RIGHT];
         tracking.controller_aim_right = convert_pose(handLocalPose);
