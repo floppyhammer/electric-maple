@@ -272,7 +272,9 @@ bool poll_events(struct android_app *app, struct em_state &state) {
         struct android_poll_source *source;
         bool wait = !app->window || app->activityState != APP_CMD_RESUME;
         int timeout = wait ? -1 : 0;
-        if (ALooper_pollAll(timeout, NULL, &events, (void **)&source) >= 0) {
+
+        int pollResult = ALooper_pollOnce(timeout, NULL, &events, (void **)&source);
+        if (pollResult >= 0) {
             if (source) {
                 source->process(app, source);
             }
