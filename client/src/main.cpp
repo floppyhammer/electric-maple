@@ -519,7 +519,8 @@ void android_main(struct android_app *app) {
     ALOGI("Recommended image rect size: %u, %u", _state.width, _state.height);
 
     // OpenXR session
-    ALOGI("FRED: Creating OpenXR session...");
+    ALOGI("Creating OpenXR session...");
+
     PFN_xrGetOpenGLESGraphicsRequirementsKHR xrGetOpenGLESGraphicsRequirementsKHR = NULL;
     XR_LOAD(xrGetOpenGLESGraphicsRequirementsKHR);
     XrGraphicsRequirementsOpenGLESKHR graphicsRequirements = {.type = XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_ES_KHR};
@@ -537,11 +538,11 @@ void android_main(struct android_app *app) {
                                        .systemId = _state.system};
 
     result = xrCreateSession(_state.instance, &sessionInfo, &_state.session);
-
     if (XR_FAILED(result)) {
         ALOGE("ERROR: Failed to create OpenXR session (%d)\n", result);
         return;
     }
+    ALOGI("Created OpenXR session");
 
     initialize_actions(_state);
 
@@ -559,6 +560,7 @@ void android_main(struct android_app *app) {
 
     // Set up gstreamer
     gst_init(NULL, NULL);
+    ALOGI("Initialized GStreamer");
 
     gst_debug_set_default_threshold(GST_LEVEL_WARNING);
     //    gst_debug_set_threshold_for_name("*decode*", GST_LEVEL_TRACE);
@@ -588,7 +590,7 @@ void android_main(struct android_app *app) {
     EmStreamClient *stream_client = em_stream_client_new();
 
     ALOGI("%s: telling stream client about EGL", __FUNCTION__);
-    // retaining ownership
+    // Retaining ownership
     em_stream_client_set_egl_context(stream_client, egl_mutex, false, initialEglData->surface);
 
     ALOGI("%s: creating connection object", __FUNCTION__);
@@ -615,14 +617,15 @@ void android_main(struct android_app *app) {
     //
 
     // Main rendering loop.
-    ALOGI("DEBUG: Starting main loop");
+    ALOGI("Starting main rendering loop");
     while (!app->destroyRequested) {
         if (poll_events(app, _state)) {
             em_remote_experience_poll_and_render_frame(remote_experience, _state.input);
         }
     }
 
-    ALOGI("DEBUG: Exited main loop, cleaning up");
+    ALOGI("Exited main loop, cleaning up");
+
     //
     // Clean up RR structures
     //

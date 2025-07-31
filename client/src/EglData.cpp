@@ -38,19 +38,19 @@ EglData::EglData() {
     // RGBA8, multisample not required, ES3, pbuffer and window
     const EGLint attributes[] = {
         EGL_RED_SIZE,
-        8, //
+        8,
 
         EGL_GREEN_SIZE,
-        8, //
+        8,
 
         EGL_BLUE_SIZE,
-        8, //
+        8,
 
         EGL_ALPHA_SIZE,
-        8, //
+        8,
 
         EGL_SAMPLES,
-        1, //
+        1,
 
         EGL_RENDERABLE_TYPE,
         EGL_OPENGL_ES3_BIT,
@@ -68,8 +68,8 @@ EglData::EglData() {
         ALOGE("Failed to find suitable EGL config");
         throw std::runtime_error("Failed to find suitable EGL config");
     }
-    ALOGI("Got %d egl configs, just taking the first one.", num_configs);
 
+    ALOGI("Got %d egl configs, just taking the first one.", num_configs);
     config = configs[0];
 
     EGLint contextAttributes[] = {EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE};
@@ -90,6 +90,8 @@ EglData::EglData() {
         16, //
         EGL_NONE,
     };
+
+    // Create an offscreen surface
     CHK_EGL(surface = eglCreatePbufferSurface(display, config, surfaceAttributes));
     if (surface == EGL_NO_SURFACE) {
         ALOGE("Failed to create EGL surface");

@@ -670,10 +670,10 @@ void em_connection_set_pipeline(EmConnection *em_conn, GstPipeline *pipeline) {
 
     em_conn_update_status(em_conn, EM_STATUS_NEGOTIATING);
 
-    ALOGI("RYLIE: getting webrtcbin");
     em_conn->webrtcbin = gst_bin_get_by_name(GST_BIN(em_conn->pipeline), "webrtc");
     g_assert_nonnull(em_conn->webrtcbin);
     g_assert(G_IS_OBJECT(em_conn->webrtcbin));
+
     g_signal_connect(em_conn->webrtcbin, "on-ice-candidate", G_CALLBACK(em_conn_webrtc_on_ice_candidate_cb), em_conn);
     g_signal_connect(em_conn->webrtcbin,
                      "prepare-data-channel",
@@ -715,13 +715,12 @@ static void em_conn_connect_internal(EmConnection *em_conn, enum em_status statu
                                          em_conn->ws_cancel,                                        // cancellable
                                          (GAsyncReadyCallback)em_conn_websocket_connected_cb,       // callback
                                          em_conn);                                                  // user_data
-
 #else
     soup_session_websocket_connect_async(em_conn->soup_session,                                     // session
                                          soup_message_new(SOUP_METHOD_GET, em_conn->websocket_uri), // message
                                          NULL,                                                      // origin
                                          NULL,                                                      // protocols
-                                         0,                                                         // io_prority
+                                         0,                                                         // io_priority
                                          em_conn->ws_cancel,                                        // cancellable
                                          (GAsyncReadyCallback)em_conn_websocket_connected_cb,       // callback
                                          em_conn);                                                  // user_data
