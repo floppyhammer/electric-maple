@@ -246,9 +246,8 @@ bool ProtoMessage_decode_hand_joint_locations(pb_istream_t *istream, const pb_fi
     return true;
 }
 
-static void data_channel_message_data_cb(GstWebRTCDataChannel *datachannel,
-                                         GBytes *data,
-                                         struct ems_gstreamer_pipeline *egp) {
+/// Used by both WebRTC & WebSocket
+static void handle_up_message(GBytes *data, const struct ems_gstreamer_pipeline *egp) {
     UpMessageSuper message_super = {};
     em_proto_UpMessage message = em_proto_UpMessage_init_default;
 
@@ -287,7 +286,17 @@ static void data_channel_message_data_cb(GstWebRTCDataChannel *datachannel,
     }
 }
 
-static void data_channel_message_string_cb(GstWebRTCDataChannel *datachannel,
+static void data_channel_message_data_cb(GstWebRTCDataChannel *data_channel,
+                                         GBytes *data,
+                                         struct ems_gstreamer_pipeline *egp) {
+    handle_up_message(data, egp);
+}
+
+static void ws_up_message_cb(EmsSignalingServer *server, GBytes *data, struct ems_gstreamer_pipeline *egp) {
+    handle_up_message(data, egp);
+}
+
+static void data_channel_message_string_cb(GstWebRTCDataChannel *data_channel,
                                            gchar *str,
                                            struct ems_gstreamer_pipeline *egp) {
     U_LOG_I("Received data channel message: %s\n", str);
@@ -306,7 +315,7 @@ static gboolean check_pipeline_dot_data(struct ems_gstreamer_pipeline *egp) {
 
 /// When a WebSocket connection is established, we start creating a WebRTC connection.
 static void webrtc_client_connected_cb(EmsSignalingServer *server,
-                                       EmsClientId client_id,
+                                       const EmsClientId client_id,
                                        struct ems_gstreamer_pipeline *egp) {
     U_LOG_I("WebRTC client connected: %p", client_id);
 
@@ -559,11 +568,12 @@ void ems_gstreamer_pipeline_play(struct gstreamer_pipeline *gp) {
 
     main_loop = g_main_loop_new(NULL, FALSE);
 
-    GstStateChangeReturn ret = gst_element_set_state(egp->base.pipeline, GST_STATE_PLAYING);
-
+    const GstStateChangeReturn ret = gst_element_set_state(egp->base.pipeline, GST_STATE_PLAYING);
     g_assert(ret != GST_STATE_CHANGE_FAILURE);
 
+#ifdef USE_WEBRTC
     g_signal_connect(signaling_server, "ws-client-connected", G_CALLBACK(webrtc_client_connected_cb), egp);
+#endif
 
     pthread_t thread;
     pthread_create(&thread, NULL, loop_thread, NULL);
@@ -629,10 +639,16 @@ void ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
         "encodebin2 profile=\"video/x-h264|element-properties,tune=4,speed-preset=1,bitrate=%s\" ! "
         "rtph264pay config-interval=-1 aggregate-mode=zero-latency ! "
         "application/x-rtp,payload=96,ssrc=(uint)3484078952 ! "
+#ifdef USE_WEBRTC
         "tee name=%s allow-not-linked=true",
         appsrc_name,
         DEFAULT_BITRATE,
         WEBRTC_TEE_NAME);
+#else
+        "udpsink host=127.0.0.1 port=5600",
+        appsrc_name,
+        DEFAULT_BITRATE);
+#endif
 
     // No webrtc bin yet until later!
 
@@ -666,9 +682,13 @@ void ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
     gst_bus_add_watch(bus, gst_bus_cb, egp);
     gst_object_unref(bus);
 
+#ifdef USE_WEBRTC
     g_signal_connect(signaling_server, "ws-client-disconnected", G_CALLBACK(webrtc_client_disconnected_cb), egp);
     g_signal_connect(signaling_server, "sdp-answer", G_CALLBACK(webrtc_sdp_answer_cb), egp);
     g_signal_connect(signaling_server, "candidate", G_CALLBACK(webrtc_candidate_cb), egp);
+#else
+    g_signal_connect(signaling_server, "up_message", G_CALLBACK(ws_up_message_cb), egp);
+#endif
 
     // Setup pipeline.
     egp->base.pipeline = pipeline;

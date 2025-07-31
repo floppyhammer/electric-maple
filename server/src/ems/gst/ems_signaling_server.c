@@ -15,7 +15,6 @@
 
 #include <glib/gstdio.h>
 #include <json-glib/json-glib.h>
-#include <libsoup/soup-message.h>
 #include <libsoup/soup-server.h>
 #include <libsoup/soup-version.h>
 
@@ -42,6 +41,7 @@ enum {
     SIGNAL_WS_CLIENT_DISCONNECTED,
     SIGNAL_SDP_ANSWER,
     SIGNAL_CANDIDATE,
+    SIGNAL_UP_MESSAGE,
     N_SIGNALS
 };
 
@@ -51,9 +51,9 @@ EmsSignalingServer *ems_signaling_server_new() {
     return EMS_SIGNALING_SERVER(g_object_new(EMS_TYPE_SIGNALING_SERVER, NULL));
 }
 
-static void ems_signaling_server_handle_message(EmsSignalingServer *server,
-                                                SoupWebsocketConnection *connection,
-                                                GBytes *message) {
+static void ems_signaling_server_handle_text_message(EmsSignalingServer *server,
+                                                     SoupWebsocketConnection *connection,
+                                                     GBytes *message) {
     gsize length = 0;
     const gchar *msg_data = g_bytes_get_data(message, &length);
     JsonParser *parser = json_parser_new();
@@ -75,9 +75,7 @@ static void ems_signaling_server_handle_message(EmsSignalingServer *server,
 
             g_signal_emit(server, signals[SIGNAL_SDP_ANSWER], 0, connection, answer_sdp);
         } else if (g_str_equal(msg_type, "candidate")) {
-            JsonObject *candidate;
-
-            candidate = json_object_get_object_member(msg, "candidate");
+            JsonObject *candidate = json_object_get_object_member(msg, "candidate");
 
             g_signal_emit(server,
                           signals[SIGNAL_CANDIDATE],
@@ -98,11 +96,14 @@ out:
 static void ws_message_cb(SoupWebsocketConnection *connection, gint type, GBytes *message, gpointer user_data) {
     switch (type) {
         case SOUP_WEBSOCKET_DATA_BINARY: {
-            g_debug("Received unknown binary message from client %p, ignoring", connection);
-            break;
-        }
+#ifndef USE_WEBRTC
+            g_signal_emit(EMS_SIGNALING_SERVER(user_data), signals[SIGNAL_UP_MESSAGE], 0, message);
+#endif
+        } break;
         case SOUP_WEBSOCKET_DATA_TEXT: {
-            ems_signaling_server_handle_message(EMS_SIGNALING_SERVER(user_data), connection, message);
+#ifdef USE_WEBRTC
+            ems_signaling_server_handle_text_message(EMS_SIGNALING_SERVER(user_data), connection, message);
+#endif
         } break;
         default:
             g_assert_not_reached();
@@ -328,4 +329,15 @@ static void ems_signaling_server_class_init(EmsSignalingServerClass *klass) {
                                              G_TYPE_POINTER,
                                              G_TYPE_UINT,
                                              G_TYPE_STRING);
+
+    signals[SIGNAL_UP_MESSAGE] = g_signal_new("up_message",
+                                              G_OBJECT_CLASS_TYPE(klass),
+                                              G_SIGNAL_RUN_LAST,
+                                              0,
+                                              NULL,
+                                              NULL,
+                                              NULL,
+                                              G_TYPE_NONE,
+                                              1,
+                                              G_TYPE_POINTER);
 }
