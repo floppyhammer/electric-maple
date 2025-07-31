@@ -90,7 +90,6 @@ struct _EmStreamClient {
 #if 0
 G_DEFINE_TYPE(EmStreamClient, em_stream_client, G_TYPE_OBJECT);
 
-
 enum
 {
     // action signals

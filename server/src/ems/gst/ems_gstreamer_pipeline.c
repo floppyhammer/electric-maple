@@ -626,7 +626,7 @@ void ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
         "videoconvert ! "
         "videorate ! "
         "video/x-raw,format=NV12,framerate=60/1 ! "
-        "encodebin2 profile=\"video/x-h264|element-properties,tune=4,bitrate=%s\" ! "
+        "encodebin2 profile=\"video/x-h264|element-properties,tune=4,speed-preset=1,bitrate=%s\" ! "
         "rtph264pay config-interval=-1 aggregate-mode=zero-latency ! "
         "application/x-rtp,payload=96,ssrc=(uint)3484078952 ! "
         "tee name=%s allow-not-linked=true",

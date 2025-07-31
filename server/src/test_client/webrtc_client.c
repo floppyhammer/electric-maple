@@ -403,18 +403,15 @@ static void websocket_connected_cb(GObject *session, GAsyncResult *res, gpointer
 }
 
 int main(int argc, char *argv[]) {
-    GOptionContext *option_context;
-    GMainLoop *loop;
-    SoupSession *soup_session;
     GError *error = NULL;
 
     gst_init(&argc, &argv);
 
-    option_context = g_option_context_new(NULL);
+    GOptionContext *option_context = g_option_context_new(NULL);
     g_option_context_add_main_entries(option_context, options, NULL);
 
     if (!g_option_context_parse(option_context, &argc, &argv, &error)) {
-        g_print("option parsing failed: %s\n", error->message);
+        g_print("Option parsing failed: %s\n", error->message);
         exit(1);
     }
 
@@ -422,7 +419,7 @@ int main(int argc, char *argv[]) {
         websocket_uri = g_strdup(WEBSOCKET_URI_DEFAULT);
     }
 
-    soup_session = soup_session_new();
+    SoupSession *soup_session = soup_session_new();
 
 #if !SOUP_CHECK_VERSION(3, 0, 0)
     soup_session_websocket_connect_async(soup_session,                                     // session
@@ -432,23 +429,23 @@ int main(int argc, char *argv[]) {
                                          NULL,                                             // cancellable
                                          websocket_connected_cb,                           // callback
                                          NULL);                                            // user_data
-
 #else
     soup_session_websocket_connect_async(soup_session,                                     // session
                                          soup_message_new(SOUP_METHOD_GET, websocket_uri), // message
                                          NULL,                                             // origin
                                          NULL,                                             // protocols
-                                         0,                                                // io_prority
+                                         0,                                                // io_priority
                                          NULL,                                             // cancellable
                                          websocket_connected_cb,                           // callback
                                          NULL);                                            // user_data
 
 #endif
 
-    loop = g_main_loop_new(NULL, FALSE);
+    GMainLoop *loop = g_main_loop_new(NULL, FALSE);
     g_unix_signal_add(SIGINT, sigint_handler, loop);
 
     g_main_loop_run(loop);
+
     g_main_loop_unref(loop);
     g_clear_pointer(&websocket_uri, g_free);
 }
