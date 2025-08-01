@@ -622,9 +622,9 @@ out:
 }
 
 static void em_conn_websocket_connected_cb(GObject *session, GAsyncResult *res, EmConnection *em_conn) {
-    GError *error = NULL;
-
     g_assert(!em_conn->ws);
+
+    GError *error = NULL;
 
     SoupWebsocketConnection *conn = soup_session_websocket_connect_finish(SOUP_SESSION(session), res, &error);
     if (conn) {
@@ -639,11 +639,15 @@ static void em_conn_websocket_connected_cb(GObject *session, GAsyncResult *res, 
     }
     g_assert_no_error(error);
 
-    ALOGI("RYLIE: Websocket connected");
+#ifndef USE_WEBRTC
+    em_conn->status = EM_STATUS_CONNECTED;
+#endif
+
+    ALOGI("WebSocket connected");
     g_signal_connect(em_conn->ws, "message", G_CALLBACK(em_conn_on_ws_message_cb), em_conn);
     g_signal_emit(em_conn, signals[SIGNAL_WEBSOCKET_CONNECTED], 0);
 
-    ALOGI("RYLIE: creating pipeline");
+    ALOGI("Creating pipeline");
     g_assert_null(em_conn->pipeline);
     g_signal_emit(em_conn, signals[SIGNAL_ON_NEED_PIPELINE], 0);
     if (em_conn->pipeline == NULL) {
@@ -654,20 +658,20 @@ static void em_conn_websocket_connected_cb(GObject *session, GAsyncResult *res, 
     // OK, if we get here, we have a websocket connection, and a pipeline fully configured
     // so we can start the pipeline playing
 
-    ALOGI("RYLIE: Setting pipeline state to PLAYING");
+    ALOGI("Setting pipeline state to PLAYING");
     gst_element_set_state(GST_ELEMENT(em_conn->pipeline), GST_STATE_PLAYING);
-    ALOGI("%s: RYLIE: Done with function", __FUNCTION__);
 }
 
 void em_connection_set_pipeline(EmConnection *em_conn, GstPipeline *pipeline) {
     g_assert_nonnull(pipeline);
     if (em_conn->pipeline) {
-        // stop old pipeline if applicable
+        // Stop old pipeline if applicable
         gst_element_set_state(GST_ELEMENT(em_conn->pipeline), GST_STATE_NULL);
     }
     gst_clear_object(&em_conn->pipeline);
     em_conn->pipeline = gst_object_ref_sink(pipeline);
 
+#ifdef USE_WEBRTC
     em_conn_update_status(em_conn, EM_STATUS_NEGOTIATING);
 
     em_conn->webrtcbin = gst_bin_get_by_name(GST_BIN(em_conn->pipeline), "webrtc");
@@ -690,6 +694,7 @@ void em_connection_set_pipeline(EmConnection *em_conn, GstPipeline *pipeline) {
                      "prepare-data-channel",
                      G_CALLBACK(em_conn_webrtc_on_prepare_data_channel),
                      NULL);
+#endif
 }
 
 enum em_status em_connection_get_status(EmConnection *em_conn) {
@@ -749,11 +754,17 @@ void em_connection_disconnect(EmConnection *em_conn) {
 
 bool em_connection_send_bytes(EmConnection *em_conn, GBytes *bytes) {
     if (em_conn->status != EM_STATUS_CONNECTED) {
-        ALOGW("RYLIE: Cannot send bytes when status is %s", em_status_to_string(em_conn->status));
+        ALOGW("Cannot send bytes when status is %s", em_status_to_string(em_conn->status));
         return false;
     }
 
+#ifdef USE_WEBRTC
     gboolean success = gst_webrtc_data_channel_send_data_full(em_conn->datachannel, bytes, NULL);
-
     return success == TRUE;
+#else
+    gsize length = 0;
+    const gchar *msg_data = g_bytes_get_data(bytes, &length);
+    soup_websocket_connection_send_binary(em_conn->ws, msg_data, length);
+    return TRUE;
+#endif
 }

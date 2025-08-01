@@ -132,9 +132,9 @@ typedef enum
  * callbacks
  */
 
-static void on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc);
+static void on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc);
 
-static void on_drop_pipeline_cb(EmConnection *emconn, EmStreamClient *sc);
+static void on_drop_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc);
 
 static void *em_stream_client_thread_func(void *ptr);
 
@@ -354,9 +354,9 @@ static void on_new_transceiver(GstElement *webrtc, GstWebRTCRTPTransceiver *tran
     g_object_set(trans, "fec-type", GST_WEBRTC_FEC_TYPE_ULP_RED, NULL);
 }
 
-static void on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc) {
+static void on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc) {
     g_assert_nonnull(sc);
-    g_assert_nonnull(emconn);
+    g_assert_nonnull(em_conn);
     GError *error = NULL;
 
     // We'll need an active egl context below before setting up gstgl (as explained previously)
@@ -379,6 +379,7 @@ static void on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc) {
     //        g_print("Decoder: %s\n", name);
     //    }
 
+#ifdef USE_WEBRTC
     // clang-format off
     gchar *pipeline_string = g_strdup_printf(
             "webrtcbin name=webrtc bundle-policy=max-bundle latency=5 ! "
@@ -393,6 +394,16 @@ static void on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc) {
 
             "glsinkbin name=glsink");
     // clang-format on
+#else
+    // clang-format off
+        gchar *pipeline_string = g_strdup_printf(
+            "udpsrc port=5600 buffer-size=8000000 "
+            "caps=\"application/x-rtp,media=video,clock-rate=90000,encoding-name=H264\" ! "
+            "rtpjitterbuffer do-lost=1 latency=5 ! "
+            "decodebin3 ! "
+            "glsinkbin name=glsink");
+    // clang-format on
+#endif
 
     sc->pipeline = gst_object_ref_sink(gst_parse_launch(pipeline_string, &error));
     if (sc->pipeline == NULL) {
@@ -403,9 +414,11 @@ static void on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc) {
         ALOGE("Error creating a pipeline from string: %s", error ? error->message : "Unknown");
     }
 
+#ifdef USE_WEBRTC
     GstElement *webrtcbin = gst_bin_get_by_name(GST_BIN(sc->pipeline), "webrtc");
     g_signal_connect(webrtcbin, "on-new-transceiver", G_CALLBACK(on_new_transceiver), NULL);
     gst_object_unref(webrtcbin);
+#endif
 
     // Un-current the EGL context
     em_stream_client_egl_end(sc);
@@ -459,10 +472,10 @@ static void on_need_pipeline_cb(EmConnection *emconn, EmStreamClient *sc) {
 
     // This actually hands over the pipeline. Once our own handler returns, the pipeline will be started by the
     // connection.
-    g_signal_emit_by_name(emconn, "set-pipeline", GST_PIPELINE(sc->pipeline), NULL);
+    g_signal_emit_by_name(em_conn, "set-pipeline", GST_PIPELINE(sc->pipeline), NULL);
 }
 
-static void on_drop_pipeline_cb(EmConnection *emconn, EmStreamClient *sc) {
+static void on_drop_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc) {
     if (sc->pipeline) {
         gst_element_set_state(sc->pipeline, GST_STATE_NULL);
     }

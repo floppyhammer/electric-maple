@@ -645,7 +645,7 @@ void ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
         DEFAULT_BITRATE,
         WEBRTC_TEE_NAME);
 #else
-        "udpsink host=127.0.0.1 port=5600",
+        "udpsink host=10.11.8.156 port=5600",
         appsrc_name,
         DEFAULT_BITRATE);
 #endif
