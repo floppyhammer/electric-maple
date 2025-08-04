@@ -16,6 +16,8 @@
 
 #include "em_status.h"
 
+//#define USE_WEBRTC
+
 G_BEGIN_DECLS
 
 #define EM_TYPE_CONNECTION em_connection_get_type()

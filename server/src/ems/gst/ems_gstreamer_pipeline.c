@@ -316,9 +316,11 @@ static gboolean check_pipeline_dot_data(struct ems_gstreamer_pipeline *egp) {
 /// When a WebSocket connection is established, we start creating a WebRTC connection.
 static void webrtc_client_connected_cb(EmsSignalingServer *server,
                                        const EmsClientId client_id,
+                                       const gchar *client_address,
                                        struct ems_gstreamer_pipeline *egp) {
     U_LOG_I("WebRTC client connected: %p", client_id);
 
+#ifdef USE_WEBRTC
     GstBin *pipeline = GST_BIN(egp->base.pipeline);
 
     gchar *name = g_strdup_printf("webrtcbin_%p", client_id);
@@ -365,6 +367,12 @@ static void webrtc_client_connected_cb(EmsSignalingServer *server,
 
     ret = gst_element_set_state(webrtcbin, GST_STATE_PLAYING);
     g_assert(ret != GST_STATE_CHANGE_FAILURE);
+#else
+    GstElement *udpsink = gst_bin_get_by_name(GST_BIN(egp->base.pipeline), "udpsink");
+    g_assert(udpsink);
+    g_object_set(udpsink, "host", client_address, NULL);
+    gst_object_unref(udpsink);
+#endif
 
     egp->timeout_src_id_dot_data = g_timeout_add_seconds(3, G_SOURCE_FUNC(check_pipeline_dot_data), egp);
 }
@@ -571,9 +579,7 @@ void ems_gstreamer_pipeline_play(struct gstreamer_pipeline *gp) {
     const GstStateChangeReturn ret = gst_element_set_state(egp->base.pipeline, GST_STATE_PLAYING);
     g_assert(ret != GST_STATE_CHANGE_FAILURE);
 
-#ifdef USE_WEBRTC
     g_signal_connect(signaling_server, "ws-client-connected", G_CALLBACK(webrtc_client_connected_cb), egp);
-#endif
 
     pthread_t thread;
     pthread_create(&thread, NULL, loop_thread, NULL);
@@ -645,7 +651,7 @@ void ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
         DEFAULT_BITRATE,
         WEBRTC_TEE_NAME);
 #else
-        "udpsink host=10.11.8.156 port=5600",
+        "udpsink name=udpsink port=5600", // host will be assigned later
         appsrc_name,
         DEFAULT_BITRATE);
 #endif

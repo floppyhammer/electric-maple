@@ -114,7 +114,7 @@ static void ems_signaling_server_remove_websocket_connection(EmsSignalingServer 
                                                              SoupWebsocketConnection *connection) {
     g_info("%s", __func__);
 
-    EmsClientId client_id = g_object_get_data(G_OBJECT(connection), "client_id");
+    const EmsClientId client_id = g_object_get_data(G_OBJECT(connection), "client_id");
 
     server->websocket_connections = g_slist_remove(server->websocket_connections, client_id);
 
@@ -128,7 +128,8 @@ static void ws_closed_cb(SoupWebsocketConnection *connection, gpointer user_data
 }
 
 static void ems_signaling_server_add_websocket_connection(EmsSignalingServer *server,
-                                                          SoupWebsocketConnection *connection) {
+                                                          SoupWebsocketConnection *connection,
+                                                          const char *client_address) {
     g_info("New WebSocket connection %s", __func__);
 
     g_object_ref(connection);
@@ -138,7 +139,7 @@ static void ems_signaling_server_add_websocket_connection(EmsSignalingServer *se
     g_signal_connect(connection, "message", (GCallback)ws_message_cb, server);
     g_signal_connect(connection, "closed", (GCallback)ws_closed_cb, server);
 
-    g_signal_emit(server, signals[SIGNAL_WS_CLIENT_CONNECTED], 0, connection);
+    g_signal_emit(server, signals[SIGNAL_WS_CLIENT_CONNECTED], 0, connection, client_address);
 }
 
 #if !SOUP_CHECK_VERSION(3, 0, 0)
@@ -172,9 +173,10 @@ static void websocket_cb(SoupServer *server,
                          const char *path,
                          SoupClientContext *client,
                          gpointer user_data) {
-    g_debug("New connection from %s", soup_client_context_get_host(client));
+    const char *remote_address = soup_client_context_get_host(client);
+    g_print("New connection coming from: %s\n", remote_address);
 
-    ems_signaling_server_add_websocket_connection(EMS_SIGNALING_SERVER(user_data), connection);
+    ems_signaling_server_add_websocket_connection(EMS_SIGNALING_SERVER(user_data), connection, remote_address);
 }
 #else
 static void websocket_cb(SoupServer *server,
@@ -182,9 +184,10 @@ static void websocket_cb(SoupServer *server,
                          const char *path,
                          SoupWebsocketConnection *connection,
                          gpointer user_data) {
-    g_debug("New connection from somewhere");
+    const char *remote_address = soup_server_message_get_remote_host(msg);
+    g_print("New connection coming from: %s\n", remote_address);
 
-    ems_signaling_server_add_websocket_connection(EMS_SIGNALING_SERVER(user_data), connection);
+    ems_signaling_server_add_websocket_connection(EMS_SIGNALING_SERVER(user_data), connection, remote_address);
 }
 #endif
 
@@ -291,8 +294,9 @@ static void ems_signaling_server_class_init(EmsSignalingServerClass *klass) {
                                                        NULL,
                                                        NULL,
                                                        G_TYPE_NONE,
-                                                       1,
-                                                       G_TYPE_POINTER);
+                                                       2,
+                                                       G_TYPE_POINTER,
+                                                       G_TYPE_STRING);
 
     signals[SIGNAL_WS_CLIENT_DISCONNECTED] = g_signal_new("ws-client-disconnected",
                                                           G_OBJECT_CLASS_TYPE(klass),
