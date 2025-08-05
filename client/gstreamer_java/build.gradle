@@ -19,14 +19,13 @@ tasks.register('copyGStreamerJava', Copy) {
 }
 
 android {
-    compileSdk 33
+    compileSdk 36
 
     namespace 'org.freedesktop.gstreamer'
 
     defaultConfig {
         minSdkVersion 26
-        // Version 30 breaks loader
-        targetSdkVersion 33
+        targetSdkVersion 36
     }
     preBuild.dependsOn(copyGStreamerJava)
     sourceSets.main.java.srcDirs(layout.buildDirectory.dir("generated/source/gstreamer/main"))
