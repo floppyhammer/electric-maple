@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    compileSdk 33
+    compileSdk 36
 
     namespace 'com.plutovr.electricmaple.standalone_client'
     ndkVersion project.ndkVersion
@@ -22,8 +22,7 @@ android {
 //        }
         applicationId "com.plutovr.electricmaple.standalone_client"
         minSdkVersion 26
-        // Version 30 breaks loader
-        targetSdkVersion 33
+        targetSdkVersion 36
         versionCode 1
         versionName "1.0"
 
