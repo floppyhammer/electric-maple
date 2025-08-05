@@ -354,6 +354,18 @@ static void on_new_transceiver(GstElement *webrtc, GstWebRTCRTPTransceiver *tran
     g_object_set(trans, "fec-type", GST_WEBRTC_FEC_TYPE_ULP_RED, NULL);
 }
 
+static GstPadProbeReturn jitterbuffer_event_probe_cb(GstPad *pad, GstPadProbeInfo *info, gpointer user_data) {
+    if (GST_EVENT_TYPE(GST_PAD_PROBE_INFO_DATA(info)) == GST_EVENT_CUSTOM_DOWNSTREAM) {
+        const GstStructure *s = gst_event_get_structure(GST_EVENT(GST_PAD_PROBE_INFO_DATA(info)));
+        if (gst_structure_has_name(s, "GstRTPPacketLost")) {
+            guint16 seqnum;
+            gst_structure_get_uint(s, "seqnum", &seqnum);
+            ALOGW("Packet lost detected, seqnum: %u\n", seqnum);
+        }
+    }
+    return GST_PAD_PROBE_OK;
+}
+
 static void on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc) {
     g_assert_nonnull(sc);
     g_assert_nonnull(em_conn);
@@ -399,7 +411,7 @@ static void on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc) {
         gchar *pipeline_string = g_strdup_printf(
             "udpsrc port=5600 buffer-size=8000000 "
             "caps=\"application/x-rtp,media=video,clock-rate=90000,encoding-name=H264\" ! "
-            "rtpjitterbuffer do-lost=1 latency=5 ! "
+            "rtpjitterbuffer name=jitter do-lost=1 latency=5 ! "
             "decodebin3 ! "
             "glsinkbin name=glsink");
     // clang-format on
@@ -418,6 +430,15 @@ static void on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc) {
     GstElement *webrtcbin = gst_bin_get_by_name(GST_BIN(sc->pipeline), "webrtc");
     g_signal_connect(webrtcbin, "on-new-transceiver", G_CALLBACK(on_new_transceiver), NULL);
     gst_object_unref(webrtcbin);
+#else
+    {
+        GstElement *jitterbuffer = gst_bin_get_by_name(GST_BIN(sc->pipeline), "jitter");
+
+        GstPad *srcpad = gst_element_get_static_pad(jitterbuffer, "src");
+        g_assert(srcpad);
+        gst_pad_add_probe(srcpad, GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, jitterbuffer_event_probe_cb, NULL, NULL);
+        gst_clear_object(&srcpad);
+    }
 #endif
 
     // Un-current the EGL context

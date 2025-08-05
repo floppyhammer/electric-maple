@@ -585,14 +585,14 @@ EmPollRenderResult em_remote_experience_inner_poll_and_render_frame(EmRemoteExpe
     if (!showedFov) {
         showedFov = true;
         ALOGI(
-            "RYLIE XrFovf 0: (xrt_fov){ .angle_left = %0.03ff, .angle_right = %0.03ff, .angle_up = %0.03ff, "
+            "XrFovf 0: (xrt_fov){ .angle_left = %0.03ff, .angle_right = %0.03ff, .angle_up = %0.03ff, "
             ".angle_down = %0.03ff }",
             views[0].fov.angleLeft,
             views[0].fov.angleRight,
             views[0].fov.angleUp,
             views[0].fov.angleDown);
         ALOGI(
-            "RYLIE XrFovf 1: (xrt_fov){ .angle_left = %0.03ff, .angle_right = %0.03ff, .angle_up = %0.03ff, "
+            "XrFovf 1: (xrt_fov){ .angle_left = %0.03ff, .angle_right = %0.03ff, .angle_up = %0.03ff, "
             ".angle_down = %0.03ff }",
             views[1].fov.angleLeft,
             views[1].fov.angleRight,
@@ -643,10 +643,11 @@ EmPollRenderResult em_remote_experience_inner_poll_and_render_frame(EmRemoteExpe
     glBindFramebuffer(GL_FRAMEBUFFER, exp->swapchainBuffers.framebufferNameAtSwapchainIndex(imageIndex));
 
     glViewport(0, 0, width * 2, height);
-    glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     // Disable gamma correction, as the frame texture is already in sRGB space.
-    glDisable(GL_FRAMEBUFFER_SRGB_EXT); // This has effects only when we are drawing to a sRGB framebuffer
+    // This has effects only when we are drawing to a sRGB framebuffer.
+    glDisable(GL_FRAMEBUFFER_SRGB_EXT);
 
     exp->renderer->draw(sample->frame_texture_id, sample->frame_texture_target);
 
