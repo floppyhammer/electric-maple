@@ -817,6 +817,7 @@ xrt_result_t ems_compositor_create_system(ems_instance &emsi, struct xrt_system_
 #define EMS_APPSRC_NAME "EMS_source"
 
     ems_gstreamer_pipeline_create(&c->xfctx, EMS_APPSRC_NAME, emsi.callbacks, &c->gstreamer_pipeline);
+
     gstreamer_sink_create_with_pipeline( //
         c->gstreamer_pipeline,           //
         READBACK_W,                      //

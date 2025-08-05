@@ -22,6 +22,7 @@
 #include "pb_decode.h"
 #include "util/u_debug.h"
 #include "util/u_misc.h"
+#include "include/ems_common.h"
 
 // Monado includes
 #include <glib-unix.h>
@@ -248,7 +249,7 @@ bool ProtoMessage_decode_hand_joint_locations(pb_istream_t *istream, const pb_fi
 
 /// Used by both WebRTC & WebSocket
 static void handle_up_message(GBytes *data, const struct ems_gstreamer_pipeline *egp) {
-    UpMessageSuper message_super = {};
+    em_UpMessageSuper message_super = {};
     em_proto_UpMessage message = em_proto_UpMessage_init_default;
 
     size_t n = 0;

@@ -60,7 +60,7 @@ void ems_callbacks_reset(struct ems_callbacks *callbacks) {
 
 void ems_callbacks_call(struct ems_callbacks *callbacks,
                         enum ems_callbacks_event event,
-                        const UpMessageSuper *message) {
+                        const em_UpMessageSuper *message) {
     std::unique_lock<std::mutex> lock(callbacks->mutex);
     auto invoker = [=](enum ems_callbacks_event ev, ems_callbacks_func_t callback, void *userdata) {
         callback(ev, message, userdata);

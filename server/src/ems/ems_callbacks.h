@@ -12,7 +12,7 @@
 #include <glib.h>
 #include <stdint.h>
 
-typedef struct UpMessageSuper_ UpMessageSuper;
+typedef struct _em_UpMessageSuper em_UpMessageSuper;
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,7 +27,7 @@ enum ems_callbacks_event {
 
 /// Callback function type
 /// @relates ems_callbacks
-typedef void (*ems_callbacks_func_t)(enum ems_callbacks_event, const UpMessageSuper *message, void *userdata);
+typedef void (*ems_callbacks_func_t)(enum ems_callbacks_event, const em_UpMessageSuper *message, void *userdata);
 
 /// Callbacks data structure
 struct ems_callbacks;
@@ -60,7 +60,9 @@ void ems_callbacks_add(struct ems_callbacks *callbacks, uint32_t event_mask, ems
 /// @param message The decoded message. We pass yours, we do not copy it!
 ///
 /// @public @memberof ems_callbacks
-void ems_callbacks_call(struct ems_callbacks *callbacks, enum ems_callbacks_event event, const UpMessageSuper *message);
+void ems_callbacks_call(struct ems_callbacks *callbacks,
+                        enum ems_callbacks_event event,
+                        const em_UpMessageSuper *message);
 
 /// Clear all callbacks.
 ///

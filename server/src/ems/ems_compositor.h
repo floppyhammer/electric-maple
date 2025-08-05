@@ -75,7 +75,7 @@ struct ems_comp_frame {
 /*!
  * Main compositor struct tying everything in the compositor together.
  *
- * @implements xrt_compositor_native, comp_base.
+ * @implements xrt_compositor_native comp_base.
  * @ingroup comp_ems
  */
 struct ems_compositor {

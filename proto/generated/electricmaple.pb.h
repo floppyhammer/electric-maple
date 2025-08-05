@@ -137,14 +137,6 @@ typedef struct _em_proto_UpMessage {
     em_proto_UpFrameMessage frame;
 } em_proto_UpMessage;
 
-typedef struct UpMessageSuper_
-{
-  em_proto_UpMessage protoMessage;
-
-  em_proto_HandJointLocation hand_joint_locations_left[26];
-  em_proto_HandJointLocation hand_joint_locations_right[26];
-} UpMessageSuper;
-
 typedef struct _em_proto_DownFrameDataMessage {
     int64_t frame_sequence_id;
     bool has_P_localSpace_viewSpace;

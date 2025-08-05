@@ -20,6 +20,7 @@
 #include "electricmaple.pb.h"
 #include "ems_callbacks.h"
 #include "ems_server_internal.h"
+#include "include/ems_common.h"
 #include "math/m_api.h"
 #include "math/m_mathinclude.h"
 #include "math/m_space.h"
@@ -192,7 +193,9 @@ static xrt_result_t controller_get_view_poses(struct xrt_device *xdev,
 }
 
 /// Fetch remote input data.
-static void controller_handle_data(enum ems_callbacks_event event, const UpMessageSuper *messageSuper, void *userdata) {
+static void controller_handle_data(enum ems_callbacks_event event,
+                                   const em_UpMessageSuper *messageSuper,
+                                   void *userdata) {
     auto *emc = (struct ems_motion_controller *)userdata;
     emc->active = false;
 

@@ -39,6 +39,7 @@
 #include "util/u_time.h"
 #include "util/u_var.h"
 #include "xrt/xrt_device.h"
+#include "include/ems_common.h"
 
 /*
  *
@@ -121,7 +122,7 @@ static xrt_result_t ems_hmd_get_view_poses(struct xrt_device *xdev,
                                    out_poses);
 }
 
-static void ems_hmd_handle_data(enum ems_callbacks_event event, const UpMessageSuper *messageSuper, void *userdata) {
+static void ems_hmd_handle_data(enum ems_callbacks_event event, const em_UpMessageSuper *messageSuper, void *userdata) {
     auto *eh = (struct ems_hmd *)userdata;
 
     auto *message = &messageSuper->protoMessage;
