@@ -518,13 +518,16 @@ EmPollRenderResult em_remote_experience_poll_and_render_frame(EmRemoteExperience
                                                                     projectionViews);
     }
 
+    std::vector<XrCompositionLayerBaseHeader *> layers;
+    layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader *>(&layer));
+
     // Submit frame
     XrFrameEndInfo endInfo = {};
     endInfo.type = XR_TYPE_FRAME_END_INFO;
     endInfo.displayTime = frameState.predictedDisplayTime;
     endInfo.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
     endInfo.layerCount = em_poll_render_result_include_layer(prResult) ? 1 : 0;
-    endInfo.layers = (const XrCompositionLayerBaseHeader *[1]){(XrCompositionLayerBaseHeader *)&layer};
+    endInfo.layers = layers.data();
 
     result = xrEndFrame(session, &endInfo);
     if (XR_FAILED(result)) {
