@@ -117,18 +117,15 @@ typedef enum
 } EmStreamClientProperty;
 #endif
 
-#define EM_MIN_VIDEO_WIDTH "128"
-#define EM_MIN_VIDEO_HEIGHT "128"
-#define EM_MIN_VIDEO_FPS "10"
-
 // clang-format off
 #define SINK_CAPS \
-    "video/x-raw(memory:GLMemory), "                         \
-    "format = (string) RGBA, "                               \
-    "width = (int) [ " EM_MIN_VIDEO_WIDTH ", max ], "        \
-    "height = (int) [ " EM_MIN_VIDEO_HEIGHT ", max ], "      \
-    "framerate = (fraction) [ " EM_MIN_VIDEO_FPS ", max ], " \
+    "video/x-raw(" GST_CAPS_FEATURE_MEMORY_GL_MEMORY "), "              \
+    "format = (string) RGBA, "                                          \
+    "width = " GST_VIDEO_SIZE_RANGE ", "                                \
+    "height = " GST_VIDEO_SIZE_RANGE ", "                               \
+    "framerate = " GST_VIDEO_FPS_RANGE ", "                             \
     "texture-target = (string) { 2D, external-oes } "
+
 // clang-format on
 
 /*
