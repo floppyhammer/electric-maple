@@ -18,11 +18,11 @@
 
 #include "electricmaple.pb.h"
 #include "ems_callbacks.h"
+#include "include/ems_common.h"
 #include "os/os_threading.h"
 #include "pb_decode.h"
 #include "util/u_debug.h"
 #include "util/u_misc.h"
-#include "include/ems_common.h"
 
 // Monado includes
 #include <glib-unix.h>
@@ -642,7 +642,8 @@ void ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
         "videoconvert ! "
         "videorate ! "
         "video/x-raw,format=NV12,framerate=60/1 ! "
-        "encodebin2 profile=\"video/x-h264|element-properties,tune=4,speed-preset=1,bitrate=%s,key-int-max=120\" ! "
+        "encodebin2 "
+        "profile=\"video/x-h264|element-properties,tune=4,speed-preset=1,bframes=0,bitrate=%s,key-int-max=120\" ! "
         "rtph264pay config-interval=-1 aggregate-mode=zero-latency ! "
         "application/x-rtp,payload=96,ssrc=(uint)3484078952 ! "
 #ifdef USE_WEBRTC
