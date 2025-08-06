@@ -455,11 +455,12 @@ void android_main(struct android_app *app) {
     instanceInfo.type = XR_TYPE_INSTANCE_CREATE_INFO;
     instanceInfo.next = &androidInfo;
 
-    strncpy(instanceInfo.applicationInfo.engineName, "N/A", XR_MAX_APPLICATION_NAME_SIZE - 1);
-    instanceInfo.applicationInfo.engineName[XR_MAX_APPLICATION_NAME_SIZE - 1] = '\0';
+    instanceInfo.applicationInfo.engineName[0] = '\0';
+    instanceInfo.applicationInfo.engineVersion = 0;
 
-    strncpy(instanceInfo.applicationInfo.applicationName, "N/A", XR_MAX_APPLICATION_NAME_SIZE - 1);
+    strncpy(instanceInfo.applicationInfo.applicationName, "Electric Maple", XR_MAX_APPLICATION_NAME_SIZE);
     instanceInfo.applicationInfo.applicationName[XR_MAX_APPLICATION_NAME_SIZE - 1] = '\0';
+    instanceInfo.applicationInfo.applicationVersion = 1;
 
     instanceInfo.applicationInfo.apiVersion = XR_CURRENT_API_VERSION;
     instanceInfo.enabledExtensionCount = sizeof(extensions) / sizeof(extensions[0]);
