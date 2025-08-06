@@ -143,7 +143,12 @@ Renderer::~Renderer() {
 }
 
 void Renderer::setupRender() {
+#ifndef NDEBUG
+    ALOGI("Using GL debug callback");
     registerGlDebugCallback();
+#else
+    ALOGI("Not using GL debug callback");
+#endif
     setupShaders();
     setupQuadVertexData();
 }
