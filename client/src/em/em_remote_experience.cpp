@@ -261,7 +261,7 @@ static void em_remote_experience_report_pose(EmRemoteExperience *exp,
 
     // Send message.
     if (!em_remote_experience_emit_upmessage(exp, &upMessage)) {
-        ALOGE("RYLIE: Could not queue HMD pose message!");
+        ALOGE("Could not queue HMD pose message!");
     }
 }
 

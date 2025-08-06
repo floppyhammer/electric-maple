@@ -221,7 +221,7 @@ static void em_stream_client_finalize(EmStreamClient *self) {
 static void
 em_stream_client_class_init(EmStreamClientClass *klass)
 {
-    ALOGE("RYLIE: %s: Begin", __FUNCTION__);
+    ALOGE("%s: Begin", __FUNCTION__);
 
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 
@@ -241,7 +241,7 @@ em_stream_client_class_init(EmStreamClientClass *klass)
     //     g_param_spec_object("connection", "Connection", "EmConnection object for XR streaming",
     //     EM_TYPE_CONNECTION,
     //                         G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
-    ALOGE("RYLIE: %s: End", __FUNCTION__);
+    ALOGE("%s: End", __FUNCTION__);
 }
 
 #endif
@@ -564,10 +564,10 @@ void em_stream_client_set_egl_context(EmStreamClient *sc,
     sc->egl_mutex = egl_mutex;
 
     if (!em_egl_mutex_begin(sc->egl_mutex, EGL_NO_SURFACE, EGL_NO_SURFACE)) {
-        ALOGV("RYLIE: em_stream_client_set_egl_context: Failed to make egl context current");
+        ALOGV("em_stream_client_set_egl_context: Failed to make egl context current");
         return;
     }
-    ALOGI("RYLIE: wrapping egl context");
+    ALOGI("wrapping egl context");
 
     sc->egl.display = egl_mutex->display;
     sc->egl.android_main_context = egl_mutex->context;
@@ -580,7 +580,7 @@ void em_stream_client_set_egl_context(EmStreamClient *sc,
     sc->android_main_context = g_object_ref_sink(
         gst_gl_context_new_wrapped(sc->gst_gl_display, android_main_egl_context_handle, egl_platform, gl_api));
 
-    ALOGV("RYLIE: eglMakeCurrent un-make-current");
+    ALOGV("eglMakeCurrent un-make-current");
     em_egl_mutex_end(sc->egl_mutex);
 }
 
@@ -689,7 +689,7 @@ struct em_sample *em_stream_client_try_pull_sample(EmStreamClient *sc, struct ti
             sc->frame_texture_target = GL_TEXTURE_EXTERNAL_OES;
         } else if (g_str_equal(texture_target_str, GST_GL_TEXTURE_TARGET_2D_STR)) {
             sc->frame_texture_target = GL_TEXTURE_2D;
-            ALOGE("RYLIE: Got GL_TEXTURE_2D instead of expected GL_TEXTURE_EXTERNAL_OES");
+            ALOGE("Got GL_TEXTURE_2D instead of expected GL_TEXTURE_EXTERNAL_OES");
         } else {
             g_assert_not_reached();
         }
@@ -712,7 +712,7 @@ struct em_sample *em_stream_client_try_pull_sample(EmStreamClient *sc, struct ti
 
 void em_stream_client_release_sample(EmStreamClient *sc, struct em_sample *ems) {
     struct em_sc_sample *impl = (struct em_sc_sample *)ems;
-    //	ALOGI("RYLIE: Releasing sample with texture ID %d", ems->frame_texture_id);
+    //	ALOGI("Releasing sample with texture ID %d", ems->frame_texture_id);
     gst_sample_unref(impl->sample);
     free(impl);
 }

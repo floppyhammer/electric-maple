@@ -88,7 +88,7 @@ static void em_connection_set_property(GObject *object, guint property_id, const
         case PROP_WEBSOCKET_URI:
             g_free(self->websocket_uri);
             self->websocket_uri = g_value_dup_string(value);
-            ALOGI("RYLIE: websocket URI assigned; %s", self->websocket_uri);
+            ALOGI("websocket URI assigned; %s", self->websocket_uri);
             break;
 
         default:
@@ -133,7 +133,7 @@ static void em_connection_finalize(GObject *object) {
 }
 
 static void em_connection_class_init(EmConnectionClass *klass) {
-    ALOGI("RYLIE: %s: Begin", __FUNCTION__);
+    ALOGI("%s: Begin", __FUNCTION__);
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 
     gobject_class->dispose = em_connection_dispose;
@@ -273,7 +273,7 @@ static void em_connection_class_init(EmConnectionClass *klass) {
                                                     NULL,
                                                     G_TYPE_NONE,
                                                     0);
-    ALOGI("RYLIE: %s: End", __FUNCTION__);
+    ALOGI("%s: End", __FUNCTION__);
 }
 
 #define MAKE_CASE(E) \
@@ -354,20 +354,20 @@ static void em_conn_disconnect_internal(EmConnection *em_conn, enum em_status st
 }
 
 static void em_conn_data_channel_error_cb(GstWebRTCDataChannel *datachannel, EmConnection *em_conn) {
-    ALOGE("RYLIE: %s: error", __FUNCTION__);
+    ALOGE("%s: error", __FUNCTION__);
     em_conn_disconnect_internal(em_conn, EM_STATUS_DISCONNECTED_ERROR);
     // abort();
 }
 
 static void em_conn_data_channel_close_cb(GstWebRTCDataChannel *datachannel, EmConnection *em_conn) {
-    ALOGI("RYLIE: %s: Data channel closed", __FUNCTION__);
+    ALOGI("%s: Data channel closed", __FUNCTION__);
     em_conn_disconnect_internal(em_conn, EM_STATUS_DISCONNECTED_REMOTE_CLOSE);
 }
 
 static void em_conn_data_channel_message_string_cb(GstWebRTCDataChannel *datachannel,
                                                    gchar *str,
                                                    EmConnection *em_conn) {
-    ALOGI("RYLIE: %s: Received data channel message: %s", __FUNCTION__, str);
+    ALOGI("%s: Received data channel message: %s", __FUNCTION__, str);
 }
 
 static void em_conn_connect_internal(EmConnection *em_conn, enum em_status status);
@@ -378,7 +378,7 @@ static void em_conn_webrtc_deep_notify_callback(GstObject *self,
                                                 EmConnection *em_conn) {
     GstWebRTCPeerConnectionState state;
     g_object_get(prop_object, "connection-state", &state, NULL);
-    ALOGV("RYLIE: deep-notify callback says peer connection state is %s - but it lies sometimes",
+    ALOGV("deep-notify callback says peer connection state is %s - but it lies sometimes",
           peer_connection_state_to_string(state));
     //	em_conn_update_status_from_peer_connection_state(em_conn, state);
 }
@@ -711,7 +711,7 @@ static void em_conn_connect_internal(EmConnection *em_conn, enum em_status statu
     // Set connection timeout
     soup_session_set_timeout(em_conn->soup_session, 5);
 
-    ALOGI("RYLIE: calling soup_session_websocket_connect_async. websocket_uri = %s", em_conn->websocket_uri);
+    ALOGI("calling soup_session_websocket_connect_async. websocket_uri = %s", em_conn->websocket_uri);
 #if SOUP_MAJOR_VERSION == 2
     soup_session_websocket_connect_async(em_conn->soup_session,                                     // session
                                          soup_message_new(SOUP_METHOD_GET, em_conn->websocket_uri), // message
