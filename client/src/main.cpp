@@ -63,6 +63,8 @@ struct em_state {
     EmConnection *connection;
 
     InputState input;
+
+    bool window_initialized;
 };
 
 em_state _state = {};
@@ -76,18 +78,28 @@ void onAppCmd(struct android_app *app, int32_t cmd) {
             ALOGI("APP_CMD_RESUME");
             break;
         case APP_CMD_PAUSE:
-            ALOGI("APP_CMD_PAUSE");
+            ALOGE("APP_CMD_PAUSE");
+            if (_state.window_initialized) {
+            } else {
+                ALOGI("Ignore APP_CMD_PAUSE before APP_CMD_INIT_WINDOW");
+            }
             break;
         case APP_CMD_STOP:
-            ALOGE("APP_CMD_STOP - shutting down connection");
-            em_connection_disconnect(_state.connection);
-            _state.connected = false;
+            ALOGE("APP_CMD_STOP");
+            if (_state.window_initialized) {
+                ALOGE("APP_CMD_STOP - shutting down connection");
+                em_connection_disconnect(_state.connection);
+                _state.connected = false;
+            } else {
+                ALOGI("Ignore APP_CMD_STOP before APP_CMD_INIT_WINDOW");
+            }
             break;
         case APP_CMD_DESTROY:
             ALOGI("APP_CMD_DESTROY");
             break;
         case APP_CMD_INIT_WINDOW:
-            ALOGI("APP_CMD_INIT_WINDOW: %p", app->window);
+            ALOGE("APP_CMD_INIT_WINDOW");
+            _state.window_initialized = true;
             break;
         case APP_CMD_TERM_WINDOW:
             ALOGI("APP_CMD_TERM_WINDOW - shutting down connection");
