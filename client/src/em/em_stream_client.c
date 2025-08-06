@@ -182,6 +182,10 @@ em_stream_client_get_property(GObject *object, guint property_id, GValue *value,
 static void em_stream_client_init(EmStreamClient *sc) {
     ALOGI("%s: creating stuff", __FUNCTION__);
 
+    guint major, minor, micro, nano;
+    gst_version(&major, &minor, &micro, &nano);
+    ALOGI("GStreamer version %d %d %d %d", major, minor, micro, nano);
+
     memset(sc, 0, sizeof(EmStreamClient));
     sc->loop = g_main_loop_new(NULL, FALSE);
     g_assert(os_thread_helper_init(&sc->play_thread) >= 0);
