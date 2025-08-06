@@ -147,8 +147,7 @@ static void connect_webrtc_to_tee(GstElement *webrtcbin) {
     // GstCaps *caps = gst_caps_from_string("application/x-rtp,encoding-name=VP8,media=video,payload=96");
     GstCaps *caps = gst_caps_from_string(
         "application/x-rtp, "
-        "payload=96,encoding-name=H264,clock-rate=90000,media=video,packetization-mode=(string)1,profile-level-id=("
-        "string)42e01f");
+        "payload=96,encoding-name=H264,clock-rate=90000,media=video,packetization-mode=(string)1");
 
     GstPad *sink_pad = gst_element_request_pad(webrtcbin, pad_template, "sink_0", caps);
 
