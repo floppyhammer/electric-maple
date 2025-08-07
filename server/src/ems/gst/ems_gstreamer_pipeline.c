@@ -370,6 +370,27 @@ static gboolean check_pipeline_dot_data(struct ems_gstreamer_pipeline *egp) {
     return G_SOURCE_CONTINUE;
 }
 
+static bool ems_gstreamer_pipeline_add_payload_pad_probe(struct ems_gstreamer_pipeline *self, GstElement *webrtcbin) {
+    GstPipeline *pipeline = GST_PIPELINE(self->base.pipeline);
+
+    GstElement *rtppay = gst_bin_get_by_name(GST_BIN(pipeline), "rtppay");
+    if (rtppay == NULL) {
+        U_LOG_E("Could not find rtppay element.");
+        return false;
+    }
+
+    GstPad *pad = gst_element_get_static_pad(rtppay, "src");
+    if (pad == NULL) {
+        U_LOG_E("Could not find static src pad in rtppay.");
+        return false;
+    }
+
+    gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, webrtcbin_srcpad_probe, self, NULL);
+    gst_object_unref(pad);
+
+    return true;
+}
+
 /// When a WebSocket connection is established, we start creating a WebRTC connection.
 static void webrtc_client_connected_cb(EmsSignalingServer *server,
                                        const EmsClientId client_id,
@@ -413,22 +434,6 @@ static void webrtc_client_connected_cb(EmsSignalingServer *server,
         g_signal_connect(egp->data_channel, "on-message-string", G_CALLBACK(data_channel_message_string_cb), egp);
     }
 
-    // Get the srcpad associated with our webrtcbin element
-    GstPad *webrtcbin_srcpad = gst_element_get_static_pad(webrtcbin, "src");
-
-    if (webrtcbin_srcpad != NULL) {
-        // Add a probe to call our callback when buffers get to the src pad
-        gst_pad_add_probe(webrtcbin_srcpad,
-                          GST_PAD_PROBE_TYPE_BUFFER | GST_PAD_PROBE_TYPE_BUFFER_LIST,
-                          webrtcbin_srcpad_probe,
-                          egp,
-                          NULL /*destroy_data*/);
-
-        gst_object_unref(webrtcbin_srcpad);
-    } else {
-        U_LOG_E("Could not retrieve webrtcbin srcpad!");
-    }
-
     g_signal_connect(webrtcbin, "on-ice-candidate", G_CALLBACK(webrtc_on_ice_candidate_cb), NULL);
 
     connect_webrtc_to_tee(webrtcbin);
@@ -437,6 +442,10 @@ static void webrtc_client_connected_cb(EmsSignalingServer *server,
     g_signal_emit_by_name(webrtcbin, "create-offer", NULL, promise);
 
     GST_DEBUG_BIN_TO_DOT_FILE(pipeline, GST_DEBUG_GRAPH_SHOW_ALL, "rtcbin");
+
+    if (!ems_gstreamer_pipeline_add_payload_pad_probe(egp, webrtcbin)) {
+        U_LOG_E("Failed to add payload pad probe.");
+    }
 
     ret = gst_element_set_state(webrtcbin, GST_STATE_PLAYING);
     g_assert(ret != GST_STATE_CHANGE_FAILURE);
@@ -733,7 +742,7 @@ void ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
         "video/x-raw,format=NV12,framerate=60/1 ! "
         "encodebin2 "
         "profile=\"video/x-h264|element-properties,tune=4,speed-preset=1,bframes=0,bitrate=%s,key-int-max=120\" ! "
-        "rtph264pay config-interval=-1 aggregate-mode=zero-latency ! "
+        "rtph264pay name=rtppay config-interval=-1 aggregate-mode=zero-latency ! "
         "application/x-rtp,payload=96,ssrc=(uint)3484078952 ! "
 #ifdef USE_WEBRTC
         "tee name=%s allow-not-linked=true",
