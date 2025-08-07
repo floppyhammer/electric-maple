@@ -320,11 +320,6 @@ GstPadProbeReturn webrtcbin_srcpad_probe(GstPad *pad, GstPadProbeInfo *info, gpo
 
     const struct ems_gstreamer_pipeline *egp = (struct ems_gstreamer_pipeline *)user_data;
 
-    if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_BUFFER_LIST) {
-        U_LOG_E("Received BufferList in webrtcbin srcpad! No support for BufferList!");
-        return GST_PAD_PROBE_REMOVE;
-    }
-
     GstBuffer *buffer = gst_pad_probe_info_get_buffer(info);
 
     buffer = gst_buffer_make_writable(buffer);
