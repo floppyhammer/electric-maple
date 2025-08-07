@@ -312,7 +312,7 @@ static void data_channel_message_string_cb(GstWebRTCDataChannel *data_channel,
     U_LOG_I("Received data channel message: %s\n", str);
 }
 
-GstPadProbeReturn webrtcbin_srcpad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data) {
+GstPadProbeReturn rtppay_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data) {
     (void)pad;
 
     GstRTPBuffer rtp_buffer = GST_RTP_BUFFER_INIT;
@@ -392,7 +392,7 @@ static bool ems_gstreamer_pipeline_add_payload_pad_probe(struct ems_gstreamer_pi
         return false;
     }
 
-    gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, webrtcbin_srcpad_probe, self, NULL);
+    gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, rtppay_probe, self, NULL);
     gst_object_unref(pad);
 
     return true;
