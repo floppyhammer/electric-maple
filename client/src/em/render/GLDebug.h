@@ -15,7 +15,8 @@
 extern "C" {
 #endif
 
-void registerGlDebugCallback();
+void
+registerGlDebugCallback();
 
 #ifdef __cplusplus
 } // extern "C"

@@ -28,58 +28,64 @@ extern "C" {
 #endif
 
 namespace Side {
-const int LEFT = 0;
-const int RIGHT = 1;
-const int COUNT = 2;
+	const int LEFT = 0;
+	const int RIGHT = 1;
+	const int COUNT = 2;
 } // namespace Side
 
-struct InputState {
-    XrActionSet actionSet{XR_NULL_HANDLE};
-    XrAction grabAction{XR_NULL_HANDLE};
-    XrAction aimPoseAction{XR_NULL_HANDLE};
-    XrAction vibrateAction{XR_NULL_HANDLE};
-    XrAction quitAction{XR_NULL_HANDLE};
-    std::array<XrPath, Side::COUNT> handSubactionPath;
-    std::array<XrSpace, Side::COUNT> handAimSpace;
-    std::array<float, Side::COUNT> handGrab = {{1.0f, 1.0f}};
-    std::array<XrBool32, Side::COUNT> handActive;
-    PFN_xrLocateHandJointsEXT pfnXrLocateHandJointsEXT = nullptr;
-    XrHandTrackerEXT xrHandTrackerEXTLeft;
-    XrHandTrackerEXT xrHandTrackerEXTRight;
+struct InputState
+{
+	XrActionSet actionSet{XR_NULL_HANDLE};
+	XrAction grabAction{XR_NULL_HANDLE};
+	XrAction aimPoseAction{XR_NULL_HANDLE};
+	XrAction vibrateAction{XR_NULL_HANDLE};
+	XrAction quitAction{XR_NULL_HANDLE};
+	std::array<XrPath, Side::COUNT> handSubactionPath;
+	std::array<XrSpace, Side::COUNT> handAimSpace;
+	std::array<float, Side::COUNT> handGrab = {{1.0f, 1.0f}};
+	std::array<XrBool32, Side::COUNT> handActive;
+	PFN_xrLocateHandJointsEXT pfnXrLocateHandJointsEXT = nullptr;
+	XrHandTrackerEXT xrHandTrackerEXTLeft;
+	XrHandTrackerEXT xrHandTrackerEXTRight;
 };
 
-typedef enum EmPollRenderResult {
-    EM_POLL_RENDER_RESULT_ERROR_EGL = -2,
-    EM_POLL_RENDER_RESULT_ERROR_WAITFRAME = -1,
-    EM_POLL_RENDER_RESULT_NO_SAMPLE_AVAILABLE = 0,
-    EM_POLL_RENDER_RESULT_SHOULD_NOT_RENDER,
-    EM_POLL_RENDER_RESULT_REUSED_SAMPLE,
-    EM_POLL_RENDER_RESULT_NEW_SAMPLE,
-    EM_POLL_RENDER_RESULT_ERROR_ENDFRAME,
+typedef enum EmPollRenderResult
+{
+	EM_POLL_RENDER_RESULT_ERROR_EGL = -2,
+	EM_POLL_RENDER_RESULT_ERROR_WAITFRAME = -1,
+	EM_POLL_RENDER_RESULT_NO_SAMPLE_AVAILABLE = 0,
+	EM_POLL_RENDER_RESULT_SHOULD_NOT_RENDER,
+	EM_POLL_RENDER_RESULT_REUSED_SAMPLE,
+	EM_POLL_RENDER_RESULT_NEW_SAMPLE,
+	EM_POLL_RENDER_RESULT_ERROR_ENDFRAME,
 } EmPollRenderResult;
 
-static inline bool em_poll_render_result_include_layer(EmPollRenderResult res) {
-    return res >= EM_POLL_RENDER_RESULT_REUSED_SAMPLE;
+static inline bool
+em_poll_render_result_include_layer(EmPollRenderResult res)
+{
+	return res >= EM_POLL_RENDER_RESULT_REUSED_SAMPLE;
 }
 
-static inline bool em_poll_render_result_is_error(EmPollRenderResult res) {
-    return res < 0;
+static inline bool
+em_poll_render_result_is_error(EmPollRenderResult res)
+{
+	return res < 0;
 }
 
-static inline const char *em_poll_render_result_to_string(EmPollRenderResult res) {
-#define MAKE_CASE(X) \
-    case X:          \
-        return #X
-    switch (res) {
-        MAKE_CASE(EM_POLL_RENDER_RESULT_ERROR_EGL);
-        MAKE_CASE(EM_POLL_RENDER_RESULT_ERROR_WAITFRAME);
-        MAKE_CASE(EM_POLL_RENDER_RESULT_NO_SAMPLE_AVAILABLE);
-        MAKE_CASE(EM_POLL_RENDER_RESULT_SHOULD_NOT_RENDER);
-        MAKE_CASE(EM_POLL_RENDER_RESULT_REUSED_SAMPLE);
-        MAKE_CASE(EM_POLL_RENDER_RESULT_NEW_SAMPLE);
-        default:
-            return "EM_POLL_RENDER_RESULT_unknown";
-    }
+static inline const char *
+em_poll_render_result_to_string(EmPollRenderResult res)
+{
+#define MAKE_CASE(X)                                                                                                   \
+	case X: return #X
+	switch (res) {
+		MAKE_CASE(EM_POLL_RENDER_RESULT_ERROR_EGL);
+		MAKE_CASE(EM_POLL_RENDER_RESULT_ERROR_WAITFRAME);
+		MAKE_CASE(EM_POLL_RENDER_RESULT_NO_SAMPLE_AVAILABLE);
+		MAKE_CASE(EM_POLL_RENDER_RESULT_SHOULD_NOT_RENDER);
+		MAKE_CASE(EM_POLL_RENDER_RESULT_REUSED_SAMPLE);
+		MAKE_CASE(EM_POLL_RENDER_RESULT_NEW_SAMPLE);
+	default: return "EM_POLL_RENDER_RESULT_unknown";
+	}
 }
 
 /**
@@ -96,18 +102,20 @@ static inline const char *em_poll_render_result_to_string(EmPollRenderResult res
  *
  * @return EmRemoteExperience* or NULL in case of error
  */
-EmRemoteExperience *em_remote_experience_new(EmConnection *connection,
-                                             EmStreamClient *stream_client,
-                                             XrInstance instance,
-                                             XrSession session,
-                                             const XrExtent2Di *eye_extents);
+EmRemoteExperience *
+em_remote_experience_new(EmConnection *connection,
+                         EmStreamClient *stream_client,
+                         XrInstance instance,
+                         XrSession session,
+                         const XrExtent2Di *eye_extents);
 
 /*!
  * Clear a pointer and free the associate remote experience object, if any.
  *
  * Handles null checking for you.
  */
-void em_remote_experience_destroy(EmRemoteExperience **ptr_exp);
+void
+em_remote_experience_destroy(EmRemoteExperience **ptr_exp);
 
 /*!
  * Check for a delivered frame, rendering it if available.
@@ -115,7 +123,8 @@ void em_remote_experience_destroy(EmRemoteExperience **ptr_exp);
  * Calls xrWaitFrame and xrBeginFrame, as well as xrEndFrame. See @ref em_remote_experience_inner_poll_and_render_frame
  * if you are doing this yourself in your app.
  */
-EmPollRenderResult em_remote_experience_poll_and_render_frame(EmRemoteExperience *exp, InputState &inputState);
+EmPollRenderResult
+em_remote_experience_poll_and_render_frame(EmRemoteExperience *exp, InputState &inputState);
 
 /*!
  * Check for a delivered frame, rendering it if available.
@@ -129,12 +138,13 @@ EmPollRenderResult em_remote_experience_poll_and_render_frame(EmRemoteExperience
  * @param projectionLayer a projection layer containing two views, partially populated. Will be populated further.
  * @param projectionViews an array of 2 projection view structures, initialized. Will be populated.
  */
-EmPollRenderResult em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
-                                                                    const struct timespec *beginFrameTime,
-                                                                    XrTime predictedDisplayTime,
-                                                                    XrView *views,
-                                                                    XrCompositionLayerProjection *projectionLayer,
-                                                                    XrCompositionLayerProjectionView *projectionViews);
+EmPollRenderResult
+em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
+                                                 const struct timespec *beginFrameTime,
+                                                 XrTime predictedDisplayTime,
+                                                 XrView *views,
+                                                 XrCompositionLayerProjection *projectionLayer,
+                                                 XrCompositionLayerProjectionView *projectionViews);
 
 /*!
  * Set message ID, then serialize and send the upstream message given.
@@ -146,7 +156,8 @@ EmPollRenderResult em_remote_experience_inner_poll_and_render_frame(EmRemoteExpe
  *
  * @return true on success
  */
-bool em_remote_experience_emit_upmessage(EmRemoteExperience *exp, em_proto_UpMessage *upMessage);
+bool
+em_remote_experience_emit_upmessage(EmRemoteExperience *exp, em_proto_UpMessage *upMessage);
 
 #ifdef __cplusplus
 } // extern "C"

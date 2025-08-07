@@ -25,16 +25,20 @@ struct ems_callbacks;
 
 typedef struct _em_proto_DownMessage em_proto_DownMessage;
 
-GBytes *ems_gstreamer_pipeline_encode_down_msg(em_proto_DownMessage *msg);
+GBytes *
+ems_gstreamer_pipeline_encode_down_msg(em_proto_DownMessage *msg);
 
-void ems_gstreamer_pipeline_play(struct gstreamer_pipeline *gp);
+void
+ems_gstreamer_pipeline_play(struct gstreamer_pipeline *gp);
 
-void ems_gstreamer_pipeline_stop(struct gstreamer_pipeline *gp);
+void
+ems_gstreamer_pipeline_stop(struct gstreamer_pipeline *gp);
 
-void ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
-                                   const char *appsrc_name,
-                                   struct ems_callbacks *callbacks_collection,
-                                   struct gstreamer_pipeline **out_gp);
+void
+ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
+                              const char *appsrc_name,
+                              struct ems_callbacks *callbacks_collection,
+                              struct gstreamer_pipeline **out_gp);
 
 #ifdef __cplusplus
 }

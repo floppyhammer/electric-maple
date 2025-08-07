@@ -23,13 +23,14 @@
 #include <string.h>
 #include <sys/socket.h>
 
-struct em_sample {
-    GLuint frame_texture_id;
-    GLenum frame_texture_target;
+struct em_sample
+{
+	GLuint frame_texture_id;
+	GLenum frame_texture_target;
 
-    bool have_poses;
-    XrPosef poses[1];
+	bool have_poses;
+	XrPosef poses[1];
 
-    int64_t frame_sequence_id;
-    int64_t display_time;
+	int64_t frame_sequence_id;
+	int64_t display_time;
 };

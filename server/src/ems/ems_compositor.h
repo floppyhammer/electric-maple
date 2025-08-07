@@ -51,12 +51,13 @@ extern "C" {
  *
  * @ingroup comp_ems
  */
-enum ems_comp_state {
-    EMS_COMP_COMP_STATE_UNINITIALIZED = 0,
-    EMS_COMP_COMP_STATE_READY = 1,
-    EMS_COMP_COMP_STATE_PREPARED = 2,
-    EMS_COMP_COMP_STATE_VISIBLE = 3,
-    EMS_COMP_COMP_STATE_FOCUSED = 4,
+enum ems_comp_state
+{
+	EMS_COMP_COMP_STATE_UNINITIALIZED = 0,
+	EMS_COMP_COMP_STATE_READY = 1,
+	EMS_COMP_COMP_STATE_PREPARED = 2,
+	EMS_COMP_COMP_STATE_VISIBLE = 3,
+	EMS_COMP_COMP_STATE_FOCUSED = 4,
 };
 
 /*!
@@ -64,11 +65,12 @@ enum ems_comp_state {
  *
  * @ingroup comp_ems
  */
-struct ems_comp_frame {
-    int64_t id;
-    uint64_t predicted_display_time_ns;
-    uint64_t desired_present_time_ns;
-    uint64_t present_slop_ns;
+struct ems_comp_frame
+{
+	int64_t id;
+	uint64_t predicted_display_time_ns;
+	uint64_t desired_present_time_ns;
+	uint64_t present_slop_ns;
 };
 
 /*!
@@ -77,59 +79,63 @@ struct ems_comp_frame {
  * @implements xrt_compositor_native comp_base.
  * @ingroup comp_ems
  */
-struct ems_compositor {
-    struct comp_base base;
+struct ems_compositor
+{
+	struct comp_base base;
 
-    // This thing should outlive us
-    struct ems_instance *instance;
+	// This thing should outlive us
+	struct ems_instance *instance;
 
-    //! The device we are displaying to.
-    struct xrt_device *xdev;
+	//! The device we are displaying to.
+	struct xrt_device *xdev;
 
-    //! Pacing helper to drive us forward.
-    struct u_pacing_compositor *upc;
+	//! Pacing helper to drive us forward.
+	struct u_pacing_compositor *upc;
 
-    struct {
-        enum u_logging_level log_level;
+	struct
+	{
+		enum u_logging_level log_level;
 
-        //! Frame interval that we are using.
-        uint64_t frame_interval_ns;
-    } settings;
+		//! Frame interval that we are using.
+		uint64_t frame_interval_ns;
+	} settings;
 
-    // Kept here for convenience.
-    struct xrt_system_compositor_info sys_info;
+	// Kept here for convenience.
+	struct xrt_system_compositor_info sys_info;
 
-    //! State for generating the correct set of events.
-    enum ems_comp_state state;
+	//! State for generating the correct set of events.
+	enum ems_comp_state state;
 
-    //! @todo Insert your own required members here
+	//! @todo Insert your own required members here
 
-    struct {
-        struct ems_comp_frame waited;
-        struct ems_comp_frame rendering;
-    } frame;
+	struct
+	{
+		struct ems_comp_frame waited;
+		struct ems_comp_frame rendering;
+	} frame;
 
-    struct xrt_frame_context xfctx = {};
+	struct xrt_frame_context xfctx = {};
 
-    struct vk_cmd_pool cmd_pool = {};
+	struct vk_cmd_pool cmd_pool = {};
 
-    struct vk_image_readback_to_xf_pool *pool = nullptr;
-    int image_sequence;
-    struct u_sink_debug debug_sink;
+	struct vk_image_readback_to_xf_pool *pool = nullptr;
+	int image_sequence;
+	struct u_sink_debug debug_sink;
 
-    struct {
-        VkDeviceMemory device_memory;
-        VkImage image;
-    } bounce;
+	struct
+	{
+		VkDeviceMemory device_memory;
+		VkImage image;
+	} bounce;
 
-    bool pipeline_playing = false;
-    struct gstreamer_pipeline *gstreamer_pipeline;
+	bool pipeline_playing = false;
+	struct gstreamer_pipeline *gstreamer_pipeline;
 
-    struct ems_gstreamer_src *gstreamer_src;
-    // This is the base of gstreamer_sink, so they're basically the same pointer
-    struct xrt_frame_sink *frame_sink;
+	struct ems_gstreamer_src *gstreamer_src;
+	// This is the base of gstreamer_sink, so they're basically the same pointer
+	struct xrt_frame_sink *frame_sink;
 
-    uint64_t offset_ns;
+	uint64_t offset_ns;
 };
 
 /*
@@ -145,8 +151,10 @@ struct ems_compositor {
  * @private @memberof ems_compositor
  * @ingroup comp_ems
  */
-static inline struct ems_compositor *ems_compositor(struct xrt_compositor *xc) {
-    return (struct ems_compositor *)xc;
+static inline struct ems_compositor *
+ems_compositor(struct xrt_compositor *xc)
+{
+	return (struct ems_compositor *)xc;
 }
 
 /*!

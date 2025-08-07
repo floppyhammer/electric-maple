@@ -18,31 +18,33 @@
 #include "xrt/xrt_config_os.h"
 
 #ifdef XRT_OS_WINDOWS
-    #include "util/u_windows.h"
+#include "util/u_windows.h"
 #endif
 
 // Insert on load constructor to init trace marker.
 U_TRACE_TARGET_SETUP(U_TRACE_WHICH_SERVICE)
 
-int main(int argc, char *argv[]) {
+int
+main(int argc, char *argv[])
+{
 #ifdef XRT_OS_WINDOWS
-    u_win_try_privilege_or_priority_from_args(U_LOGGING_INFO, argc, argv);
+	u_win_try_privilege_or_priority_from_args(U_LOGGING_INFO, argc, argv);
 #endif
 
-    u_trace_marker_init();
-    u_metrics_init();
+	u_trace_marker_init();
+	u_metrics_init();
 
-    struct ipc_server_main_info ismi = {
-        .udgci =
-            {
-                .window_title = "EMS",
-                .open = U_DEBUG_GUI_OPEN_AUTO,
-            },
-    };
+	struct ipc_server_main_info ismi = {
+	    .udgci =
+	        {
+	            .window_title = "EMS",
+	            .open = U_DEBUG_GUI_OPEN_AUTO,
+	        },
+	};
 
-    int ret = ipc_server_main(argc, argv, &ismi);
+	int ret = ipc_server_main(argc, argv, &ismi);
 
-    u_metrics_close();
+	u_metrics_close();
 
-    return ret;
+	return ret;
 }

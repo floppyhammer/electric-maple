@@ -35,14 +35,16 @@ typedef struct _EmStreamClient EmStreamClient;
  *
  * @memberof EmStreamClient
  */
-EmStreamClient *em_stream_client_new();
+EmStreamClient *
+em_stream_client_new();
 
 /*!
  * Clear a pointer and free the associate stream client, if any.
  *
  * Handles null checking for you.
  */
-void em_stream_client_destroy(EmStreamClient **ptr_sc);
+void
+em_stream_client_destroy(EmStreamClient **ptr_sc);
 
 /*!
  * Initialize the EGL context and surface.
@@ -57,10 +59,11 @@ void em_stream_client_destroy(EmStreamClient **ptr_sc);
  * @param pbuffer_surface An EGL pbuffer surface created for the @p context
  * TODO not sure what the surface is actually used for...
  */
-void em_stream_client_set_egl_context(EmStreamClient *sc,
-                                      EmEglMutexIface *egl_mutex,
-                                      bool adopt_mutex_interface,
-                                      EGLSurface pbuffer_surface);
+void
+em_stream_client_set_egl_context(EmStreamClient *sc,
+                                 EmEglMutexIface *egl_mutex,
+                                 bool adopt_mutex_interface,
+                                 EGLSurface pbuffer_surface);
 
 /*!
  * Lock the mutex for the "main" EGL context supplied via @ref em_stream_client_set_egl_context and set it as current,
@@ -69,7 +72,8 @@ void em_stream_client_set_egl_context(EmStreamClient *sc,
  * @return true if successful - you will need to call @ref em_stream_client_egl_end when done using EGL/GL/GLES to
  * restore previous context/surfaces and unlock.
  */
-bool em_stream_client_egl_begin(EmStreamClient *sc, EGLSurface draw, EGLSurface read);
+bool
+em_stream_client_egl_begin(EmStreamClient *sc, EGLSurface draw, EGLSurface read);
 
 /*!
  * Lock the mutex for the "main" EGL context supplied via @ref em_stream_client_set_egl_context and set it as current,
@@ -80,25 +84,29 @@ bool em_stream_client_egl_begin(EmStreamClient *sc, EGLSurface draw, EGLSurface 
  * @return true if successful - you will need to call @ref em_stream_client_egl_end when done using EGL/GL/GLES to
  * restore previous context/surfaces and unlock.
  */
-bool em_stream_client_egl_begin_pbuffer(EmStreamClient *sc);
+bool
+em_stream_client_egl_begin_pbuffer(EmStreamClient *sc);
 
 /*!
  * Restore previous EGL context and surfaces, and unlock the mutex for the "main" EGL context supplied via @ref
  * em_stream_client_set_egl_context
  */
-void em_stream_client_egl_end(EmStreamClient *sc);
+void
+em_stream_client_egl_end(EmStreamClient *sc);
 
 /*!
  * Start the GMainLoop embedded in this object in a new thread
  *
  * @param connection The connection to use
  */
-void em_stream_client_spawn_thread(EmStreamClient *sc, EmConnection *connection);
+void
+em_stream_client_spawn_thread(EmStreamClient *sc, EmConnection *connection);
 
 /*!
  * Stop the pipeline and the mainloop thread.
  */
-void em_stream_client_stop(EmStreamClient *sc);
+void
+em_stream_client_stop(EmStreamClient *sc);
 
 /*!
  * Attempt to retrieve a sample, if one has been decoded.
@@ -108,12 +116,14 @@ void em_stream_client_stop(EmStreamClient *sc);
 * @param sc self
 * @param[out] out_decode_end struct to populate with decode-end time.
  */
-struct em_sample *em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode_end);
+struct em_sample *
+em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode_end);
 
 /*!
  * Release a sample returned from @ref em_stream_client_try_pull_sample
  */
-void em_stream_client_release_sample(EmStreamClient *sc, struct em_sample *ems);
+void
+em_stream_client_release_sample(EmStreamClient *sc, struct em_sample *ems);
 
 #ifdef __cplusplus
 } // extern "C"
