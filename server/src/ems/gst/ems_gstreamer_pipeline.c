@@ -326,7 +326,8 @@ GstPadProbeReturn webrtcbin_srcpad_probe(GstPad *pad, GstPadProbeInfo *info, gpo
 
     if (!gst_rtp_buffer_map(buffer, GST_MAP_WRITE, &rtp_buffer)) {
         U_LOG_E("Failed to map GstBuffer");
-        return GST_PAD_PROBE_REMOVE;
+        // Be more fault-tolerant!
+        return GST_PAD_PROBE_OK;
     }
 
     // Add extension data only on last Access Unit, indicated by the marker bit.
