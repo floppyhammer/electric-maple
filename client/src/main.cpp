@@ -614,6 +614,9 @@ void android_main(struct android_app *app) {
     ALOGI("%s: starting connection", __FUNCTION__);
     em_connection_connect(_state.connection);
 
+    ALOGI("%s: starting stream client mainloop thread", __FUNCTION__);
+    em_stream_client_spawn_thread(stream_client, _state.connection);
+
     XrExtent2Di eye_extents{static_cast<int32_t>(_state.width), static_cast<int32_t>(_state.height)};
     EmRemoteExperience *remote_experience =
         em_remote_experience_new(_state.connection, stream_client, _state.instance, _state.session, &eye_extents);
@@ -621,9 +624,6 @@ void android_main(struct android_app *app) {
         ALOGE("%s: Failed during remote experience init.", __FUNCTION__);
         return;
     }
-
-    ALOGI("%s: starting stream client mainloop thread", __FUNCTION__);
-    em_stream_client_spawn_thread(stream_client, _state.connection);
 
     //
     // End of remote-rendering-specific setup, into main loop
