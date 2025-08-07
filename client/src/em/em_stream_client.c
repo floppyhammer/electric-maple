@@ -89,9 +89,6 @@ struct _EmStreamClient {
     GMutex sample_mutex;
     GstSample *sample;
     struct timespec sample_decode_end_ts;
-
-    em_proto_DownMessage last_down_msg;
-    GMutex down_msg_mutex;
 };
 
 #if 0
@@ -196,8 +193,12 @@ static void em_stream_client_init(EmStreamClient *sc) {
     sc->loop = g_main_loop_new(NULL, FALSE);
     g_assert(os_thread_helper_init(&sc->play_thread) >= 0);
     g_mutex_init(&sc->sample_mutex);
-    g_mutex_init(&sc->down_msg_mutex);
-    sc->last_down_msg = (em_proto_DownMessage)em_proto_DownMessage_init_default;
+
+    const gchar *tags[] = {NULL};
+    const GstMetaInfo *info = gst_meta_register_custom("down-message", tags, NULL, NULL, NULL);
+    if (info == NULL) {
+        ALOGE("Failed to register custom meta 'down-message'.");
+    }
 
     ALOGI("%s: done creating stuff", __FUNCTION__);
 }
@@ -259,7 +260,7 @@ em_stream_client_class_init(EmStreamClientClass *klass)
 static inline bool em_stream_client_extract_frame_data(GstBuffer *buffer, em_proto_DownMessage *msg) {
     GstRTPBuffer rtp_buffer = GST_RTP_BUFFER_INIT;
 
-    if (!gst_rtp_buffer_map(buffer, GST_MAP_READ, &rtp_buffer)) {
+    if (!gst_rtp_buffer_map(buffer, GST_MAP_READWRITE, &rtp_buffer)) {
         ALOGE("Failed to map GstBuffer");
         return false;
     }
@@ -284,16 +285,27 @@ static inline bool em_stream_client_extract_frame_data(GstBuffer *buffer, em_pro
         goto no_buf;
     }
 
-    pb_istream_t our_istream = pb_istream_from_buffer(payload_ptr, size);
-
-    bool result = pb_decode_ex(&our_istream, em_proto_DownMessage_fields, msg, PB_DECODE_NULLTERMINATED);
-
-    if (!result) {
-        ALOGE("Decoding protobuf with size %d failed: %s", size, PB_GET_ERROR(&our_istream));
+    // Repack the protobuf into a GstBuffer
+    GstBuffer *struct_buf = gst_buffer_new_memdup(payload_ptr, size);
+    if (!struct_buf) {
+        ALOGE("Failed to allocate GstBuffer with payload.");
         goto no_buf;
     }
 
     gst_rtp_buffer_unmap(&rtp_buffer);
+
+    // Add it to a custom meta
+    GstCustomMeta *custom_meta = gst_buffer_add_custom_meta(buffer, "down-message");
+    if (custom_meta == NULL) {
+        ALOGE("Failed to add GstCustomMeta");
+        gst_buffer_unref(struct_buf);
+        return false;
+    }
+    GstStructure *custom_structure = gst_custom_meta_get_structure(custom_meta);
+    gst_structure_set(custom_structure, "protobuf", GST_TYPE_BUFFER, struct_buf, NULL);
+
+    gst_buffer_unref(struct_buf);
+
     return true;
 
 no_buf:
@@ -437,11 +449,7 @@ static GstPadProbeReturn rtp_h264_depay_sink_pad_probe(GstPad *pad, GstPadProbeI
         // TODO: This happens for most RTP buffers we receive as they don't contain an
         // extension bit / are not ours. Is there a smarter way to filter them?
         // ALOGW("Could not extract frame data from RTP buffer.");
-    } else {
-        g_autoptr(GMutexLocker) locker = g_mutex_locker_new(&sc->down_msg_mutex);
-        sc->last_down_msg = msg;
     }
-
     return GST_PAD_PROBE_OK;
 }
 
@@ -720,6 +728,40 @@ void em_stream_client_stop(EmStreamClient *sc) {
     sc->pipeline_is_running = false;
 }
 
+static bool read_down_message_from_custom_meta(GstBuffer *buffer, em_proto_DownMessage *msg) {
+    GstCustomMeta *custom_meta = gst_buffer_get_custom_meta(buffer, "down-message");
+    if (!custom_meta) {
+        ALOGE("Failed to get custom meta from GstBuffer!");
+        return false;
+    }
+
+    GstStructure *custom_structure = gst_custom_meta_get_structure(custom_meta);
+
+    GstBuffer *struct_buf;
+    if (!gst_structure_get(custom_structure, "protobuf", GST_TYPE_BUFFER, &struct_buf, NULL)) {
+        ALOGE("Could not read protobuf from struct");
+        return false;
+    }
+
+    GstMapInfo info;
+    if (!gst_buffer_map(struct_buf, &info, GST_MAP_READ)) {
+        ALOGE("Failed to map custom meta buffer.");
+        return false;
+    }
+
+    pb_istream_t our_istream = pb_istream_from_buffer(info.data, info.size);
+    bool result = pb_decode_ex(&our_istream, em_proto_DownMessage_fields, msg, PB_DECODE_NULLTERMINATED);
+
+    gst_buffer_unmap(struct_buf, &info);
+
+    if (!result) {
+        ALOGE("Decoding protobuf with size %ld failed: %s", info.size, PB_GET_ERROR(&our_istream));
+        return false;
+    }
+
+    return true;
+}
+
 struct em_sample *em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode_end) {
     if (!sc->appsink) {
         // not setup yet.
@@ -751,11 +793,10 @@ struct em_sample *em_stream_client_try_pull_sample(EmStreamClient *sc, struct ti
     GstBuffer *buffer = gst_sample_get_buffer(sample);
     GstCaps *caps = gst_sample_get_caps(sample);
 
-    // TODO: Make sure this is from the same buffer as sc->sample
-    em_proto_DownMessage msg;
-    {
-        g_autoptr(GMutexLocker) locker = g_mutex_locker_new(&sc->down_msg_mutex);
-        msg = sc->last_down_msg;
+    // Get DownMsg from GstCustomMeta
+    em_proto_DownMessage msg = em_proto_DownMessage_init_default;
+    if (!read_down_message_from_custom_meta(buffer, &msg)) {
+        ALOGE("Reading DownMessage from GstCustomMeta failed.");
     }
 
     if (msg.has_frame_data && msg.frame_data.has_P_localSpace_viewSpace) {
