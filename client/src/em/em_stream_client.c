@@ -272,19 +272,19 @@ static inline bool em_stream_client_extract_frame_data(GstBuffer *buffer, em_pro
         goto no_buf;
     }
 
-    uint8_t buf[em_proto_DownMessage_size] = {};
     guint size = 0;
+    gpointer payload_ptr;
     if (!gst_rtp_buffer_get_extension_twobytes_header(&rtp_buffer,
                                                       NULL,
                                                       RTP_TWOBYTES_HDR_EXT_ID,
                                                       0 /* NOTE: We do not support multi-extension-elements.*/,
-                                                      &buf,
+                                                      &payload_ptr,
                                                       &size)) {
-        ALOGE("Could not retrieve two-byte rtp extension on buffer!");
+        ALOGE("Could not retrieve twobyte rtp extension on buffer!");
         goto no_buf;
     }
 
-    pb_istream_t our_istream = pb_istream_from_buffer(buf, size);
+    pb_istream_t our_istream = pb_istream_from_buffer(payload_ptr, size);
 
     bool result = pb_decode_ex(&our_istream, em_proto_DownMessage_fields, msg, PB_DECODE_NULLTERMINATED);
 
