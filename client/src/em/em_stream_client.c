@@ -256,63 +256,6 @@ em_stream_client_class_init(EmStreamClientClass *klass)
 
 #endif
 
-/// Extract frame metadata from header extensions.
-static inline bool em_stream_client_extract_frame_data(GstBuffer *buffer, em_proto_DownMessage *msg) {
-    GstRTPBuffer rtp_buffer = GST_RTP_BUFFER_INIT;
-
-    if (!gst_rtp_buffer_map(buffer, GST_MAP_READWRITE, &rtp_buffer)) {
-        ALOGE("Failed to map GstBuffer");
-        return false;
-    }
-
-    // Not all buffers has extension data attached, check.
-    if (!gst_rtp_buffer_get_extension(&rtp_buffer)) {
-        // TODO: This happens for most RTP buffers we receive as they are not ours.
-        // Is there a smarter way to filter them?
-        // ALOGW("Skipping RTP buffer without extension bit.");
-        goto no_buf;
-    }
-
-    guint size = 0;
-    gpointer payload_ptr;
-    if (!gst_rtp_buffer_get_extension_twobytes_header(&rtp_buffer,
-                                                      NULL,
-                                                      RTP_TWOBYTES_HDR_EXT_ID,
-                                                      0 /* NOTE: We do not support multi-extension-elements.*/,
-                                                      &payload_ptr,
-                                                      &size)) {
-        ALOGE("Could not retrieve twobyte rtp extension on buffer!");
-        goto no_buf;
-    }
-
-    // Repack the protobuf into a GstBuffer
-    GstBuffer *struct_buf = gst_buffer_new_memdup(payload_ptr, size);
-    if (!struct_buf) {
-        ALOGE("Failed to allocate GstBuffer with payload.");
-        goto no_buf;
-    }
-
-    gst_rtp_buffer_unmap(&rtp_buffer);
-
-    // Add it to a custom meta
-    GstCustomMeta *custom_meta = gst_buffer_add_custom_meta(buffer, "down-message");
-    if (custom_meta == NULL) {
-        ALOGE("Failed to add GstCustomMeta");
-        gst_buffer_unref(struct_buf);
-        return false;
-    }
-    GstStructure *custom_structure = gst_custom_meta_get_structure(custom_meta);
-    gst_structure_set(custom_structure, "protobuf", GST_TYPE_BUFFER, struct_buf, NULL);
-
-    gst_buffer_unref(struct_buf);
-
-    return true;
-
-no_buf:
-    gst_rtp_buffer_unmap(&rtp_buffer);
-    return false;
-}
-
 static inline XrQuaternionf quat_to_openxr(const em_proto_Quaternion *q) {
     return (XrQuaternionf){q->x, q->y, q->z, q->w};
 }
@@ -440,16 +383,64 @@ static GstFlowReturn on_new_sample_cb(GstAppSink *appsink, gpointer user_data) {
 
 static GstPadProbeReturn rtp_h264_depay_sink_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data) {
     EmStreamClient *sc = (EmStreamClient *)user_data;
+    (void)user_data;
     (void)pad;
-    (void)sc;
 
     GstBuffer *buffer = gst_pad_probe_info_get_buffer(info);
-    em_proto_DownMessage msg = em_proto_DownMessage_init_default;
-    if (!em_stream_client_extract_frame_data(buffer, &msg)) {
-        // TODO: This happens for most RTP buffers we receive as they don't contain an
-        // extension bit / are not ours. Is there a smarter way to filter them?
-        // ALOGW("Could not extract frame data from RTP buffer.");
+
+    GstRTPBuffer rtp_buffer = GST_RTP_BUFFER_INIT;
+
+    // extract Downstream metadata from rtp header
+    if (!gst_rtp_buffer_map(buffer, GST_MAP_READWRITE, &rtp_buffer)) {
+        ALOGE("Failed to map GstBuffer");
+        return GST_PAD_PROBE_OK;
     }
+
+    // Not all buffers has extension data attached, check.
+    if (!gst_rtp_buffer_get_extension(&rtp_buffer)) {
+        // TODO: This happens for most RTP buffers we receive as they are not ours.
+        // Is there a smarter way to filter them?
+        // ALOGW("Skipping RTP buffer without extension bit.");
+        goto no_buf;
+    }
+
+    guint size = 0;
+    gpointer payload_ptr;
+    if (!gst_rtp_buffer_get_extension_twobytes_header(&rtp_buffer,
+                                                      NULL,
+                                                      RTP_TWOBYTES_HDR_EXT_ID,
+                                                      0 /* NOTE: We do not support multi-extension-elements.*/,
+                                                      &payload_ptr,
+                                                      &size)) {
+        ALOGE("Could not retrieve twobyte rtp extension on buffer!");
+        goto no_buf;
+    }
+
+    // Repack the protobuf into a GstBuffer
+    GstBuffer *struct_buf = gst_buffer_new_memdup(payload_ptr, size);
+    if (!struct_buf) {
+        ALOGE("Failed to allocate GstBuffer with payload.");
+        goto no_buf;
+    }
+
+    gst_rtp_buffer_unmap(&rtp_buffer);
+
+    // Add it to a custom meta
+    GstCustomMeta *custom_meta = gst_buffer_add_custom_meta(buffer, "down-message");
+    if (custom_meta == NULL) {
+        ALOGE("Failed to add GstCustomMeta");
+        gst_buffer_unref(struct_buf);
+        return GST_PAD_PROBE_OK;
+    }
+    GstStructure *custom_structure = gst_custom_meta_get_structure(custom_meta);
+    gst_structure_set(custom_structure, "protobuf", GST_TYPE_BUFFER, struct_buf, NULL);
+
+    gst_buffer_unref(struct_buf);
+
+    return GST_PAD_PROBE_OK;
+
+no_buf:
+    gst_rtp_buffer_unmap(&rtp_buffer);
     return GST_PAD_PROBE_OK;
 }
 
