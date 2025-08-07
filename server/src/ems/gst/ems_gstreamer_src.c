@@ -70,7 +70,6 @@ static void complain_if_wrong_image_size(struct xrt_frame *xf) {
 
 void ems_gstreamer_src_push_frame(struct ems_gstreamer_src *gs, struct xrt_frame *xf, GBytes *downMsg_bytes) {
     SINK_TRACE_MARKER();
-    struct ems_gstreamer_src *gs = (struct ems_gstreamer_src *)xfs;
 
     complain_if_wrong_image_size(xf);
 

@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include <glib.h>
+
 #include "xrt/xrt_frame.h"
 
 #ifdef __cplusplus
