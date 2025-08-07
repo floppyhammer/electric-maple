@@ -253,7 +253,7 @@ em_stream_client_class_init(EmStreamClientClass *klass)
 static inline bool em_stream_client_extract_frame_data(GstBuffer *buffer, em_proto_DownMessage *msg) {
     GstRTPBuffer rtp_buffer = GST_RTP_BUFFER_INIT;
 
-    if (!gst_rtp_buffer_map(buffer, GST_MAP_WRITE, &rtp_buffer)) {
+    if (!gst_rtp_buffer_map(buffer, GST_MAP_READ, &rtp_buffer)) {
         ALOGE("Failed to map GstBuffer");
         return false;
     }
