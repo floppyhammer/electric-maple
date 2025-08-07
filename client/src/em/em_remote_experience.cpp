@@ -637,7 +637,14 @@ EmPollRenderResult em_remote_experience_inner_poll_and_render_frame(EmRemoteExpe
 
     XrSwapchainImageWaitInfo waitInfo = {.type = XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO, .timeout = XR_INFINITE_DURATION};
 
+    auto waitStart = std::chrono::steady_clock::now();
     result = xrWaitSwapchainImage(exp->xr_owned.swapchain, &waitInfo);
+    auto waitDuration = std::chrono::steady_clock::now() - waitStart;
+    std::chrono::duration<double, std::milli> waitDurationMs =
+        std::chrono::duration_cast<std::chrono::milliseconds>(waitDuration);
+    if (waitDurationMs.count() > 2.0) {
+        ALOGE("xrWaitSwapchainImage took %.2f ms!", waitDurationMs.count());
+    }
 
     if (XR_FAILED(result)) {
         ALOGE("Failed to wait for swapchain image (%d)", result);
