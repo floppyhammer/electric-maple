@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: BSL-1.0
 
-add_library(ems_gst STATIC ems_gstreamer_pipeline.c ems_signaling_server.c)
+add_library(ems_gst STATIC ems_gstreamer_pipeline.c ems_signaling_server.c ems_gstreamer_src.c)
 
 target_link_libraries(
         ems_gst
@@ -11,11 +11,12 @@ target_link_libraries(
         ems_callbacks
         em_proto
         aux_util
-        aux_gstreamer
         ${GST_LIBRARIES}
         ${GST_SDP_LIBRARIES}
         ${GST_RTP_LIBRARIES}
         ${GST_WEBRTC_LIBRARIES}
+        ${GST_VIDEO_LIBRARIES}
+        ${GST_APP_LIBRARIES}
         ${GLIB_LIBRARIES}
         ${LIBSOUP_LIBRARIES}
         ${JSONGLIB_LIBRARIES}

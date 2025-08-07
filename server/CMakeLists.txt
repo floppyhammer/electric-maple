@@ -15,26 +15,26 @@ set(CMAKE_BUILD_TYPE RelWithDebInfo)
 # Make sure we have pretty colours
 option(DISABLE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." OFF)
 
-if(NOT DISABLE_COLORED_OUTPUT)
-	if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-		add_compile_options(-fdiagnostics-color=always)
-	elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-		add_compile_options(-fcolor-diagnostics)
-	endif()
-endif()
+if (NOT DISABLE_COLORED_OUTPUT)
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+        add_compile_options(-fdiagnostics-color=always)
+    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+        add_compile_options(-fcolor-diagnostics)
+    endif ()
+endif ()
 
 # Get Monado's CMake modules
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/monado/cmake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/monado/cmake/sanitizers")
 
-if(NOT MSVC)
-	set(CMAKE_C_FLAGS
-	    "${CMAKE_C_FLAGS} -pedantic -Wall -Wextra -Wno-unused-parameter -Werror=incompatible-pointer-types"
-		)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-parameter")
-	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined")
-	set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--no-undefined")
-endif()
+if (NOT MSVC)
+    set(CMAKE_C_FLAGS
+            "${CMAKE_C_FLAGS} -pedantic -Wall -Wextra -Wno-unused-parameter -Werror=incompatible-pointer-types"
+    )
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-parameter")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined")
+    set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--no-undefined")
+endif ()
 
 option(EMS_LIBSOUP2 "Use libsoup2.4 instead of libsoup3.0" OFF)
 
@@ -48,12 +48,14 @@ pkg_check_modules(GST_RTP REQUIRED gstreamer-rtp-1.0)
 pkg_check_modules(GST_WEBRTC REQUIRED gstreamer-webrtc-1.0)
 pkg_check_modules(GST REQUIRED gstreamer-plugins-base-1.0)
 pkg_check_modules(GST REQUIRED gstreamer-plugins-bad-1.0)
+pkg_check_modules(GST_VIDEO REQUIRED gstreamer-video-1.0)
+pkg_check_modules(GST_APP REQUIRED gstreamer-app-1.0)
 
-if(EMS_LIBSOUP2)
-	pkg_check_modules(LIBSOUP REQUIRED libsoup-2.4)
-else()
-	pkg_check_modules(LIBSOUP REQUIRED libsoup-3.0)
-endif()
+if (EMS_LIBSOUP2)
+    pkg_check_modules(LIBSOUP REQUIRED libsoup-2.4)
+else ()
+    pkg_check_modules(LIBSOUP REQUIRED libsoup-3.0)
+endif ()
 
 pkg_check_modules(JSONGLIB REQUIRED json-glib-1.0)
 pkg_check_modules(GIO REQUIRED gio-2.0)
@@ -67,10 +69,10 @@ set(MONADO_SRC_XRT ${CMAKE_CURRENT_SOURCE_DIR}/monado/src/xrt)
 
 # Helper to obey CMP0077 and work around warnings.
 function(setForce NAME VALUE)
-	set(${NAME}
-	    ${VALUE}
-	    CACHE INTERNAL "" FORCE
-		)
+    set(${NAME}
+            ${VALUE}
+            CACHE INTERNAL "" FORCE
+    )
 endfunction()
 
 # Let's use this for now: Monado's main compositor is really good and is an

@@ -19,8 +19,7 @@
 
 #include "ems_server_internal.h"
 #include "gst/ems_gstreamer_pipeline.h"
-#include "gstreamer/gst_pipeline.h"
-#include "gstreamer/gst_sink.h"
+#include "gst/ems_gstreamer_src.h"
 #include "os/os_time.h"
 #include "util/comp_base.h"
 #include "util/u_logging.h"
@@ -126,7 +125,7 @@ struct ems_compositor {
     bool pipeline_playing = false;
     struct gstreamer_pipeline *gstreamer_pipeline;
 
-    struct gstreamer_sink *gstreamer_sink;
+    struct ems_gstreamer_src *gstreamer_src;
     // This is the base of gstreamer_sink, so they're basically the same pointer
     struct xrt_frame_sink *frame_sink;
 

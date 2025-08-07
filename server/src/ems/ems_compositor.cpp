@@ -21,7 +21,7 @@
 #include <stdio.h>
 
 #include "electricmaple.pb.h"
-#include "gstreamer/gst_internal.h"
+#include "gst/ems_gstreamer.h"
 #include "multi/comp_multi_interface.h"
 #include "os/os_time.h"
 #include "util/comp_vulkan.h"
@@ -330,7 +330,7 @@ void pack_blit_and_encode(struct ems_compositor *c,
     if (c->offset_ns == 0) {
         uint64_t now = os_monotonic_get_ns();
         c->offset_ns = now;
-        c->gstreamer_sink->offset_ns = now;
+        c->gstreamer_src->offset_ns = now;
     }
 
     struct vk_image_readback_to_xf *wrap = NULL;
@@ -840,14 +840,14 @@ xrt_result_t ems_compositor_create_system(ems_instance &emsi, struct xrt_system_
 
     ems_gstreamer_pipeline_create(&c->xfctx, EMS_APPSRC_NAME, emsi.callbacks, &c->gstreamer_pipeline);
 
-    gstreamer_sink_create_with_pipeline( //
-        c->gstreamer_pipeline,           //
-        READBACK_W,                      //
-        READBACK_H,                      //
-        XRT_FORMAT_R8G8B8X8,             //
-        EMS_APPSRC_NAME,                 //
-        &c->gstreamer_sink,              //
-        &c->frame_sink);                 //
+    ems_gstreamer_src_create_with_pipeline( //
+        c->gstreamer_pipeline,              //
+        READBACK_W,                         //
+        READBACK_H,                         //
+        XRT_FORMAT_R8G8B8X8,                //
+        EMS_APPSRC_NAME,                    //
+        &c->gstreamer_src,                  //
+        &c->frame_sink);                    //
 
     // Bounce image for scaling.
     {

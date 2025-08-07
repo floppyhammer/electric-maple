@@ -24,15 +24,12 @@
 #include "util/u_debug.h"
 #include "util/u_misc.h"
 
-// Monado includes
 #include <glib-unix.h>
 #include <gst/gst.h>
 #include <gst/gststructure.h>
 #include <gst/rtp/gstrtpbuffer.h>
 
 #include "ems_signaling_server.h"
-#include "gstreamer/gst_internal.h"
-#include "gstreamer/gst_pipeline.h"
 
 #define GST_USE_UNSTABLE_API
 #include <gst/webrtc/datachannel.h>

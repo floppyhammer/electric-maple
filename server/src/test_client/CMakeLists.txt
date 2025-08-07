@@ -9,7 +9,6 @@ target_link_libraries(
         PRIVATE
         ems_build_defines
         aux_util
-        aux_gstreamer
         ${GST_LIBRARIES}
         ${GST_SDP_LIBRARIES}
         ${GST_WEBRTC_LIBRARIES}

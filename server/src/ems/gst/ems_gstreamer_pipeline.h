@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "gstreamer/gst_pipeline.h"
+#include "ems_gstreamer.h"
 #include "util/u_debug.h"
 #include "util/u_misc.h"
 
