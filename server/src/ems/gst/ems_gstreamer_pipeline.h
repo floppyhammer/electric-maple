@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include <glib.h>
+
 #include "ems_gstreamer.h"
 #include "util/u_debug.h"
 #include "util/u_misc.h"
@@ -23,7 +25,7 @@ struct ems_callbacks;
 
 typedef struct _em_proto_DownMessage em_proto_DownMessage;
 
-void ems_gstreamer_pipeline_set_down_msg(struct gstreamer_pipeline *gp, em_proto_DownMessage *msg);
+GBytes *ems_gstreamer_pipeline_encode_down_msg(em_proto_DownMessage *msg);
 
 void ems_gstreamer_pipeline_play(struct gstreamer_pipeline *gp);
 

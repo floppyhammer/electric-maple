@@ -16,20 +16,19 @@
 
 #include "ems_gstreamer_pipeline.h"
 
-#include "electricmaple.pb.h"
-#include "ems_callbacks.h"
-#include "include/ems_common.h"
-#include "os/os_threading.h"
-#include "pb_decode.h"
-#include "util/u_debug.h"
-#include "util/u_misc.h"
-
 #include <glib-unix.h>
 #include <gst/gst.h>
 #include <gst/gststructure.h>
 #include <gst/rtp/gstrtpbuffer.h>
 
+#include "electricmaple.pb.h"
+#include "ems_callbacks.h"
 #include "ems_signaling_server.h"
+#include "include/ems_common.h"
+#include "os/os_threading.h"
+#include "pb_decode.h"
+#include "util/u_debug.h"
+#include "util/u_misc.h"
 
 #define GST_USE_UNSTABLE_API
 #include <gst/webrtc/datachannel.h>
@@ -64,8 +63,6 @@ struct ems_gstreamer_pipeline {
     GObject *data_channel;
     guint timeout_src_id;
     guint timeout_src_id_dot_data;
-
-    GBytes *downMsg_bytes;
 
     struct ems_callbacks *callbacks;
 };
@@ -312,18 +309,16 @@ static void data_channel_message_string_cb(GstWebRTCDataChannel *data_channel,
 GstPadProbeReturn rtppay_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data) {
     (void)pad;
 
+    GstBuffer *buffer;
     GstRTPBuffer rtp_buffer = GST_RTP_BUFFER_INIT;
-    size_t extension_size;
 
-    const struct ems_gstreamer_pipeline *egp = (struct ems_gstreamer_pipeline *)user_data;
-
-    GstBuffer *buffer = gst_pad_probe_info_get_buffer(info);
+    buffer = gst_pad_probe_info_get_buffer(info);
 
     buffer = gst_buffer_make_writable(buffer);
 
     if (!gst_rtp_buffer_map(buffer, GST_MAP_WRITE, &rtp_buffer)) {
         U_LOG_E("Failed to map GstBuffer");
-        // Be more fault-tolerant!
+        // be more fault tolerant!
         return GST_PAD_PROBE_OK;
     }
 
@@ -334,11 +329,29 @@ GstPadProbeReturn rtppay_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user
     }
 
     // Inject extension data
-    const gconstpointer extension_data = g_bytes_get_data(egp->downMsg_bytes, &extension_size);
+    GstCustomMeta *custom_meta = gst_buffer_get_custom_meta(buffer, "down-message");
+    if (!custom_meta) {
+        U_LOG_E("Failed to get custom meta from GstBuffer!");
+        return false;
+    }
 
-    if (extension_size > RTP_TWOBYTES_HDR_EXT_MAX_SIZE) {
+    GstStructure *custom_structure = gst_custom_meta_get_structure(custom_meta);
+
+    GstBuffer *struct_buf;
+    if (!gst_structure_get(custom_structure, "protobuf", GST_TYPE_BUFFER, &struct_buf, NULL)) {
+        U_LOG_E("Could not read protobuf from struct");
+        return GST_PAD_PROBE_OK;
+    }
+
+    GstMapInfo map_info;
+    if (!gst_buffer_map(struct_buf, &map_info, GST_MAP_READ)) {
+        U_LOG_E("Failed to map custom meta buffer.");
+        return GST_PAD_PROBE_OK;
+    }
+
+    if (map_info.size > RTP_TWOBYTES_HDR_EXT_MAX_SIZE) {
         U_LOG_E("Data in too large for RTP header (%ld > %d bytes). Implement multi-extension-element support.",
-                extension_size,
+                map_info.size,
                 RTP_TWOBYTES_HDR_EXT_MAX_SIZE);
         gst_rtp_buffer_unmap(&rtp_buffer);
         return GST_PAD_PROBE_OK;
@@ -347,9 +360,9 @@ GstPadProbeReturn rtppay_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user
     if (!gst_rtp_buffer_add_extension_twobytes_header(&rtp_buffer,
                                                       0 /* appbits */,
                                                       RTP_TWOBYTES_HDR_EXT_ID,
-                                                      extension_data,
-                                                      (guint)extension_size)) {
-        U_LOG_E("Failed to add extension data!");
+                                                      map_info.data,
+                                                      (guint)map_info.size)) {
+        U_LOG_E("Failed to add extension data !");
         return GST_PAD_PROBE_OK;
     }
 
@@ -359,6 +372,7 @@ GstPadProbeReturn rtppay_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user
     }
 
     gst_rtp_buffer_unmap(&rtp_buffer);
+    gst_buffer_unmap(struct_buf, &map_info);
 
     return GST_PAD_PROBE_OK;
 }
@@ -656,20 +670,16 @@ void *loop_thread(void *data) {
  *
  */
 
-void ems_gstreamer_pipeline_set_down_msg(struct gstreamer_pipeline *gp, em_proto_DownMessage *msg) {
-    struct ems_gstreamer_pipeline *egp = (struct ems_gstreamer_pipeline *)gp;
-
+GBytes *ems_gstreamer_pipeline_encode_down_msg(em_proto_DownMessage *msg) {
     uint8_t buf[em_proto_DownMessage_size];
-    size_t n = 0;
-    pb_get_encoded_size(&n, em_proto_DownMessage_fields, &msg);
-
     pb_ostream_t os = pb_ostream_from_buffer(buf, sizeof(buf));
 
-    pb_encode(&os, em_proto_DownMessage_fields, &msg);
+    if (!pb_encode(&os, em_proto_DownMessage_fields, msg)) {
+        U_LOG_E("Failed to encode protobuf.");
+        return NULL;
+    }
 
-    g_bytes_unref(egp->downMsg_bytes);
-    egp->downMsg_bytes = NULL;
-    egp->downMsg_bytes = g_bytes_new(buf, n);
+    return g_bytes_new(buf, os.bytes_written);
 }
 
 void ems_gstreamer_pipeline_play(struct gstreamer_pipeline *gp) {

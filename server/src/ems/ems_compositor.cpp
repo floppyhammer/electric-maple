@@ -498,8 +498,6 @@ void pack_blit_and_encode(struct ems_compositor *c,
 
     wrap = NULL; // important to keep this line after setting "msg.frame_sequence_id" above.
 
-    ems_gstreamer_pipeline_set_down_msg(c->gstreamer_pipeline, &msg);
-
     if (!c->pipeline_playing) {
         ems_gstreamer_pipeline_play(c->gstreamer_pipeline);
         c->pipeline_playing = true;
@@ -508,7 +506,8 @@ void pack_blit_and_encode(struct ems_compositor *c,
     // Commented to fix crash on Android
     // u_sink_debug_push_frame(&c->debug_sink, frame);
 
-    xrt_sink_push_frame(c->frame_sink, frame);
+    GBytes *downMsg_bytes = ems_gstreamer_pipeline_encode_down_msg(&msg);
+    ems_gstreamer_src_push_frame(c->gstreamer_src, frame, downMsg_bytes);
 
     // TODO send data channel message with pose and fov here?
 
