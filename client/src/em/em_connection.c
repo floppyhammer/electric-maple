@@ -30,8 +30,8 @@
 #include <libsoup/soup-message.h>
 #include <libsoup/soup-session.h>
 
-#define DEFAULT_WEBSOCKET_URI "ws://192.168.49.1:52356/ws" // Android P2P group owner address
-
+//#define DEFAULT_WEBSOCKET_URI "ws://192.168.49.1:52356/ws" // Android P2P group owner address
+#define DEFAULT_WEBSOCKET_URI "ws://10.11.9.210:52356/ws"
 /*!
  * Data required for the handshake to complete and to maintain the connection.
  */

@@ -21,6 +21,10 @@ struct gstreamer_pipeline;
 
 struct ems_callbacks;
 
+typedef struct _em_proto_DownMessage em_proto_DownMessage;
+
+void ems_gstreamer_pipeline_set_down_msg(struct gstreamer_pipeline *gp, em_proto_DownMessage *msg);
+
 void ems_gstreamer_pipeline_play(struct gstreamer_pipeline *gp);
 
 void ems_gstreamer_pipeline_stop(struct gstreamer_pipeline *gp);

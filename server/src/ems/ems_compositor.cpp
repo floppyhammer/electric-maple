@@ -20,6 +20,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#include "electricmaple.pb.h"
 #include "gstreamer/gst_internal.h"
 #include "multi/comp_multi_interface.h"
 #include "os/os_time.h"
@@ -477,6 +478,19 @@ void pack_blit_and_encode(struct ems_compositor *c,
     frame->source_timestamp = frame->timestamp;
     frame->source_sequence = c->image_sequence++;
     frame->source_id = 0;
+
+    // set the latest Downstream msg before pushing the frame
+    em_proto_DownMessage msg = em_proto_DownMessage_init_default;
+    msg.has_frame_data = true;
+    msg.frame_data.frame_sequence_id = wrap->base_frame.source_sequence;
+    // TODO: set the below as well ...
+    // msg.frame_data.has_P_localSpace_viewSpace =  ;
+    // msg.frame_data.P_localSpace_viewSpace = ... ;
+    // msg.frame_datadisplay_time; /* Needed ?*/
+
+    wrap = NULL; // important to keep this line after setting "msg.frame_sequence_id" above.
+
+    ems_gstreamer_pipeline_set_down_msg(c->gstreamer_pipeline, &msg);
 
     if (!c->pipeline_playing) {
         ems_gstreamer_pipeline_play(c->gstreamer_pipeline);

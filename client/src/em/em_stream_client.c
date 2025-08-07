@@ -19,6 +19,7 @@
 #include "os/os_threading.h"
 // clang-format on
 
+#include <electricmaple.pb.h>
 #include <gst/app/gstappsink.h>
 #include <gst/gl/gl.h>
 #include <gst/gl/gstglsyncmeta.h>
@@ -29,9 +30,12 @@
 #include <gst/gstmessage.h>
 #include <gst/gstsample.h>
 #include <gst/gstutils.h>
+#include <gst/rtp/gstrtpbuffer.h>
 #include <gst/video/video-frame.h>
 #include <gst/webrtc/webrtc.h>
 #include <linux/time.h>
+#include <openxr/openxr.h>
+#include <pb_decode.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -116,6 +120,8 @@ typedef enum
     N_PROPERTIES
 } EmStreamClientProperty;
 #endif
+
+#define RTP_TWOBYTES_HDR_EXT_ID 1 // Must be in the [1,15] range
 
 // clang-format off
 #define SINK_CAPS \
@@ -242,6 +248,63 @@ em_stream_client_class_init(EmStreamClientClass *klass)
 }
 
 #endif
+
+/// Extract frame metadata from header extensions.
+static inline bool em_stream_client_extract_frame_data(GstBuffer *buffer, em_proto_DownMessage *msg) {
+    GstRTPBuffer rtp_buffer = GST_RTP_BUFFER_INIT;
+
+    if (!gst_rtp_buffer_map(buffer, GST_MAP_WRITE, &rtp_buffer)) {
+        ALOGE("Failed to map GstBuffer");
+        return false;
+    }
+
+    // Not all buffers has extension data attached, check.
+    if (!gst_rtp_buffer_get_extension(&rtp_buffer)) {
+        goto no_buf;
+    }
+
+    uint8_t buf[em_proto_DownMessage_size] = {};
+    guint size = 0;
+    if (!gst_rtp_buffer_get_extension_twobytes_header(&rtp_buffer,
+                                                      NULL,
+                                                      RTP_TWOBYTES_HDR_EXT_ID,
+                                                      0 /* NOTE: We do not support multi-extension-elements.*/,
+                                                      &buf,
+                                                      &size)) {
+        ALOGE("Could not retrieve two-byte rtp extension on buffer!");
+        goto no_buf;
+    }
+
+    pb_istream_t our_istream = pb_istream_from_buffer(buf, size);
+
+    bool result = pb_decode_ex(&our_istream, em_proto_DownMessage_fields, msg, PB_DECODE_NULLTERMINATED);
+
+    if (!result) {
+        ALOGE("Error! %s", PB_GET_ERROR(&our_istream));
+        goto no_buf;
+    }
+
+    gst_rtp_buffer_unmap(&rtp_buffer);
+    return true;
+
+no_buf:
+    gst_rtp_buffer_unmap(&rtp_buffer);
+    return false;
+}
+
+static inline XrQuaternionf quat_to_openxr(const em_proto_Quaternion *q) {
+    return (XrQuaternionf){q->x, q->y, q->z, q->w};
+}
+static inline XrVector3f vec3_to_openxr(const em_proto_Vec3 *v) {
+    return (XrVector3f){v->x, v->y, v->z};
+}
+
+static inline XrPosef pose_to_openxr(const em_proto_Pose *p) {
+    return (XrPosef){
+        p->has_orientation ? quat_to_openxr(&p->orientation) : (XrQuaternionf){0, 0, 0, 1},
+        p->has_position ? vec3_to_openxr(&p->position) : (XrVector3f){0, 0, 0},
+    };
+}
 
 /*
  * callbacks
@@ -440,7 +503,8 @@ static void on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc) {
 
         GstPad *srcpad = gst_element_get_static_pad(jitterbuffer, "src");
         g_assert(srcpad);
-        gst_pad_add_probe(srcpad, GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, jitterbuffer_event_probe_cb, NULL, NULL);
+        //        gst_pad_add_probe(srcpad, GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, jitterbuffer_event_probe_cb, NULL,
+        //        NULL);
         gst_clear_object(&srcpad);
     }
 #endif
@@ -636,10 +700,6 @@ struct em_sample *em_stream_client_try_pull_sample(EmStreamClient *sc, struct ti
         decode_end = sc->sample_decode_end_ts;
     }
 
-    // Check pipeline
-    //	gchar *data = gst_debug_bin_to_dot_data(GST_BIN(sc->pipeline), GST_DEBUG_GRAPH_SHOW_ALL);
-    //	g_free(data);
-
     if (sample == NULL) {
         if (gst_app_sink_is_eos(GST_APP_SINK(sc->appsink))) {
             ALOGW("%s: EOS", __FUNCTION__);
@@ -649,9 +709,28 @@ struct em_sample *em_stream_client_try_pull_sample(EmStreamClient *sc, struct ti
     }
     *out_decode_end = decode_end;
 
-    // ALOGE("FRED: GOT A SAMPLE !!!");
+    struct em_sc_sample *ret = calloc(1, sizeof(struct em_sc_sample));
+
     GstBuffer *buffer = gst_sample_get_buffer(sample);
     GstCaps *caps = gst_sample_get_caps(sample);
+    GstRTPBuffer rtp_buffer = GST_RTP_BUFFER_INIT;
+
+    // Extract downstream metadata from rtp header
+    em_proto_DownMessage msg = em_proto_DownMessage_init_default;
+    if (em_stream_client_extract_frame_data(buffer, &msg)) {
+        ALOGI("Got downstream frame message");
+    }
+    if (msg.has_frame_data && msg.frame_data.has_P_localSpace_viewSpace) {
+        // OK we have a message for this one.
+        ALOGI("Got downstream frame message with poses!");
+        // TODO is it too late to get it here?
+        ret->base.have_poses = true;
+        ret->base.poses[0] = pose_to_openxr(&msg.frame_data.P_localSpace_viewSpace);
+
+        // TODO: use msg.frame_id (and others) and populate properly inside stream client.
+        // ...
+        // ...
+    }
 
     GstVideoInfo info;
     gst_video_info_from_caps(&info, caps);
@@ -666,8 +745,6 @@ struct em_sample *em_stream_client_try_pull_sample(EmStreamClient *sc, struct ti
         sc->height = height;
     }
 #endif
-
-    struct em_sc_sample *ret = calloc(1, sizeof(struct em_sc_sample));
 
     GstVideoFrame frame;
     GstMapFlags flags = (GstMapFlags)(GST_MAP_READ | GST_MAP_GL);
