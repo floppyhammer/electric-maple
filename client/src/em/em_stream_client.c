@@ -367,6 +367,15 @@ static GstFlowReturn on_new_sample_cb(GstAppSink *appsink, gpointer user_data) {
     GstSample *prevSample = NULL;
     GstSample *sample = gst_app_sink_pull_sample(appsink);
     g_assert_nonnull(sample);
+
+    // Drop it like it's hot
+    GstBuffer *buffer = gst_sample_get_buffer(sample);
+    GstCustomMeta *custom_meta = gst_buffer_get_custom_meta(buffer, "down-message");
+    if (!custom_meta) {
+        ALOGW("sample_cb: Dropping buffer without down-message.");
+        return GST_FLOW_OK;
+    }
+
     {
         g_autoptr(GMutexLocker) locker = g_mutex_locker_new(&sc->sample_mutex);
         prevSample = sc->sample;

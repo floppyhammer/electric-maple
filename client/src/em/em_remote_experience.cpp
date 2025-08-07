@@ -626,7 +626,7 @@ EmPollRenderResult em_remote_experience_inner_poll_and_render_frame(EmRemoteExpe
 
     projectionViews[0].pose = sample->poses[0];
     projectionViews[1].pose = sample->poses[1];
-    
+
     XrSwapchainImageAcquireInfo acquireInfo{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
     uint32_t imageIndex;
     result = xrAcquireSwapchainImage(exp->xr_owned.swapchain, &acquireInfo, &imageIndex);
