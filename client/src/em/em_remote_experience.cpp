@@ -566,24 +566,29 @@ report_frame_timing(EmRemoteExperience *exp,
 {
 	XrTime xrTimeDecodeEnd = 0;
 	XrTime xrTimeBeginFrame = 0;
+
 	XrResult result = exp->convertTimespecTimeToTime(exp->xr_not_owned.instance, decodeEndTime, &xrTimeDecodeEnd);
 	if (XR_FAILED(result)) {
 		ALOGE("%s: Failed to convert decode-end time (%d)", __FUNCTION__, result);
 		return;
 	}
+
 	result = exp->convertTimespecTimeToTime(exp->xr_not_owned.instance, beginFrameTime, &xrTimeBeginFrame);
 	if (XR_FAILED(result)) {
 		ALOGE("%s: Failed to convert begin-frame time (%d)", __FUNCTION__, result);
 		return;
 	}
+
 	em_proto_UpFrameMessage msg = em_proto_UpFrameMessage_init_default;
 	msg.frame_sequence_id = frame_sequence_id;
 	msg.decode_complete_time = xrTimeDecodeEnd;
 	msg.begin_frame_time = xrTimeBeginFrame;
 	msg.display_time = predictedDisplayTime;
+
 	em_proto_UpMessage upMsg = em_proto_UpMessage_init_default;
 	upMsg.frame = msg;
 	upMsg.has_frame = true;
+
 	em_remote_experience_emit_upmessage(exp, &upMsg);
 }
 

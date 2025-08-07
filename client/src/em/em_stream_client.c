@@ -446,10 +446,11 @@ on_new_sample_cb(GstAppSink *appsink, gpointer user_data)
 		sc->sample_decode_end_ts = ts;
 		sc->received_first_frame = true;
 	}
+
 	if (prevSample) {
-		//		ALOGI("Discarding unused, replaced sample");
 		gst_sample_unref(prevSample);
 	}
+
 	return GST_FLOW_OK;
 }
 

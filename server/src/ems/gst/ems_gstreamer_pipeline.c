@@ -410,7 +410,7 @@ check_pipeline_dot_data(struct ems_gstreamer_pipeline *egp)
 }
 
 static bool
-ems_gstreamer_pipeline_add_payload_pad_probe(struct ems_gstreamer_pipeline *self, GstElement *webrtcbin)
+ems_gstreamer_pipeline_add_payload_pad_probe(struct ems_gstreamer_pipeline *self)
 {
 	GstPipeline *pipeline = GST_PIPELINE(self->base.pipeline);
 
@@ -487,7 +487,7 @@ webrtc_client_connected_cb(EmsSignalingServer *server,
 
 	GST_DEBUG_BIN_TO_DOT_FILE(pipeline, GST_DEBUG_GRAPH_SHOW_ALL, "rtcbin");
 
-	if (!ems_gstreamer_pipeline_add_payload_pad_probe(egp, webrtcbin)) {
+	if (!ems_gstreamer_pipeline_add_payload_pad_probe(egp)) {
 		U_LOG_E("Failed to add payload pad probe.");
 	}
 

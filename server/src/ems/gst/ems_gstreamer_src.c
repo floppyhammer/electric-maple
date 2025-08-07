@@ -120,29 +120,27 @@ ems_gstreamer_src_push_frame(struct ems_gstreamer_src *gs, struct xrt_frame *xf,
 	GST_BUFFER_DURATION(buffer) = xtimestamp_ns - gs->timestamp_ns;
 	gs->timestamp_ns = xtimestamp_ns;
 
-	{
-		size_t payload_size;
-		gconstpointer payload_ptr = g_bytes_get_data(downMsg_bytes, &payload_size);
+	size_t payload_size;
+	const gconstpointer payload_ptr = g_bytes_get_data(downMsg_bytes, &payload_size);
 
-		// Repack the protobuf into a GstBuffer
-		GstBuffer *struct_buf = gst_buffer_new_memdup(payload_ptr, payload_size);
-		if (!struct_buf) {
-			U_LOG_E("Failed to allocate GstBuffer with payload.");
-			return;
-		}
-
-		// Add it to a custom meta
-		GstCustomMeta *custom_meta = gst_buffer_add_custom_meta(buffer, "down-message");
-		if (custom_meta == NULL) {
-			U_LOG_E("Failed to add GstCustomMeta");
-			gst_buffer_unref(struct_buf);
-			return;
-		}
-		GstStructure *custom_structure = gst_custom_meta_get_structure(custom_meta);
-		gst_structure_set(custom_structure, "protobuf", GST_TYPE_BUFFER, struct_buf, NULL);
-
-		gst_buffer_unref(struct_buf);
+	// Repack the protobuf into a GstBuffer
+	GstBuffer *struct_buf = gst_buffer_new_memdup(payload_ptr, payload_size);
+	if (!struct_buf) {
+		U_LOG_E("Failed to allocate GstBuffer with payload.");
+		return;
 	}
+
+	// Add it to a custom meta
+	GstCustomMeta *custom_meta = gst_buffer_add_custom_meta(buffer, "down-message");
+	if (custom_meta == NULL) {
+		U_LOG_E("Failed to add GstCustomMeta");
+		gst_buffer_unref(struct_buf);
+		return;
+	}
+	GstStructure *custom_structure = gst_custom_meta_get_structure(custom_meta);
+	gst_structure_set(custom_structure, "protobuf", GST_TYPE_BUFFER, struct_buf, NULL);
+
+	gst_buffer_unref(struct_buf);
 
 	// All done, send it to the gstreamer pipeline.
 	ret = gst_app_src_push_buffer((GstAppSrc *)gs->appsrc, buffer);
