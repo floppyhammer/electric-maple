@@ -342,7 +342,7 @@ GstPadProbeReturn webrtcbin_srcpad_probe(GstPad *pad, GstPadProbeInfo *info, gpo
     if (extension_size > RTP_TWOBYTES_HDR_EXT_MAX_SIZE) {
         U_LOG_E("size of data in rtp header is too large! Implement multi-extension-element support!");
         gst_rtp_buffer_unmap(&rtp_buffer);
-        return GST_PAD_PROBE_REMOVE;
+        return GST_PAD_PROBE_OK;
     }
 
     if (!gst_rtp_buffer_add_extension_twobytes_header(&rtp_buffer,
@@ -351,7 +351,12 @@ GstPadProbeReturn webrtcbin_srcpad_probe(GstPad *pad, GstPadProbeInfo *info, gpo
                                                       extension_data,
                                                       (guint)extension_size)) {
         U_LOG_E("Failed to add extension data!");
-        return GST_PAD_PROBE_REMOVE;
+        return GST_PAD_PROBE_OK;
+    }
+
+    // The bit should be written by gst_rtp_buffer_add_extension_twobytes_header
+    if (!gst_rtp_buffer_get_extension(&rtp_buffer)) {
+        U_LOG_E("The RTP extension bit was not set.");
     }
 
     gst_rtp_buffer_unmap(&rtp_buffer);
