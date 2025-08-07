@@ -566,7 +566,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	// clang-format off
     gchar *pipeline_string = g_strdup_printf(
             "webrtcbin name=webrtc bundle-policy=max-bundle latency=5 ! "
-            "rtph265depay name=depay ! " // Not necessary theoretically, but this can fix codec configuration crash
+            "rtph264depay name=depay ! "
             "decodebin3 ! "
 
             //	    "amcviddec-c2qtiavcdecoder ! "        // Hardware
