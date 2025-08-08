@@ -508,8 +508,10 @@ pack_blit_and_encode(struct ems_compositor *c,
 	msg.has_frame_data = true;
 	msg.frame_data.frame_sequence_id = wrap->base_frame.source_sequence;
 	msg.frame_data.display_time = wrap->base_frame.timestamp;
-	msg.frame_data.has_P_localSpace_viewSpace = true;
-	msg.frame_data.P_localSpace_viewSpace = to_proto(lvd->pose);
+	msg.frame_data.has_P_localSpace_view0 = true;
+	msg.frame_data.P_localSpace_view0 = to_proto(lvd->pose);
+	msg.frame_data.has_P_localSpace_view1 = true;
+	msg.frame_data.P_localSpace_view1 = to_proto(rvd->pose);
 
 	wrap = NULL; // important to keep this line after setting "msg.frame_sequence_id" above.
 

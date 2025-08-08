@@ -29,7 +29,7 @@ struct em_sample
 	GLenum frame_texture_target;
 
 	bool have_poses;
-	XrPosef poses[1];
+	XrPosef poses[2];
 
 	int64_t frame_sequence_id;
 	int64_t display_time;

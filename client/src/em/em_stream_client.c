@@ -901,14 +901,16 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 		msg = sc->last_down_msg;
 	}
 
-	if (msg.has_frame_data && msg.frame_data.has_P_localSpace_viewSpace) {
-		ALOGD("Got DownMessage: Frame #%ld V0 (%.2f %.2f %.2f) display_time %ld",
-		      msg.frame_data.frame_sequence_id, msg.frame_data.P_localSpace_viewSpace.position.x,
-		      msg.frame_data.P_localSpace_viewSpace.position.y,
-		      msg.frame_data.P_localSpace_viewSpace.position.z, msg.frame_data.display_time);
+	if (msg.has_frame_data && msg.frame_data.has_P_localSpace_view0 && msg.frame_data.has_P_localSpace_view1) {
+		ALOGD("Got DownMessage: Frame #%ld V0 (%.2f %.2f %.2f) V1 (%.2f %.2f %.2f) display_time %ld",
+		      msg.frame_data.frame_sequence_id, msg.frame_data.P_localSpace_view0.position.x,
+		      msg.frame_data.P_localSpace_view0.position.y, msg.frame_data.P_localSpace_view0.position.z,
+		      msg.frame_data.P_localSpace_view1.position.x, msg.frame_data.P_localSpace_view1.position.y,
+		      msg.frame_data.P_localSpace_view1.position.z, msg.frame_data.display_time);
 
 		ret->base.have_poses = true;
-		ret->base.poses[0] = pose_to_openxr(&msg.frame_data.P_localSpace_viewSpace);
+		ret->base.poses[0] = pose_to_openxr(&msg.frame_data.P_localSpace_view0);
+		ret->base.poses[1] = pose_to_openxr(&msg.frame_data.P_localSpace_view1);
 
 		ret->base.frame_sequence_id = msg.frame_data.frame_sequence_id;
 		ret->base.display_time = msg.frame_data.display_time;
