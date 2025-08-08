@@ -372,6 +372,7 @@ rtppay_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 		return GST_PAD_PROBE_OK;
 	}
 
+	// Copy metadata into RTP header
 	if (!gst_rtp_buffer_add_extension_twobytes_header(&rtp_buffer, 0 /* appbits */, RTP_TWOBYTES_HDR_EXT_ID,
 	                                                  map_info.data, (guint)map_info.size)) {
 		U_LOG_E("Failed to add extension data !");

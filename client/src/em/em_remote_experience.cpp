@@ -622,10 +622,12 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 	projectionLayer->space = exp->xr_owned.worldSpace;
 
 	projectionViews[0].subImage.swapchain = exp->xr_owned.swapchain;
+	projectionViews[0].pose = views[0].pose;
 	projectionViews[0].fov = views[0].fov;
 	projectionViews[0].subImage.imageRect.offset = {0, 0};
 	projectionViews[0].subImage.imageRect.extent = {static_cast<int32_t>(width), static_cast<int32_t>(height)};
 	projectionViews[1].subImage.swapchain = exp->xr_owned.swapchain;
+	projectionViews[1].pose = views[1].pose;
 	projectionViews[1].fov = views[1].fov;
 	projectionViews[1].subImage.imageRect.offset = {static_cast<int32_t>(width), 0};
 	projectionViews[1].subImage.imageRect.extent = {static_cast<int32_t>(width), static_cast<int32_t>(height)};
@@ -640,8 +642,9 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 		return EM_POLL_RENDER_RESULT_NO_SAMPLE_AVAILABLE;
 	}
 
-	projectionViews[0].pose = sample->poses[0];
-	projectionViews[1].pose = sample->poses[1];
+	// Server poses
+	//		projectionViews[0].pose = sample->poses[0];
+	//		projectionViews[1].pose = sample->poses[1];
 
 	XrSwapchainImageAcquireInfo acquireInfo{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
 	uint32_t imageIndex;

@@ -413,7 +413,7 @@ on_new_sample_cb(GstAppSink *appsink, gpointer user_data)
 	GstCustomMeta *custom_meta = gst_buffer_get_custom_meta(buffer, "down-message");
 	if (!custom_meta) {
 		ALOGW("sample_cb: Dropping buffer without down-message.");
-		drop_frame = true;
+//		drop_frame = true;
 	}
 
 	long last_frame_diff_sec = ts.tv_sec - sc->sample_decode_end_ts.tv_sec;
