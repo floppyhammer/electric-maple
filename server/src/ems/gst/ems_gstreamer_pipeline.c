@@ -69,13 +69,6 @@ struct ems_gstreamer_pipeline
 };
 
 static gboolean
-sigint_handler(gpointer user_data)
-{
-	g_main_loop_quit(user_data);
-	return G_SOURCE_REMOVE;
-}
-
-static gboolean
 gst_bus_cb(GstBus *bus, GstMessage *message, gpointer user_data)
 {
 	struct ems_gstreamer_pipeline *egp = (struct ems_gstreamer_pipeline *)user_data;
