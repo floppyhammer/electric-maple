@@ -412,14 +412,6 @@ android_main(struct android_app *app)
 	// Logcat buffer to be able to capture everything gstreamer's going to spit at you !
 	// in Tools -> logcat -> Cycle Buffer Size (I set it to 102400 KB).
 
-	// setenv("GST_DEBUG", "*:3", 1);
-	// setenv("GST_DEBUG", "*ssl*:9,*tls*:9,*webrtc*:9", 1);
-	// setenv("GST_DEBUG", "GST_CAPS:5", 1);
-	setenv("GST_DEBUG", "*:2,webrtc*:9,sctp*:9,dtls*:9,amcvideodec:9,rtpjitterbuffer:9", 1);
-
-	// Do not do ansi color codes
-	setenv("GST_DEBUG_NO_COLOR", "1", 1);
-
 	JNIEnv *env = nullptr;
 	(*app->activity->vm).AttachCurrentThread(&env, NULL);
 	app->onAppCmd = onAppCmd;
@@ -564,11 +556,8 @@ android_main(struct android_app *app)
 	gst_init(NULL, NULL);
 	ALOGI("Initialized GStreamer");
 
-	gst_debug_set_default_threshold(GST_LEVEL_WARNING);
-	//    gst_debug_set_threshold_for_name("*decode*", GST_LEVEL_TRACE);
-	//    gst_debug_set_threshold_for_name("amc*", GST_LEVEL_TRACE);
-	//	gst_debug_set_threshold_for_name("webrtcbindatachannel", GST_LEVEL_INFO);
-	//	gst_debug_set_threshold_for_name("amc", GST_LEVEL_INFO);
+	constexpr const char *gst_debug_string = "*:2,webrtc*:9,sctp*:9,dtls*:9,amcvideodec:9,rtpjitterbuffer:9";
+	gst_debug_set_threshold_from_string(gst_debug_string, true);
 
 	// Set rank for decoder c2qtiavcdecoder
 	GstRegistry *plugins_register = gst_registry_get();
