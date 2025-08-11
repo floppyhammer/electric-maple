@@ -21,6 +21,7 @@
 
 #include "em_app_log.h"
 #include "em_status.h"
+#include <os/os_time.h>
 
 #define GST_USE_UNSTABLE_API
 #include <gst/webrtc/webrtc.h>
@@ -49,6 +50,8 @@ struct _EmConnection
 	GstWebRTCDataChannel *datachannel;
 
 	enum em_status status;
+
+	int64_t server_offset;
 };
 
 G_DEFINE_TYPE(EmConnection, em_connection, G_TYPE_OBJECT)
@@ -118,6 +121,7 @@ em_connection_init(EmConnection *em_conn)
 	em_conn->ws_cancel = g_cancellable_new();
 	em_conn->soup_session = soup_session_new();
 	em_conn->websocket_uri = g_strdup(DEFAULT_WEBSOCKET_URI);
+	em_conn->server_offset = 0;
 }
 
 static void
@@ -336,6 +340,37 @@ em_conn_data_channel_message_string_cb(GstWebRTCDataChannel *datachannel, gchar 
 }
 
 static void
+emconn_data_channel_message_data_cb(GstWebRTCDataChannel *datachannel, GBytes *bytes, EmConnection *emconn)
+{
+	uint64_t client_now = os_monotonic_get_ns();
+
+	gsize bytes_size;
+	gconstpointer bytes_pointer = g_bytes_get_data(bytes, &bytes_size);
+	if (bytes_size != 8) {
+		ALOGE("Unexpected data channel message size!");
+		return;
+	}
+	uint64_t server_now = *(uint64_t *)bytes_pointer;
+	int64_t server_offset = (int64_t)client_now - (int64_t)(server_now);
+
+	ALOGD("Server offset %.2fms", time_ns_to_ms_f(server_offset));
+
+	if (emconn->server_offset == 0) {
+		// Initial offset
+		emconn->server_offset = server_offset;
+	} else if (labs(server_offset) < labs(emconn->server_offset)) {
+		// If we get a smaller offset, use it
+		emconn->server_offset = server_offset;
+	}
+}
+
+int64_t
+em_connection_get_server_clock_offset(EmConnection *emconn)
+{
+	return emconn->server_offset;
+}
+
+static void
 em_conn_connect_internal(EmConnection *em_conn, enum em_status status);
 
 static void
@@ -360,6 +395,7 @@ em_conn_webrtc_prepare_data_channel_cb(GstElement *webrtc,
 	g_signal_connect(data_channel, "on-error", G_CALLBACK(em_conn_data_channel_error_cb), em_conn);
 	g_signal_connect(data_channel, "on-message-string", G_CALLBACK(em_conn_data_channel_message_string_cb),
 	                 em_conn);
+	g_signal_connect(data_channel, "on-message-data", G_CALLBACK(emconn_data_channel_message_data_cb), em_conn);
 }
 
 static void

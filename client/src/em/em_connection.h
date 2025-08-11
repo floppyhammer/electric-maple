@@ -72,4 +72,7 @@ em_connection_set_pipeline(EmConnection *em_conn, GstPipeline *pipeline);
 enum em_status
 em_connection_get_status(EmConnection *em_conn);
 
+int64_t
+em_connection_get_server_clock_offset(EmConnection *emconn);
+
 G_END_DECLS

@@ -413,7 +413,7 @@ on_new_sample_cb(GstAppSink *appsink, gpointer user_data)
 	GstCustomMeta *custom_meta = gst_buffer_get_custom_meta(buffer, "down-message");
 	if (!custom_meta) {
 		ALOGW("sample_cb: Dropping buffer without down-message.");
-//		drop_frame = true;
+		//		drop_frame = true;
 	}
 
 	long last_frame_diff_sec = ts.tv_sec - sc->sample_decode_end_ts.tv_sec;
@@ -913,7 +913,12 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 		ret->base.poses[1] = pose_to_openxr(&msg.frame_data.P_localSpace_view1);
 
 		ret->base.frame_sequence_id = msg.frame_data.frame_sequence_id;
-		ret->base.display_time = msg.frame_data.display_time;
+
+		// Write frame begin time only if we can convert it to the client clock.
+		int64_t server_clock_offset = em_connection_get_server_clock_offset(sc->connection);
+		if (server_clock_offset != 0) {
+			ret->base.display_time = server_clock_offset + msg.frame_data.display_time;
+		}
 
 		sc->last_down_msg = msg;
 	}

@@ -228,12 +228,32 @@ datachannel_send_message(GstWebRTCDataChannel *datachannel)
 	return G_SOURCE_CONTINUE;
 }
 
+gboolean
+datachannel_send_clock(GstWebRTCDataChannel *datachannel)
+{
+	uint64_t *now = (uint64_t *)malloc(sizeof(uint64_t));
+
+	*now = os_monotonic_get_ns();
+
+	GBytes *now_bytes = g_bytes_new_with_free_func(now, sizeof(uint64_t), (GDestroyNotify)g_free, now);
+
+	GError *error = NULL;
+	if (!gst_webrtc_data_channel_send_data_full(datachannel, now_bytes, &error)) {
+		U_LOG_E("Failed to send timestamp over data channel (%d): %s", error->code, error->message);
+		g_clear_error(&error);
+	}
+
+	g_bytes_unref(now_bytes);
+
+	return G_SOURCE_CONTINUE;
+}
+
 static void
 data_channel_open_cb(GstWebRTCDataChannel *datachannel, struct ems_gstreamer_pipeline *egp)
 {
 	U_LOG_I("data channel opened");
 
-	// egp->timeout_src_id = g_timeout_add_seconds(3, G_SOURCE_FUNC(datachannel_send_message), datachannel);
+	egp->timeout_src_id = g_timeout_add_seconds(1, G_SOURCE_FUNC(datachannel_send_clock), datachannel);
 }
 
 static void
@@ -733,7 +753,8 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	    "videorate ! "
 	    "video/x-raw,format=NV12,framerate=60/1 ! "
 	    "encodebin2 "
-	    "profile=\"video/x-h264|element-properties,tune=4,sliced-threads=1,speed-preset=1,bframes=0,bitrate=%s,key-int-max=120\" ! "
+	    "profile=\"video/"
+	    "x-h264|element-properties,tune=4,sliced-threads=1,speed-preset=1,bframes=0,bitrate=%s,key-int-max=120\" ! "
 	    "rtph264pay name=rtppay config-interval=-1 aggregate-mode=zero-latency ! "
 	    "application/x-rtp,payload=96,ssrc=(uint)3484078952 ! "
 #ifdef USE_WEBRTC
