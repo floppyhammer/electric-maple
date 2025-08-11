@@ -37,7 +37,8 @@ struct ems_hmd_recvbuf
 {
 	std::atomic_bool updated;
 	std::mutex mutex;
-	struct xrt_pose pose;
+	uint64_t timestamp;
+	xrt_space_relation rel = XRT_SPACE_RELATION_ZERO;
 };
 
 struct ems_hmd
@@ -45,12 +46,11 @@ struct ems_hmd
 	//! Has to come first.
 	struct xrt_device base;
 
-	struct xrt_pose pose;
+	struct m_relation_history *pose_history;
 
 	// Should outlive us
 	struct ems_instance *instance;
 
-	// struct os_mutex mutex;
 	std::unique_ptr<ems_hmd_recvbuf> received;
 	enum u_logging_level log_level;
 };

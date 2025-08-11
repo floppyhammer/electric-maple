@@ -40,6 +40,7 @@
 #include "util/u_var.h"
 #include "xrt/xrt_device.h"
 #include "include/ems_common.h"
+#include "math/m_relation_history.h"
 
 /*
  *
@@ -52,6 +53,8 @@
  *
  * @implements xrt_device
  */
+
+static constexpr uint64_t kFixedAssumedLatencyUs = 50 * U_TIME_1MS_IN_NS;
 
 /// Casting helper function
 static inline struct ems_hmd *
@@ -72,6 +75,8 @@ ems_hmd_destroy(struct xrt_device *xdev)
 	struct ems_hmd *eh = ems_hmd(xdev);
 
 	eh->received = nullptr;
+
+	m_relation_history_destroy(&eh->pose_history);
 
 	// Remove the variable tracking.
 	u_var_remove_root(eh);
@@ -100,16 +105,20 @@ ems_hmd_get_tracked_pose(struct xrt_device *xdev,
 	}
 
 	if (eh->received->updated) {
+		xrt_space_relation rel;
+		uint64_t timestamp;
 		std::lock_guard<std::mutex> lock(eh->received->mutex);
-		eh->pose = eh->received->pose;
-		math_quat_normalize(&eh->pose.orientation);
+		rel = eh->received->rel;
+		timestamp = eh->received->timestamp;
+		eh->received->rel.relation_flags = XRT_SPACE_RELATION_BITMASK_NONE;
 		eh->received->updated = false;
+		if (0 == (rel.relation_flags & XRT_SPACE_RELATION_ANGULAR_VELOCITY_VALID_BIT)) {
+			// guess our velocities if not reported.
+			m_relation_history_estimate_motion(eh->pose_history, &rel, timestamp, &rel);
+		}
+		m_relation_history_push(eh->pose_history, &rel, timestamp);
 	}
-	// TODO Estimate pose at timestamp at_timestamp_ns!
-	out_relation->pose = eh->pose;
-	out_relation->relation_flags = (enum xrt_space_relation_flags)(XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |
-	                                                               XRT_SPACE_RELATION_POSITION_VALID_BIT |
-	                                                               XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT);
+	m_relation_history_get(eh->pose_history, at_timestamp_ns, out_relation);
 
 	return XRT_SUCCESS;
 }
@@ -127,6 +136,12 @@ ems_hmd_get_view_poses(struct xrt_device *xdev,
 	                               out_fovs, out_poses);
 }
 
+xrt_vec3
+to_xrt_vec3(const em_proto_Vec3 &v)
+{
+	return {v.x, v.y, v.z};
+}
+
 static void
 ems_hmd_handle_data(enum ems_callbacks_event event, const em_UpMessageSuper *messageSuper, void *userdata)
 {
@@ -139,20 +154,38 @@ ems_hmd_handle_data(enum ems_callbacks_event event, const em_UpMessageSuper *mes
 	}
 
 	struct xrt_pose pose = {};
-	pose.position = {message->tracking.P_localSpace_viewSpace.position.x,
-	                 message->tracking.P_localSpace_viewSpace.position.y,
-	                 message->tracking.P_localSpace_viewSpace.position.z};
+	pose.position = to_xrt_vec3(message->tracking.P_localSpace_viewSpace.position);
 
 	pose.orientation.w = message->tracking.P_localSpace_viewSpace.orientation.w;
 	pose.orientation.x = message->tracking.P_localSpace_viewSpace.orientation.x;
 	pose.orientation.y = message->tracking.P_localSpace_viewSpace.orientation.y;
 	pose.orientation.z = message->tracking.P_localSpace_viewSpace.orientation.z;
 
+	const uint64_t now = os_monotonic_get_ns();
 	// TODO handle timestamp, etc
 
-	std::lock_guard lock(eh->received->mutex);
-	eh->received->pose = pose;
-	eh->received->updated = true;
+	xrt_space_relation rel = XRT_SPACE_RELATION_ZERO;
+	rel.pose = pose;
+	math_quat_normalize(&rel.pose.orientation);
+	rel.relation_flags = (enum xrt_space_relation_flags)(
+	    XRT_SPACE_RELATION_POSITION_VALID_BIT | XRT_SPACE_RELATION_POSITION_TRACKED_BIT |
+	    XRT_SPACE_RELATION_ORIENTATION_VALID_BIT | XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT);
+	if (message->tracking.has_V_localSpace_viewSpace_linear) {
+		rel.linear_velocity = to_xrt_vec3(message->tracking.V_localSpace_viewSpace_linear);
+		rel.relation_flags =
+		    (enum xrt_space_relation_flags)(rel.relation_flags | XRT_SPACE_RELATION_LINEAR_VELOCITY_VALID_BIT);
+	}
+	if (message->tracking.has_V_localSpace_viewSpace_angular) {
+		rel.angular_velocity = to_xrt_vec3(message->tracking.V_localSpace_viewSpace_angular);
+		rel.relation_flags =
+		    (enum xrt_space_relation_flags)(rel.relation_flags | XRT_SPACE_RELATION_ANGULAR_VELOCITY_VALID_BIT);
+	}
+	{
+		std::lock_guard<std::mutex> lock(eh->received->mutex);
+		eh->received->rel = rel;
+		eh->received->timestamp = now - kFixedAssumedLatencyUs;
+		eh->received->updated = true;
+	}
 }
 
 struct ems_hmd *
@@ -164,6 +197,8 @@ ems_hmd_create(ems_instance &emsi)
 	struct ems_hmd *eh = U_DEVICE_ALLOCATE(struct ems_hmd, flags, 1, 0);
 
 	eh->received = std::make_unique<ems_hmd_recvbuf>();
+
+	m_relation_history_create(&eh->pose_history);
 
 	// Functions.
 	eh->base.update_inputs = ems_hmd_update_inputs;
@@ -180,7 +215,6 @@ ems_hmd_create(ems_instance &emsi)
 
 	// Private data.
 	eh->instance = &emsi;
-	eh->pose = (struct xrt_pose){XRT_QUAT_IDENTITY, {0.0f, 1.6f, 0.0f}};
 	eh->log_level = debug_get_log_option_sample_log();
 
 	// Print name.
@@ -244,10 +278,18 @@ ems_hmd_create(ems_instance &emsi)
 	// TODO: Doing anything with distortion here makes no sense
 	u_distortion_mesh_set_none(&eh->base);
 
+	// Just put an initial identity value in the tracker
+	struct xrt_space_relation identity = XRT_SPACE_RELATION_ZERO;
+	identity.relation_flags = (enum xrt_space_relation_flags)(
+	    XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT | XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |
+	    XRT_SPACE_RELATION_POSITION_VALID_BIT | XRT_SPACE_RELATION_POSITION_TRACKED_BIT);
+	identity.pose = (struct xrt_pose){XRT_QUAT_IDENTITY, {0.0f, 1.6f, 0.0f}};
+	uint64_t now = os_monotonic_get_ns();
+	m_relation_history_push(eh->pose_history, &identity, now);
+
 	// TODO: Are we going to have any actual useful info to show here?
 	// Setup variable tracker: Optional but useful for debugging
 	u_var_add_root(eh, "Electric Maple Server HMD", true);
-	u_var_add_pose(eh, &eh->pose, "pose");
 	u_var_add_log_level(eh, &eh->log_level, "log_level");
 
 	return eh;

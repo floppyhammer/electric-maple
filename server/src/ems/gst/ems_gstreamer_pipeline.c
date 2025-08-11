@@ -36,7 +36,6 @@
 #undef GST_USE_UNSTABLE_API
 
 #include <assert.h>
-#include <stdio.h>
 
 #include "pb_encode.h"
 
@@ -62,6 +61,7 @@ struct ems_gstreamer_pipeline
 	GstElement *webrtc;
 
 	GObject *data_channel;
+
 	guint timeout_src_id;
 	guint timeout_src_id_dot_data;
 
@@ -71,7 +71,7 @@ struct ems_gstreamer_pipeline
 static gboolean
 gst_bus_cb(GstBus *bus, GstMessage *message, gpointer user_data)
 {
-	struct ems_gstreamer_pipeline *egp = (struct ems_gstreamer_pipeline *)user_data;
+	const struct ems_gstreamer_pipeline *egp = (struct ems_gstreamer_pipeline *)user_data;
 	GstBin *pipeline = GST_BIN(egp->base.pipeline);
 
 	switch (GST_MESSAGE_TYPE(message)) {
