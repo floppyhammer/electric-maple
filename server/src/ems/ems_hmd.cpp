@@ -76,7 +76,9 @@ ems_hmd_destroy(struct xrt_device *xdev)
 
 	eh->received = nullptr;
 
+#ifdef USE_PREDICTION
 	m_relation_history_destroy(&eh->pose_history);
+#endif
 
 	// Remove the variable tracking.
 	u_var_remove_root(eh);
@@ -104,6 +106,7 @@ ems_hmd_get_tracked_pose(struct xrt_device *xdev,
 		return XRT_ERROR_INPUT_UNSUPPORTED;
 	}
 
+#ifdef USE_PREDICTION
 	if (eh->received->updated) {
 		xrt_space_relation rel;
 		uint64_t timestamp;
@@ -119,6 +122,20 @@ ems_hmd_get_tracked_pose(struct xrt_device *xdev,
 		m_relation_history_push(eh->pose_history, &rel, timestamp);
 	}
 	m_relation_history_get(eh->pose_history, at_timestamp_ns, out_relation);
+#else
+	if (eh->received->updated) {
+		std::lock_guard<std::mutex> lock(eh->received->mutex);
+		eh->pose = eh->received->pose;
+		math_quat_normalize(&eh->pose.orientation);
+		eh->received->updated = false;
+	}
+	// TODO Estimate pose at timestamp at_timestamp_ns!
+	out_relation->pose = eh->pose;
+	out_relation->relation_flags = (enum xrt_space_relation_flags)(XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |
+	                                                               XRT_SPACE_RELATION_POSITION_VALID_BIT |
+	                                                               XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT);
+
+#endif
 
 	return XRT_SUCCESS;
 }
@@ -161,8 +178,14 @@ ems_hmd_handle_data(enum ems_callbacks_event event, const em_UpMessageSuper *mes
 	pose.orientation.y = message->tracking.P_localSpace_viewSpace.orientation.y;
 	pose.orientation.z = message->tracking.P_localSpace_viewSpace.orientation.z;
 
-	const uint64_t now = os_monotonic_get_ns();
 	// TODO handle timestamp, etc
+
+#ifndef USE_PREDICTION
+	std::lock_guard lock(eh->received->mutex);
+	eh->received->pose = pose;
+	eh->received->updated = true;
+#else
+	const uint64_t now = os_monotonic_get_ns();
 
 	xrt_space_relation rel = XRT_SPACE_RELATION_ZERO;
 	rel.pose = pose;
@@ -186,6 +209,7 @@ ems_hmd_handle_data(enum ems_callbacks_event event, const em_UpMessageSuper *mes
 		eh->received->timestamp = now - kFixedAssumedLatencyUs;
 		eh->received->updated = true;
 	}
+#endif
 }
 
 struct ems_hmd *
@@ -198,7 +222,9 @@ ems_hmd_create(ems_instance &emsi)
 
 	eh->received = std::make_unique<ems_hmd_recvbuf>();
 
+#ifdef USE_PREDICTION
 	m_relation_history_create(&eh->pose_history);
+#endif
 
 	// Functions.
 	eh->base.update_inputs = ems_hmd_update_inputs;
@@ -216,6 +242,9 @@ ems_hmd_create(ems_instance &emsi)
 	// Private data.
 	eh->instance = &emsi;
 	eh->log_level = debug_get_log_option_sample_log();
+#ifndef USE_PREDICTION
+	eh->pose = (struct xrt_pose){XRT_QUAT_IDENTITY, {0.0f, 1.6f, 0.0f}};
+#endif
 
 	// Print name.
 	snprintf(eh->base.str, XRT_DEVICE_NAME_LEN, "Electric Maple Server HMD");
@@ -278,6 +307,7 @@ ems_hmd_create(ems_instance &emsi)
 	// TODO: Doing anything with distortion here makes no sense
 	u_distortion_mesh_set_none(&eh->base);
 
+#ifdef USE_PREDICTION
 	// Just put an initial identity value in the tracker
 	struct xrt_space_relation identity = XRT_SPACE_RELATION_ZERO;
 	identity.relation_flags = (enum xrt_space_relation_flags)(
@@ -286,11 +316,15 @@ ems_hmd_create(ems_instance &emsi)
 	identity.pose = (struct xrt_pose){XRT_QUAT_IDENTITY, {0.0f, 1.6f, 0.0f}};
 	uint64_t now = os_monotonic_get_ns();
 	m_relation_history_push(eh->pose_history, &identity, now);
+#endif
 
 	// TODO: Are we going to have any actual useful info to show here?
 	// Setup variable tracker: Optional but useful for debugging
 	u_var_add_root(eh, "Electric Maple Server HMD", true);
 	u_var_add_log_level(eh, &eh->log_level, "log_level");
+#ifndef USE_PREDICTION
+	u_var_add_pose(eh, &eh->pose, "pose");
+#endif
 
 	return eh;
 }

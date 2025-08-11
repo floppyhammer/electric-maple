@@ -37,8 +37,13 @@ struct ems_hmd_recvbuf
 {
 	std::atomic_bool updated;
 	std::mutex mutex;
+
+#ifdef USE_PREDICTION
 	uint64_t timestamp;
 	xrt_space_relation rel = XRT_SPACE_RELATION_ZERO;
+#else
+	struct xrt_pose pose;
+#endif
 };
 
 struct ems_hmd
@@ -46,7 +51,11 @@ struct ems_hmd
 	//! Has to come first.
 	struct xrt_device base;
 
+#ifdef USE_PREDICTION
 	struct m_relation_history *pose_history;
+#else
+	struct xrt_pose pose;
+#endif
 
 	// Should outlive us
 	struct ems_instance *instance;
