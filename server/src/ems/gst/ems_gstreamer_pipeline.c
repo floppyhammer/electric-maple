@@ -733,7 +733,7 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	    "videorate ! "
 	    "video/x-raw,format=NV12,framerate=60/1 ! "
 	    "encodebin2 "
-	    "profile=\"video/x-h264|element-properties,tune=4,speed-preset=1,bframes=0,bitrate=%s,key-int-max=120\" ! "
+	    "profile=\"video/x-h264|element-properties,tune=4,sliced-threads=1,speed-preset=1,bframes=0,bitrate=%s,key-int-max=120\" ! "
 	    "rtph264pay name=rtppay config-interval=-1 aggregate-mode=zero-latency ! "
 	    "application/x-rtp,payload=96,ssrc=(uint)3484078952 ! "
 #ifdef USE_WEBRTC
