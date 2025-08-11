@@ -638,8 +638,8 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 
 	if (sample == nullptr) {
 		if (exp->prev_sample) {
-			projectionViews[0].pose = exp->prev_sample->poses[0];
-			projectionViews[1].pose = exp->prev_sample->poses[1];
+//			projectionViews[0].pose = exp->prev_sample->poses[0];
+//			projectionViews[1].pose = exp->prev_sample->poses[1];
 			return EM_POLL_RENDER_RESULT_REUSED_SAMPLE;
 		}
 		return EM_POLL_RENDER_RESULT_NO_SAMPLE_AVAILABLE;

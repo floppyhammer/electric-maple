@@ -556,8 +556,8 @@ android_main(struct android_app *app)
 	gst_init(NULL, NULL);
 	ALOGI("Initialized GStreamer");
 
-	constexpr const char *gst_debug_string = "*:2,webrtc*:9,sctp*:9,dtls*:9,amcvideodec:9,rtpjitterbuffer:9";
-	gst_debug_set_threshold_from_string(gst_debug_string, true);
+//	constexpr const char *gst_debug_string = "*:2,webrtc*:4,sctp*:4,dtls*:4,amcvideodec:4,rtpjitterbuffer:4";
+//	gst_debug_set_threshold_from_string(gst_debug_string, true);
 
 	// Set rank for decoder c2qtiavcdecoder
 	GstRegistry *plugins_register = gst_registry_get();
