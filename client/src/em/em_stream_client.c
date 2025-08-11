@@ -902,11 +902,11 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 	}
 
 	if (msg.has_frame_data && msg.frame_data.has_P_localSpace_view0 && msg.frame_data.has_P_localSpace_view1) {
-		ALOGD("Got DownMessage: Frame #%ld V0 (%.2f %.2f %.2f) V1 (%.2f %.2f %.2f) display_time %ld",
+		ALOGD("Got DownMessage: Frame #%ld V0 (%.2f %.2f %.2f) V1 (%.2f %.2f %.2f) render_begin_time %ld",
 		      msg.frame_data.frame_sequence_id, msg.frame_data.P_localSpace_view0.position.x,
 		      msg.frame_data.P_localSpace_view0.position.y, msg.frame_data.P_localSpace_view0.position.z,
 		      msg.frame_data.P_localSpace_view1.position.x, msg.frame_data.P_localSpace_view1.position.y,
-		      msg.frame_data.P_localSpace_view1.position.z, msg.frame_data.display_time);
+		      msg.frame_data.P_localSpace_view1.position.z, msg.frame_data.render_begin_time);
 
 		ret->base.have_poses = true;
 		ret->base.poses[0] = pose_to_openxr(&msg.frame_data.P_localSpace_view0);
@@ -917,7 +917,7 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 		// Write frame begin time only if we can convert it to the client clock.
 		int64_t server_clock_offset = em_connection_get_server_clock_offset(sc->connection);
 		if (server_clock_offset != 0) {
-			ret->base.display_time = server_clock_offset + msg.frame_data.display_time;
+			ret->base.render_begin_time = server_clock_offset + msg.frame_data.render_begin_time;
 		}
 
 		sc->last_down_msg = msg;

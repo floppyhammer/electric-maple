@@ -643,9 +643,9 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 		return EM_POLL_RENDER_RESULT_NO_SAMPLE_AVAILABLE;
 	}
 
-	if (sample->display_time != 0) {
+	if (sample->render_begin_time != 0) {
 		uint64_t client_now = os_monotonic_get_ns();
-		uint64_t comp_begin_to_client_decode = client_now - sample->display_time;
+		uint64_t comp_begin_to_client_decode = client_now - sample->render_begin_time;
 		ALOGD("BENCHMARK: Server comp begin -> Client decode took %.2fms",
 		      time_ns_to_ms_f(comp_begin_to_client_decode));
 	}

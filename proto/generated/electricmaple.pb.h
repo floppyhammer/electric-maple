@@ -147,7 +147,7 @@ typedef struct _em_proto_DownFrameDataMessage {
     em_proto_Pose P_localSpace_view0; /* Left view */
     bool has_P_localSpace_view1;
     em_proto_Pose P_localSpace_view1; /* Right view */
-    int64_t display_time; /* TODO fovs here */
+    int64_t render_begin_time; /* TODO fovs here */
 } em_proto_DownFrameDataMessage;
 
 typedef struct _em_proto_DownMessage {
@@ -275,7 +275,7 @@ extern "C" {
 #define em_proto_DownFrameDataMessage_frame_sequence_id_tag 1
 #define em_proto_DownFrameDataMessage_P_localSpace_view0_tag 2
 #define em_proto_DownFrameDataMessage_P_localSpace_view1_tag 3
-#define em_proto_DownFrameDataMessage_display_time_tag 4
+#define em_proto_DownFrameDataMessage_render_begin_time_tag 4
 #define em_proto_DownMessage_frame_data_tag      1
 
 /* Struct field encoding specification for nanopb */
@@ -422,7 +422,7 @@ X(a, STATIC,   OPTIONAL, MESSAGE,  frame,             3)
 X(a, STATIC,   SINGULAR, INT64,    frame_sequence_id,   1) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  P_localSpace_view0,   2) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  P_localSpace_view1,   3) \
-X(a, STATIC,   SINGULAR, INT64,    display_time,      4)
+X(a, STATIC,   SINGULAR, INT64,    render_begin_time,   4)
 #define em_proto_DownFrameDataMessage_CALLBACK NULL
 #define em_proto_DownFrameDataMessage_DEFAULT NULL
 #define em_proto_DownFrameDataMessage_P_localSpace_view0_MSGTYPE em_proto_Pose
