@@ -32,5 +32,9 @@ struct em_sample
 	XrPosef poses[2];
 
 	int64_t frame_sequence_id;
-	int64_t render_begin_time;
+	int64_t server_render_begin_time;
+	int64_t server_push_time;
+	int64_t client_receive_time;
+	int64_t client_decode_time;
+	int64_t client_render_begin_time;
 };

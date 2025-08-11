@@ -95,7 +95,7 @@ struct _EmStreamClient
 
 	GMutex sample_mutex;
 	GstSample *sample;
-	struct timespec sample_decode_end_ts;
+	int64_t sample_decode_end_time;
 
 	GMutex skipped_frames_mutex;
 	uint32_t skipped_frames;
@@ -394,13 +394,9 @@ on_new_sample_cb(GstAppSink *appsink, gpointer user_data)
 	//	GstPromise *promise = gst_promise_new_with_change_func((GstPromiseChangeFunc)on_stats, NULL, NULL);
 	//	g_signal_emit_by_name(webrtcbin, "get-stats", NULL, promise);
 
+	int64_t decode_end_time = os_monotonic_get_ns();
+
 	// TODO record the frame ID, get frame pose
-	struct timespec ts;
-	int ret = clock_gettime(CLOCK_MONOTONIC, &ts);
-	if (ret != 0) {
-		ALOGE("%s: clock_gettime failed, which is very bizarre.", __FUNCTION__);
-		return GST_FLOW_ERROR;
-	}
 
 	GstSample *prevSample = NULL;
 	GstSample *sample = gst_app_sink_pull_sample(appsink);
@@ -416,8 +412,8 @@ on_new_sample_cb(GstAppSink *appsink, gpointer user_data)
 		//		drop_frame = true;
 	}
 
-	long last_frame_diff_sec = ts.tv_sec - sc->sample_decode_end_ts.tv_sec;
-	if (last_frame_diff_sec >= EM_NO_DOWN_MSG_FALLBACK_TIMEOUT_SECS) {
+	int64_t last_frame_diff_ns = decode_end_time - sc->sample_decode_end_time;
+	if (last_frame_diff_ns >= time_s_to_ns(EM_NO_DOWN_MSG_FALLBACK_TIMEOUT_SECS)) {
 		ALOGW("sample_cb: Not dropping frame, since we haven't had one since a second.");
 		drop_frame = false;
 	}
@@ -443,7 +439,7 @@ on_new_sample_cb(GstAppSink *appsink, gpointer user_data)
 		g_autoptr(GMutexLocker) locker = g_mutex_locker_new(&sc->sample_mutex);
 		prevSample = sc->sample;
 		sc->sample = sample;
-		sc->sample_decode_end_ts = ts;
+		sc->sample_decode_end_time = decode_end_time;
 		sc->received_first_frame = true;
 	}
 
@@ -460,6 +456,8 @@ rtp_h264_depay_sink_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_
 	EmStreamClient *sc = (EmStreamClient *)user_data;
 	(void)user_data;
 	(void)pad;
+
+	int64_t frame_receive_time = os_monotonic_get_ns();
 
 	GstBuffer *buffer = gst_pad_probe_info_get_buffer(info);
 
@@ -506,6 +504,12 @@ rtp_h264_depay_sink_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_
 	}
 	GstStructure *custom_structure = gst_custom_meta_get_structure(custom_meta);
 	gst_structure_set(custom_structure, "protobuf", GST_TYPE_BUFFER, struct_buf, NULL);
+
+	// Set the frame receive time
+	GValue frame_receive_time_value = G_VALUE_INIT;
+	g_value_init(&frame_receive_time_value, G_TYPE_INT64);
+	g_value_set_int64(&frame_receive_time_value, frame_receive_time);
+	gst_structure_set_value(custom_structure, "frame-receive-time", &frame_receive_time_value);
 
 	gst_buffer_unref(struct_buf);
 
@@ -815,7 +819,7 @@ em_stream_client_stop(EmStreamClient *sc)
 }
 
 static bool
-read_down_message_from_custom_meta(GstBuffer *buffer, em_proto_DownMessage *msg)
+read_down_message_from_custom_meta(GstBuffer *buffer, em_proto_DownMessage *msg, int64_t *out_frame_receive_time)
 {
 	GstCustomMeta *custom_meta = gst_buffer_get_custom_meta(buffer, "down-message");
 	if (!custom_meta) {
@@ -835,6 +839,14 @@ read_down_message_from_custom_meta(GstBuffer *buffer, em_proto_DownMessage *msg)
 	if (!gst_buffer_map(struct_buf, &info, GST_MAP_READ)) {
 		ALOGE("Failed to map custom meta buffer.");
 		return false;
+	}
+
+	const GValue *frame_receive_time_value = gst_structure_get_value(custom_structure, "frame-receive-time");
+	if (G_VALUE_TYPE(frame_receive_time_value) == G_TYPE_INT64) {
+		int64_t frame_receive_time = g_value_get_int64(frame_receive_time_value);
+		*out_frame_receive_time = frame_receive_time;
+	} else {
+		ALOGE("Unexpected type for frame-receive-time");
 	}
 
 	pb_istream_t our_istream = pb_istream_from_buffer(info.data, info.size);
@@ -861,12 +873,12 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 	// We actually pull the sample in the new-sample signal handler, so here we're just receiving the sample already
 	// pulled.
 	GstSample *sample = NULL;
-	struct timespec decode_end;
+	int64_t decode_end_time = 0;
 	{
 		g_autoptr(GMutexLocker) locker = g_mutex_locker_new(&sc->sample_mutex);
 		sample = sc->sample;
 		sc->sample = NULL;
-		decode_end = sc->sample_decode_end_ts;
+		decode_end_time = sc->sample_decode_end_time;
 	}
 
 	if (sample == NULL) {
@@ -887,7 +899,7 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 		sc->skipped_frames = 0;
 	}
 
-	*out_decode_end = decode_end;
+	os_ns_to_timespec(decode_end_time, out_decode_end);
 
 	struct em_sc_sample *ret = calloc(1, sizeof(struct em_sc_sample));
 
@@ -896,7 +908,8 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 
 	// Get DownMsg from GstCustomMeta
 	em_proto_DownMessage msg = em_proto_DownMessage_init_default;
-	if (!read_down_message_from_custom_meta(buffer, &msg)) {
+	int64_t frame_receive_time = 0;
+	if (!read_down_message_from_custom_meta(buffer, &msg, &frame_receive_time)) {
 		ALOGE("Reading DownMessage from GstCustomMeta failed. Reusing last one");
 		msg = sc->last_down_msg;
 	}
@@ -917,11 +930,16 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 		// Write frame begin time only if we can convert it to the client clock.
 		int64_t server_clock_offset = em_connection_get_server_clock_offset(sc->connection);
 		if (server_clock_offset != 0) {
-			ret->base.render_begin_time = server_clock_offset + msg.frame_data.render_begin_time;
+			ret->base.server_render_begin_time = server_clock_offset + msg.frame_data.render_begin_time;
+			ret->base.server_push_time = server_clock_offset + msg.frame_data.frame_push_time;
 		}
+		ret->base.client_receive_time = frame_receive_time;
+		ret->base.client_decode_time = decode_end_time;
 
 		sc->last_down_msg = msg;
 	}
+
+	ret->base.client_render_begin_time = os_monotonic_get_ns();
 
 	GstVideoInfo info;
 	gst_video_info_from_caps(&info, caps);

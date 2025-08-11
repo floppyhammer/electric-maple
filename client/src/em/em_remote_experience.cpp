@@ -645,13 +645,6 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 		return EM_POLL_RENDER_RESULT_NO_SAMPLE_AVAILABLE;
 	}
 
-	if (sample->render_begin_time != 0) {
-		uint64_t client_now = os_monotonic_get_ns();
-		uint64_t comp_begin_to_client_decode = client_now - sample->render_begin_time;
-		ALOGD("BENCHMARK: Server comp begin -> Client decode took %.2fms",
-		      time_ns_to_ms_f(comp_begin_to_client_decode));
-	}
-
 	// Server poses
 	//		projectionViews[0].pose = sample->poses[0];
 	//		projectionViews[1].pose = sample->poses[1];
@@ -704,6 +697,26 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 		em_stream_client_release_sample(exp->stream_client, exp->prev_sample);
 	}
 	exp->prev_sample = sample;
+	
+	// Print benchmark JSON
+	if (sample->server_render_begin_time != 0) {
+		uint64_t client_now = os_monotonic_get_ns();
+
+		uint64_t server_render_duration = sample->server_push_time - sample->server_render_begin_time;
+		uint64_t server_encode_transmit_duration = sample->client_receive_time - sample->server_push_time;
+		uint64_t client_decode_duration = sample->client_decode_time - sample->client_receive_time;
+		uint64_t client_wait_duration = sample->client_render_begin_time - sample->client_decode_time;
+		uint64_t client_render_duration = client_now - sample->client_render_begin_time;
+		uint64_t total_duration = client_now - sample->server_render_begin_time;
+
+		ALOGD(
+		    "BENCHMARK {\"frame\": %ld, \"server_render_ms\": %f, \"server_encode_transmit_ms\": %f, "
+		    "\"client_decode_ms\": %f, \"client_wait_ms\": %f, \"client_render_ms\": %f, \"total_ms\": %f}",
+		    sample->frame_sequence_id, time_ns_to_ms_f(server_render_duration),
+		    time_ns_to_ms_f(server_encode_transmit_duration), time_ns_to_ms_f(client_decode_duration),
+		    time_ns_to_ms_f(client_wait_duration), time_ns_to_ms_f(client_render_duration),
+		    time_ns_to_ms_f(total_duration));
+	}
 
 	// Send frame report
 	report_frame_timing(exp, beginFrameTime, &decodeEndTime, predictedDisplayTime, sample->frame_sequence_id);
