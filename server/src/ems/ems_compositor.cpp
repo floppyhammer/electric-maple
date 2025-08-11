@@ -355,7 +355,10 @@ pack_blit_and_encode(struct ems_compositor *c,
 
 	// Getting frame
 	if (!vk_image_readback_to_xf_pool_get_unused_frame(vk, c->pool, &wrap)) {
-		EMS_COMP_ERROR(c, "vk_image_readback_to_xf_pool_get_unused_frame: Failed!");
+		// This mostly happens when the wrapped_buffer_destroy callback in ems_gstreamer_src
+		// is not called by the gst pipeline and we end up with a fully occupied buffer pool.
+		EMS_COMP_ERROR(c, "Failed to get a readback frame.");
+		EMS_COMP_ERROR(c, "Is the GStreamer pipeline consuming buffers? Check XRT_LOG=trace");
 		return;
 	}
 
