@@ -19,6 +19,7 @@
 #include "gst/app/gstappsrc.h"
 #include "gst/video/gstvideometa.h"
 #include "gst/video/video-format.h"
+#include "os/os_time.h"
 #include "util/u_debug.h"
 #include "util/u_format.h"
 #include "util/u_misc.h"
@@ -105,20 +106,19 @@ ems_gstreamer_src_push_frame(struct ems_gstreamer_src *gs, struct xrt_frame *xf,
 	gst_buffer_add_video_meta_full(buffer, GST_VIDEO_FRAME_FLAG_NONE, gst_fmt_from_xf_format(xf->format), xf->width,
 	                               xf->height, 1, offsets, strides);
 
-	//! Get the timestampe from the frame.
-	uint64_t xtimestamp_ns = xf->timestamp;
+	const uint64_t now = os_monotonic_get_ns();
 
 	// Use the first frame as offset.
 	if (gs->offset_ns == 0) {
-		gs->offset_ns = xtimestamp_ns;
+		gs->offset_ns = now;
 	}
 
 	// Need to be offset or gstreamer becomes sad.
-	GST_BUFFER_PTS(buffer) = xtimestamp_ns - gs->offset_ns;
+	GST_BUFFER_PTS(buffer) = now - gs->offset_ns;
 
 	// Duration is measured from last time stamp.
-	GST_BUFFER_DURATION(buffer) = xtimestamp_ns - gs->timestamp_ns;
-	gs->timestamp_ns = xtimestamp_ns;
+	GST_BUFFER_DURATION(buffer) = now - gs->timestamp_ns;
+	gs->timestamp_ns = now;
 
 	size_t payload_size;
 	const gconstpointer payload_ptr = g_bytes_get_data(downMsg_bytes, &payload_size);

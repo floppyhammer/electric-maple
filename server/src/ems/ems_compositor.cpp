@@ -337,6 +337,8 @@ to_proto(const struct xrt_pose &pose)
 
 void
 pack_blit_and_encode(struct ems_compositor *c,
+                     int64_t frame_id,
+                     uint64_t begin_ns,
                      const struct xrt_layer_projection_view_data *lvd,
                      const struct xrt_layer_projection_view_data *rvd,
                      struct comp_swapchain *lsc,
@@ -497,17 +499,11 @@ pack_blit_and_encode(struct ems_compositor *c,
 		return;
 	}
 
-	// HACK
-	frame->timestamp = os_monotonic_get_ns();
-	frame->source_timestamp = frame->timestamp;
-	frame->source_sequence = c->image_sequence++;
-	frame->source_id = 0;
-
 	// Set the latest Downstream msg before pushing the frame
 	em_proto_DownMessage msg = em_proto_DownMessage_init_default;
 	msg.has_frame_data = true;
-	msg.frame_data.frame_sequence_id = wrap->base_frame.source_sequence;
-	msg.frame_data.display_time = wrap->base_frame.timestamp;
+	msg.frame_data.frame_sequence_id = frame_id;
+	msg.frame_data.display_time = begin_ns;
 	msg.frame_data.has_P_localSpace_view0 = true;
 	msg.frame_data.P_localSpace_view0 = to_proto(lvd->pose);
 	msg.frame_data.has_P_localSpace_view1 = true;
@@ -647,10 +643,8 @@ ems_compositor_layer_commit(struct xrt_compositor *xc, xrt_graphics_sync_handle_
 	 */
 
 	// When we begin rendering.
-	{
-		uint64_t now_ns = os_monotonic_get_ns();
-		u_pc_mark_point(c->upc, U_TIMING_POINT_BEGIN, frame_id, now_ns);
-	}
+	uint64_t begin_ns = os_monotonic_get_ns();
+	u_pc_mark_point(c->upc, U_TIMING_POINT_BEGIN, frame_id, begin_ns);
 
 	// We want to render here. comp_base filled c->base.slot.layers for us.
 	for (uint32_t i = 0; i < c->base.layer_accum.layer_count; i++) {
@@ -665,7 +659,7 @@ ems_compositor_layer_commit(struct xrt_compositor *xc, xrt_graphics_sync_handle_
 			struct comp_swapchain *left = (struct comp_swapchain *)layer.sc_array[0];
 			struct comp_swapchain *right = (struct comp_swapchain *)layer.sc_array[1];
 
-			pack_blit_and_encode(c, lvd, rvd, left, right);
+			pack_blit_and_encode(c, frame_id, begin_ns, lvd, rvd, left, right);
 		} break;
 		case XRT_LAYER_PROJECTION: {
 			const struct xrt_layer_projection_data *stereo = &layer.data.proj;
@@ -675,7 +669,7 @@ ems_compositor_layer_commit(struct xrt_compositor *xc, xrt_graphics_sync_handle_
 			struct comp_swapchain *left = (struct comp_swapchain *)layer.sc_array[0];
 			struct comp_swapchain *right = (struct comp_swapchain *)layer.sc_array[1];
 
-			pack_blit_and_encode(c, lvd, rvd, left, right);
+			pack_blit_and_encode(c, frame_id, begin_ns, lvd, rvd, left, right);
 		} break;
 		default: U_LOG_E("Unhandled layer type %d", layer.data.type); break;
 		}

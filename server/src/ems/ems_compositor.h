@@ -119,7 +119,6 @@ struct ems_compositor
 	struct vk_cmd_pool cmd_pool = {};
 
 	struct vk_image_readback_to_xf_pool *pool = nullptr;
-	int image_sequence;
 	struct u_sink_debug debug_sink;
 
 	struct
