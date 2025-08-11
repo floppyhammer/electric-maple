@@ -528,7 +528,12 @@ em_conn_webrtc_on_answer_created(GstPromise *promise, EmConnection *em_conn)
 	gchar *sdp;
 
 	ALOGD("%s", __FUNCTION__);
-	gst_structure_get(gst_promise_get_reply(promise), "answer", GST_TYPE_WEBRTC_SESSION_DESCRIPTION, &answer, NULL);
+
+	g_assert(gst_promise_wait(promise) == GST_PROMISE_RESULT_REPLIED);
+
+	const GstStructure *reply = gst_promise_get_reply(promise);
+
+	gst_structure_get(reply, "answer", GST_TYPE_WEBRTC_SESSION_DESCRIPTION, &answer, NULL);
 	gst_promise_unref(promise);
 
 	if (NULL == answer) {
