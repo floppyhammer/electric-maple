@@ -342,7 +342,8 @@ pack_blit_and_encode(struct ems_compositor *c,
                      const struct xrt_layer_projection_view_data *lvd,
                      const struct xrt_layer_projection_view_data *rvd,
                      struct comp_swapchain *lsc,
-                     struct comp_swapchain *rsc)
+                     struct comp_swapchain *rsc,
+                     bool flip_y)
 {
 	if (c->offset_ns == 0) {
 		uint64_t now = os_monotonic_get_ns();
@@ -391,6 +392,11 @@ pack_blit_and_encode(struct ems_compositor *c,
 		info.src[0].fm_image.base_array_layer = lvd->sub.array_index;
 		info.src[0].fm_image.image = lsc->vkic.images[lvd->sub.image_index].handle;
 
+		if (flip_y) {
+			info.src[0].rect.offset.h += info.src[0].rect.extent.h;
+			info.src[0].rect.extent.h = -info.src[0].rect.extent.h;
+		}
+
 		info.src[1].old_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		info.src[1].src_access_mask = VK_ACCESS_SHADER_READ_BIT;
 		info.src[1].src_stage_mask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
@@ -398,6 +404,11 @@ pack_blit_and_encode(struct ems_compositor *c,
 		info.src[1].fm_image.aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
 		info.src[1].fm_image.base_array_layer = rvd->sub.array_index;
 		info.src[1].fm_image.image = rsc->vkic.images[rvd->sub.image_index].handle;
+
+		if (flip_y) {
+			info.src[1].rect.offset.h += info.src[1].rect.extent.h;
+			info.src[1].rect.extent.h = -info.src[1].rect.extent.h;
+		}
 
 		info.dst.old_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 		info.dst.src_access_mask = VK_ACCESS_TRANSFER_READ_BIT;
@@ -663,7 +674,7 @@ ems_compositor_layer_commit(struct xrt_compositor *xc, xrt_graphics_sync_handle_
 			struct comp_swapchain *left = (struct comp_swapchain *)layer.sc_array[0];
 			struct comp_swapchain *right = (struct comp_swapchain *)layer.sc_array[1];
 
-			pack_blit_and_encode(c, frame_id, begin_ns, lvd, rvd, left, right);
+			pack_blit_and_encode(c, frame_id, begin_ns, lvd, rvd, left, right, layer.data.flip_y);
 		} break;
 		case XRT_LAYER_PROJECTION: {
 			const struct xrt_layer_projection_data *stereo = &layer.data.proj;
@@ -673,7 +684,7 @@ ems_compositor_layer_commit(struct xrt_compositor *xc, xrt_graphics_sync_handle_
 			struct comp_swapchain *left = (struct comp_swapchain *)layer.sc_array[0];
 			struct comp_swapchain *right = (struct comp_swapchain *)layer.sc_array[1];
 
-			pack_blit_and_encode(c, frame_id, begin_ns, lvd, rvd, left, right);
+			pack_blit_and_encode(c, frame_id, begin_ns, lvd, rvd, left, right, layer.data.flip_y);
 		} break;
 		default: U_LOG_E("Unhandled layer type %d", layer.data.type); break;
 		}

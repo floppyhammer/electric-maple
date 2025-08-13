@@ -240,9 +240,9 @@ controller_handle_data(enum ems_callbacks_event event, const em_UpMessageSuper *
 		if (message->tracking.has_controller_aim_right) {
 			emc->aim_pose = convert_pose(message->tracking.controller_aim_right);
 
-			U_LOG_E("aim_pose %f %f %f, %f %f %f %f", emc->aim_pose.position.x, emc->aim_pose.position.y,
-			        emc->aim_pose.position.z, emc->aim_pose.orientation.x, emc->aim_pose.orientation.y,
-			        emc->aim_pose.orientation.z, emc->aim_pose.orientation.w);
+			// U_LOG_E("aim_pose %f %f %f, %f %f %f %f", emc->aim_pose.position.x, emc->aim_pose.position.y,
+			//         emc->aim_pose.position.z, emc->aim_pose.orientation.x, emc->aim_pose.orientation.y,
+			//         emc->aim_pose.orientation.z, emc->aim_pose.orientation.w);
 		}
 
 		memcpy(emc->hand_joints, messageSuper->hand_joint_locations_right,
