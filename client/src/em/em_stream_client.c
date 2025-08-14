@@ -603,7 +603,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 #ifdef USE_WEBRTC
 	// clang-format off
     gchar *pipeline_string = g_strdup_printf(
-            "webrtcbin name=webrtc bundle-policy=max-bundle latency=5 ! "
+            "webrtcbin name=webrtc bundle-policy=max-bundle latency=50 ! "
             "rtph264depay name=depay ! "
             "decodebin3 ! "
 
@@ -620,7 +620,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
         gchar *pipeline_string = g_strdup_printf(
             "udpsrc port=5600 buffer-size=8000000 "
             "caps=\"application/x-rtp,media=video,clock-rate=90000,encoding-name=H264\" ! "
-            "rtpjitterbuffer name=jitter do-lost=1 latency=5 ! "
+            "rtpjitterbuffer name=jitter do-lost=1 latency=50 ! "
             "rtph264depay name=depay ! "
             "decodebin3 ! "
             "glsinkbin name=glsink");
