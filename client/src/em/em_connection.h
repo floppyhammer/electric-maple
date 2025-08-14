@@ -16,7 +16,7 @@
 
 #include "em_status.h"
 
-#define USE_WEBRTC
+//#define USE_WEBRTC
 
 G_BEGIN_DECLS
 

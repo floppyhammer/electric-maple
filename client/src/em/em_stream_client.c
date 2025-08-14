@@ -100,6 +100,10 @@ struct _EmStreamClient
 	GMutex skipped_frames_mutex;
 	uint32_t skipped_frames;
 	em_proto_DownMessage last_down_msg;
+
+	// todo: this may not be an ideal way to handle data racing
+	GMutex metadata_preservation_mutex;
+	GstBuffer *preserved_metadata_struct_buf;
 };
 
 #if 0
@@ -220,6 +224,9 @@ em_stream_client_init(EmStreamClient *sc)
 
 	g_mutex_init(&sc->skipped_frames_mutex);
 	sc->skipped_frames = 0;
+
+	g_mutex_init(&sc->metadata_preservation_mutex);
+	sc->preserved_metadata_struct_buf = NULL;
 
 	ALOGI("%s: done creating stuff", __FUNCTION__);
 }
@@ -427,7 +434,7 @@ on_new_sample_cb(GstAppSink *appsink, gpointer user_data)
 	}
 
 	if (skipped_frames_threshold_reached) {
-		ALOGW("sample_cb: Not dropping frame, since we already skipped 10 frames.");
+		//		ALOGW("sample_cb: Not dropping frame, since we already skipped 10 frames.");
 		drop_frame = false;
 	}
 
@@ -451,19 +458,24 @@ on_new_sample_cb(GstAppSink *appsink, gpointer user_data)
 }
 
 static GstPadProbeReturn
-rtp_h264_depay_sink_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
+rtpdepay_sink_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 {
 	EmStreamClient *sc = (EmStreamClient *)user_data;
-	(void)user_data;
-	(void)pad;
 
 	int64_t frame_receive_time = os_monotonic_get_ns();
+
+	g_autoptr(GMutexLocker) locker = g_mutex_locker_new(&sc->metadata_preservation_mutex);
+
+	// Is not yet consumed.
+	if (sc->preserved_metadata_struct_buf) {
+		return GST_PAD_PROBE_OK;
+	}
 
 	GstBuffer *buffer = gst_pad_probe_info_get_buffer(info);
 
 	GstRTPBuffer rtp_buffer = GST_RTP_BUFFER_INIT;
 
-	// extract Downstream metadata from rtp header
+	// Extract Downstream metadata from rtp header
 	if (!gst_rtp_buffer_map(buffer, GST_MAP_READWRITE, &rtp_buffer)) {
 		ALOGE("Failed to map GstBuffer");
 		return GST_PAD_PROBE_OK;
@@ -473,7 +485,7 @@ rtp_h264_depay_sink_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_
 	if (!gst_rtp_buffer_get_extension(&rtp_buffer)) {
 		// TODO: This happens for most RTP buffers we receive as they are not ours.
 		// Is there a smarter way to filter them?
-		// ALOGW("Skipping RTP buffer without extension bit.");
+		//		ALOGW("Skipping RTP buffer without extension bit.");
 		goto no_buf;
 	}
 
@@ -487,23 +499,47 @@ rtp_h264_depay_sink_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_
 	}
 
 	// Repack the protobuf into a GstBuffer
-	GstBuffer *struct_buf = gst_buffer_new_memdup(payload_ptr, size);
-	if (!struct_buf) {
+	sc->preserved_metadata_struct_buf = gst_buffer_new_memdup(payload_ptr, size);
+	if (!sc->preserved_metadata_struct_buf) {
 		ALOGE("Failed to allocate GstBuffer with payload.");
 		goto no_buf;
 	}
 
 	gst_rtp_buffer_unmap(&rtp_buffer);
+	return GST_PAD_PROBE_OK;
+
+no_buf:
+	gst_rtp_buffer_unmap(&rtp_buffer);
+	return GST_PAD_PROBE_OK;
+}
+
+static GstPadProbeReturn
+rtpdepay_src_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
+{
+	EmStreamClient *sc = (EmStreamClient *)user_data;
+
+	g_autoptr(GMutexLocker) locker = g_mutex_locker_new(&sc->metadata_preservation_mutex);
+
+	if (!sc->preserved_metadata_struct_buf) {
+		ALOGE("preserved_metadata_struct_buf is NULL");
+		return GST_PAD_PROBE_OK;
+	}
+
+	int64_t frame_receive_time = os_monotonic_get_ns();
+
+	GstBuffer *buffer = gst_pad_probe_info_get_buffer(info);
 
 	// Add it to a custom meta
 	GstCustomMeta *custom_meta = gst_buffer_add_custom_meta(buffer, "down-message");
 	if (custom_meta == NULL) {
 		ALOGE("Failed to add GstCustomMeta");
-		gst_buffer_unref(struct_buf);
+		gst_buffer_unref(sc->preserved_metadata_struct_buf);
+		sc->preserved_metadata_struct_buf = NULL;
 		return GST_PAD_PROBE_OK;
 	}
+
 	GstStructure *custom_structure = gst_custom_meta_get_structure(custom_meta);
-	gst_structure_set(custom_structure, "protobuf", GST_TYPE_BUFFER, struct_buf, NULL);
+	gst_structure_set(custom_structure, "protobuf", GST_TYPE_BUFFER, sc->preserved_metadata_struct_buf, NULL);
 
 	// Set the frame receive time
 	GValue frame_receive_time_value = G_VALUE_INIT;
@@ -511,12 +547,9 @@ rtp_h264_depay_sink_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_
 	g_value_set_int64(&frame_receive_time_value, frame_receive_time);
 	gst_structure_set_value(custom_structure, "frame-receive-time", &frame_receive_time_value);
 
-	gst_buffer_unref(struct_buf);
+	gst_buffer_unref(sc->preserved_metadata_struct_buf);
+	sc->preserved_metadata_struct_buf = NULL;
 
-	return GST_PAD_PROBE_OK;
-
-no_buf:
-	gst_rtp_buffer_unmap(&rtp_buffer);
 	return GST_PAD_PROBE_OK;
 }
 
@@ -588,6 +621,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
             "udpsrc port=5600 buffer-size=8000000 "
             "caps=\"application/x-rtp,media=video,clock-rate=90000,encoding-name=H264\" ! "
             "rtpjitterbuffer name=jitter do-lost=1 latency=5 ! "
+            "rtph264depay name=depay ! "
             "decodebin3 ! "
             "glsinkbin name=glsink");
 	// clang-format on
@@ -610,11 +644,13 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	{
 		GstElement *jitterbuffer = gst_bin_get_by_name(GST_BIN(sc->pipeline), "jitter");
 
-		GstPad *srcpad = gst_element_get_static_pad(jitterbuffer, "src");
-		g_assert(srcpad);
-		//        gst_pad_add_probe(srcpad, GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, jitterbuffer_event_probe_cb,
-		//        NULL, NULL);
-		gst_clear_object(&srcpad);
+		if (jitterbuffer) {
+			GstPad *srcpad = gst_element_get_static_pad(jitterbuffer, "src");
+			g_assert(srcpad);
+			//        gst_pad_add_probe(srcpad, GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM,
+			//        jitterbuffer_event_probe_cb, NULL, NULL);
+			gst_clear_object(&srcpad);
+		}
 	}
 #endif
 
@@ -666,12 +702,23 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	sc->pipeline_is_running = TRUE;
 
 	GstElement *depay = gst_bin_get_by_name(GST_BIN(sc->pipeline), "depay");
-	GstPad *pad = gst_element_get_static_pad(depay, "sink");
-	if (pad != NULL) {
-		gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, rtp_h264_depay_sink_pad_probe, sc, NULL);
-		gst_object_unref(pad);
-	} else {
-		ALOGE("Could not find static sink pad in depay.");
+	{
+		GstPad *pad = gst_element_get_static_pad(depay, "sink");
+		if (pad != NULL) {
+			gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, rtpdepay_sink_pad_probe, sc, NULL);
+			gst_object_unref(pad);
+		} else {
+			ALOGE("Could not find static sink pad in depay.");
+		}
+	}
+	{
+		GstPad *pad = gst_element_get_static_pad(depay, "src");
+		if (pad != NULL) {
+			gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, rtpdepay_src_pad_probe, sc, NULL);
+			gst_object_unref(pad);
+		} else {
+			ALOGE("Could not find static src pad in depay.");
+		}
 	}
 
 	// This actually hands over the pipeline. Once our own handler returns, the pipeline will be started by the
@@ -889,7 +936,8 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 		{
 			g_autoptr(GMutexLocker) locker = g_mutex_locker_new(&sc->skipped_frames_mutex);
 			sc->skipped_frames += 1;
-			ALOGW("pull_sample: The latest sample is NULL. Skipped %d frames.", sc->skipped_frames);
+			//			ALOGW("pull_sample: The latest sample is NULL. Skipped %d frames.",
+			// sc->skipped_frames);
 		}
 		return NULL;
 	}

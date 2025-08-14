@@ -42,9 +42,9 @@
 #define WEBRTC_TEE_NAME "webrtctee"
 
 #ifdef ANDROID
-#define DEFAULT_BITRATE "40960000"
+#define DEFAULT_BITRATE "40000000"
 #else
-#define DEFAULT_BITRATE "8000"
+#define DEFAULT_BITRATE "4000"
 #endif
 
 // TODO: Can we define the below at a higher level so it can also be
@@ -66,6 +66,11 @@ struct ems_gstreamer_pipeline
 	guint timeout_src_id_dot_data;
 
 	struct ems_callbacks *callbacks;
+
+	// todo: this may not be an ideal way to handle data racing
+	GMutex metadata_preservation_mutex;
+	char preserved_metadata[RTP_TWOBYTES_HDR_EXT_MAX_SIZE];
+	guint preserved_metadata_size;
 };
 
 static gboolean
@@ -346,32 +351,19 @@ data_channel_message_string_cb(GstWebRTCDataChannel *data_channel, gchar *str, s
 }
 
 GstPadProbeReturn
-rtppay_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
+rtppay_sink_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 {
-	(void)pad;
+	struct ems_gstreamer_pipeline *egp = (struct ems_gstreamer_pipeline *)user_data;
 
-	GstBuffer *buffer;
-	GstRTPBuffer rtp_buffer = GST_RTP_BUFFER_INIT;
+	GstBuffer *buffer = gst_pad_probe_info_get_buffer(info);
 
-	buffer = gst_pad_probe_info_get_buffer(info);
-
-	buffer = gst_buffer_make_writable(buffer);
-
-	if (!gst_rtp_buffer_map(buffer, GST_MAP_WRITE, &rtp_buffer)) {
-		U_LOG_E("Failed to map GstBuffer");
-		// be more fault tolerant!
-		return GST_PAD_PROBE_OK;
-	}
-
-	// Inject extension data
 	GstCustomMeta *custom_meta = gst_buffer_get_custom_meta(buffer, "down-message");
 	if (!custom_meta) {
-		gst_rtp_buffer_unmap(&rtp_buffer);
-		// U_LOG_W("Failed to get custom meta from GstBuffer!");
+		U_LOG_E("Failed to get custom meta from GstBuffer!");
 		return GST_PAD_PROBE_OK;
 	}
 
-	GstStructure *custom_structure = gst_custom_meta_get_structure(custom_meta);
+	const GstStructure *custom_structure = gst_custom_meta_get_structure(custom_meta);
 
 	GstBuffer *struct_buf;
 	if (!gst_structure_get(custom_structure, "protobuf", GST_TYPE_BUFFER, &struct_buf, NULL)) {
@@ -385,16 +377,74 @@ rtppay_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 		return GST_PAD_PROBE_OK;
 	}
 
-	if (map_info.size > RTP_TWOBYTES_HDR_EXT_MAX_SIZE) {
-		U_LOG_E("Data in too large for RTP header (%ld > %d bytes). Implement multi-extension-element support.",
-		        map_info.size, RTP_TWOBYTES_HDR_EXT_MAX_SIZE);
-		gst_rtp_buffer_unmap(&rtp_buffer);
+	g_autoptr(GMutexLocker) locker = g_mutex_locker_new(&egp->metadata_preservation_mutex);
+
+	memcpy(egp->preserved_metadata, map_info.data, map_info.size);
+	egp->preserved_metadata_size = map_info.size;
+
+	gst_buffer_unmap(struct_buf, &map_info);
+
+	return GST_PAD_PROBE_OK;
+}
+
+GstPadProbeReturn
+rtppay_src_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
+{
+	struct ems_gstreamer_pipeline *egp = (struct ems_gstreamer_pipeline *)user_data;
+
+
+	GstBuffer *buffer = gst_pad_probe_info_get_buffer(info);
+
+	GstRTPBuffer rtp_buffer = GST_RTP_BUFFER_INIT;
+
+	buffer = gst_buffer_make_writable(buffer);
+
+	if (!gst_rtp_buffer_map(buffer, GST_MAP_WRITE, &rtp_buffer)) {
+		U_LOG_E("Failed to map GstBuffer");
 		return GST_PAD_PROBE_OK;
 	}
 
+	// // Inject extension data
+	// GstCustomMeta *custom_meta = gst_buffer_get_custom_meta(buffer, "down-message");
+	// if (!custom_meta) {
+	// 	gst_rtp_buffer_unmap(&rtp_buffer);
+	// 	// U_LOG_W("Failed to get custom meta from GstBuffer!");
+	// 	return GST_PAD_PROBE_OK;
+	// }
+	//
+	// GstStructure *custom_structure = gst_custom_meta_get_structure(custom_meta);
+	//
+	// GstBuffer *struct_buf;
+	// if (!gst_structure_get(custom_structure, "protobuf", GST_TYPE_BUFFER, &struct_buf, NULL)) {
+	// 	U_LOG_E("Could not read protobuf from struct");
+	// 	return GST_PAD_PROBE_OK;
+	// }
+	//
+	// GstMapInfo map_info;
+	// if (!gst_buffer_map(struct_buf, &map_info, GST_MAP_READ)) {
+	// 	U_LOG_E("Failed to map custom meta buffer.");
+	// 	return GST_PAD_PROBE_OK;
+	// }
+	//
+	// if (map_info.size > RTP_TWOBYTES_HDR_EXT_MAX_SIZE) {
+	// 	U_LOG_E("Data in too large for RTP header (%ld > %d bytes). Implement multi-extension-element support.",
+	// 	        map_info.size, RTP_TWOBYTES_HDR_EXT_MAX_SIZE);
+	// 	gst_rtp_buffer_unmap(&rtp_buffer);
+	// 	return GST_PAD_PROBE_OK;
+	// }
+
+	// // Copy metadata into RTP header
+	// if (!gst_rtp_buffer_add_extension_twobytes_header(&rtp_buffer, 0, RTP_TWOBYTES_HDR_EXT_ID,
+	//                                                   map_info.data, (guint)map_info.size)) {
+	// 	U_LOG_E("Failed to add extension data !");
+	// 	return GST_PAD_PROBE_OK;
+	// }
+
+	g_autoptr(GMutexLocker) locker = g_mutex_locker_new(&egp->metadata_preservation_mutex);
+
 	// Copy metadata into RTP header
-	if (!gst_rtp_buffer_add_extension_twobytes_header(&rtp_buffer, 0 /* appbits */, RTP_TWOBYTES_HDR_EXT_ID,
-	                                                  map_info.data, (guint)map_info.size)) {
+	if (!gst_rtp_buffer_add_extension_twobytes_header(&rtp_buffer, 0, RTP_TWOBYTES_HDR_EXT_ID,
+	                                                  egp->preserved_metadata, egp->preserved_metadata_size)) {
 		U_LOG_E("Failed to add extension data !");
 		return GST_PAD_PROBE_OK;
 	}
@@ -405,7 +455,7 @@ rtppay_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 	}
 
 	gst_rtp_buffer_unmap(&rtp_buffer);
-	gst_buffer_unmap(struct_buf, &map_info);
+	// gst_buffer_unmap(struct_buf, &map_info);
 
 	return GST_PAD_PROBE_OK;
 }
@@ -434,14 +484,27 @@ ems_gstreamer_pipeline_add_payload_pad_probe(struct ems_gstreamer_pipeline *self
 		return false;
 	}
 
-	GstPad *pad = gst_element_get_static_pad(rtppay, "src");
-	if (pad == NULL) {
-		U_LOG_E("Could not find static src pad in rtppay.");
-		return false;
+	{
+		GstPad *pad = gst_element_get_static_pad(rtppay, "sink");
+		if (pad == NULL) {
+			U_LOG_E("Could not find static sink pad in rtppay.");
+			return false;
+		}
+
+		gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, rtppay_sink_pad_probe, self, NULL);
+		gst_object_unref(pad);
 	}
 
-	gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, rtppay_probe, self, NULL);
-	gst_object_unref(pad);
+	{
+		GstPad *pad = gst_element_get_static_pad(rtppay, "src");
+		if (pad == NULL) {
+			U_LOG_E("Could not find static src pad in rtppay.");
+			return false;
+		}
+
+		gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, rtppay_src_pad_probe, self, NULL);
+		gst_object_unref(pad);
+	}
 
 	return true;
 }
@@ -512,6 +575,10 @@ webrtc_client_connected_cb(EmsSignalingServer *server,
 	g_assert(udpsink);
 	g_object_set(udpsink, "host", client_address, NULL);
 	gst_object_unref(udpsink);
+
+	if (!ems_gstreamer_pipeline_add_payload_pad_probe(egp)) {
+		U_LOG_E("Failed to add payload pad probe.");
+	}
 #endif
 
 	egp->timeout_src_id_dot_data = g_timeout_add_seconds(3, G_SOURCE_FUNC(check_pipeline_dot_data), egp);
