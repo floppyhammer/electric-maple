@@ -586,33 +586,12 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 		return;
 	}
 
-	//    GList *decoders = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DECODABLE,
-	//                                                            GST_RANK_MARGINAL);
-	//
-	//    // Iterate through the list
-	//    for (GList *iter = decoders; iter != NULL; iter = iter->next) {
-	//        GstElementFactory *factory = (GstElementFactory *) iter->data;
-	//
-	//        // Get the factory name suitable for use in a string pipeline
-	//        const gchar *name = gst_element_get_name(factory);
-	//
-	//        // Print the factory name
-	//        g_print("Decoder: %s\n", name);
-	//    }
-
 #ifdef USE_WEBRTC
 	// clang-format off
     gchar *pipeline_string = g_strdup_printf(
             "webrtcbin name=webrtc bundle-policy=max-bundle latency=50 ! "
             "rtph264depay name=depay ! "
             "decodebin3 ! "
-
-            //	    "amcviddec-c2qtiavcdecoder ! "        // Hardware
-            //	    "amcviddec-omxqcomvideodecoderavc ! " // Hardware
-            //	    "amcviddec-c2androidavcdecoder ! "    // Software
-            //	    "amcviddec-omxgoogleh264decoder ! "   // Software
-            //	    "video/x-raw(memory:GLMemory),format=(string)RGBA,width=(int)3840,height=(int)1080,texture-target=(string)external-oes ! "
-
             "glsinkbin name=glsink");
 	// clang-format on
 #else
