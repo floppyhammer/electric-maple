@@ -108,6 +108,9 @@ em_stream_client_spawn_thread(EmStreamClient *sc, EmConnection *connection);
 void
 em_stream_client_stop(EmStreamClient *sc);
 
+int64_t
+em_stream_client_get_average_frame_latency(EmStreamClient *sc);
+
 /*!
  * Attempt to retrieve a sample, if one has been decoded.
  *

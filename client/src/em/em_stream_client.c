@@ -105,6 +105,12 @@ struct _EmStreamClient
 	// todo: this may not be an ideal way to handle data racing
 	GMutex metadata_preservation_mutex;
 	GstBuffer *preserved_metadata_struct_buf;
+
+	GArray *latency_collection;
+	int64_t latency_calculation_window; // Nanoseconds
+	int64_t latency_last_time_query;
+
+	int64_t average_latency;
 };
 
 #if 0
@@ -228,6 +234,10 @@ em_stream_client_init(EmStreamClient *sc)
 
 	g_mutex_init(&sc->metadata_preservation_mutex);
 	sc->preserved_metadata_struct_buf = NULL;
+
+	sc->latency_collection = g_array_new(FALSE, FALSE, sizeof(gint64));
+	sc->latency_calculation_window = 1000000000;
+	sc->latency_last_time_query = os_monotonic_get_ns();
 
 	ALOGI("%s: done creating stuff", __FUNCTION__);
 }
@@ -909,6 +919,30 @@ read_down_message_from_custom_meta(GstBuffer *buffer, em_proto_DownMessage *msg,
 	return true;
 }
 
+gfloat
+calculate_average_of_gint64(GArray *array)
+{
+	if (array->len == 0) {
+		return 0.0f;
+	}
+
+	gint64 total_sum = 0;
+	for (guint i = 0; i < array->len; i++) {
+		total_sum += g_array_index(array, gint64, i);
+	}
+
+	// Perform a floating-point division to get the average
+	return (gfloat)total_sum / (gfloat)array->len;
+}
+
+int64_t
+em_stream_client_get_average_frame_latency(EmStreamClient *sc)
+{
+	int64_t ave_latency = calculate_average_of_gint64(sc->latency_collection);
+	g_array_set_size(sc->latency_collection, 0);
+	return ave_latency;
+}
+
 struct em_sample *
 em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode_end)
 {
@@ -964,11 +998,11 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 
 	if (msg.has_frame_data && msg.frame_data.has_P_localSpace_view0 && msg.frame_data.has_P_localSpace_view1) {
 		//		ALOGI("Got DownMessage: Frame #%ld V0 (%.2f %.2f %.2f) V1 (%.2f %.2f %.2f)
-		//render_begin_time %ld", 		      msg.frame_data.frame_sequence_id,
-		//msg.frame_data.P_localSpace_view0.position.x, 		      msg.frame_data.P_localSpace_view0.position.y,
-		//msg.frame_data.P_localSpace_view0.position.z, 		      msg.frame_data.P_localSpace_view1.position.x,
-		//msg.frame_data.P_localSpace_view1.position.y, 		      msg.frame_data.P_localSpace_view1.position.z,
-		//msg.frame_data.frame_push_time);
+		// render_begin_time %ld", 		      msg.frame_data.frame_sequence_id,
+		// msg.frame_data.P_localSpace_view0.position.x,
+		// msg.frame_data.P_localSpace_view0.position.y, msg.frame_data.P_localSpace_view0.position.z,
+		// msg.frame_data.P_localSpace_view1.position.x, msg.frame_data.P_localSpace_view1.position.y,
+		// msg.frame_data.P_localSpace_view1.position.z, msg.frame_data.frame_push_time);
 
 		GstClock *clock = gst_element_get_clock(sc->pipeline);
 		const GstClockTime current_time = gst_clock_get_time(clock);
@@ -978,7 +1012,19 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 		// / 1.0e9, base_time / 1.0e9, running_time / 1.0e9);
 
 		int64_t latency = current_time - msg.frame_data.frame_push_clock_time;
-		ALOGI("Frame latency (server appsrc -> client glsinkbin): %.1f ms", latency / 1.0e6);
+		//		ALOGI("Frame latency (server appsrc -> client glsinkbin): %.1f ms", latency / 1.0e6);
+
+		g_array_append_val(sc->latency_collection, latency);
+
+		int64_t now_ns = os_monotonic_get_ns();
+		if (now_ns - sc->latency_last_time_query > sc->latency_calculation_window) {
+			int64_t ave_latency = em_stream_client_get_average_frame_latency(sc);
+			ALOGI("Average frame latency (server appsrc -> client glsinkbin): %.1f ms",
+			      ave_latency / 1.0e6);
+
+			sc->latency_last_time_query = now_ns;
+			sc->average_latency = ave_latency;
+		}
 
 		ret->base.have_poses = true;
 		ret->base.poses[0] = pose_to_openxr(&msg.frame_data.P_localSpace_view0);
