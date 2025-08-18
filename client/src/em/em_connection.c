@@ -31,8 +31,7 @@
 #include <libsoup/soup-message.h>
 #include <libsoup/soup-session.h>
 
-// #define DEFAULT_WEBSOCKET_URI "ws://192.168.49.1:52356/ws" // Android P2P group owner address
-#define DEFAULT_WEBSOCKET_URI "ws://10.11.9.210:52356/ws"
+#define DEFAULT_WEBSOCKET_URI "ws://" DEFAULT_SERVER_IP ":52356/ws"
 
 /*!
  * Data required for the handshake to complete and to maintain the connection.
@@ -351,6 +350,7 @@ emconn_data_channel_message_data_cb(GstWebRTCDataChannel *datachannel, GBytes *b
 		ALOGE("Unexpected data channel message size!");
 		return;
 	}
+
 	uint64_t server_now = *(uint64_t *)bytes_pointer;
 	int64_t server_offset = (int64_t)client_now - (int64_t)(server_now);
 

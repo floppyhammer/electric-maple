@@ -29,6 +29,7 @@
 #include "pb_decode.h"
 #include "util/u_debug.h"
 #include "util/u_misc.h"
+#include "gst/net/gstnettimeprovider.h"
 
 #define GST_USE_UNSTABLE_API
 #include <gst/webrtc/datachannel.h>
@@ -62,6 +63,8 @@ struct ems_gstreamer_pipeline
 
 	GObject *data_channel;
 
+	GstNetTimeProvider *ntp;
+
 	guint timeout_src_id;
 	guint timeout_src_id_dot_data;
 
@@ -76,10 +79,22 @@ struct ems_gstreamer_pipeline
 static gboolean
 gst_bus_cb(GstBus *bus, GstMessage *message, gpointer user_data)
 {
-	const struct ems_gstreamer_pipeline *egp = (struct ems_gstreamer_pipeline *)user_data;
+	struct ems_gstreamer_pipeline *egp = (struct ems_gstreamer_pipeline *)user_data;
 	GstBin *pipeline = GST_BIN(egp->base.pipeline);
 
 	switch (GST_MESSAGE_TYPE(message)) {
+	case GST_MESSAGE_STATE_CHANGED:
+		GstState old_state, new_state;
+
+		// The pipeline's state has changed.
+		gst_message_parse_state_changed(message, &old_state, &new_state, NULL);
+
+		if (GST_MESSAGE_SRC(message) == GST_OBJECT(pipeline) && new_state == GST_STATE_PLAYING) {
+			GstClock *clock = gst_element_get_clock(egp->base.pipeline);
+			egp->ntp = gst_net_time_provider_new(clock, "0.0.0.0", 52357);
+			gst_object_unref(clock);
+		}
+		break;
 	case GST_MESSAGE_ERROR: {
 		GError *gerr;
 		gchar *debug_msg;
@@ -882,4 +897,22 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	xrt_frame_context_add(xfctx, &egp->base.node);
 
 	*out_gp = &egp->base;
+}
+
+uint64_t
+ems_gstreamer_pipeline_get_current_time(struct gstreamer_pipeline *gp)
+{
+	GstClock *clock = gst_element_get_clock(gp->pipeline);
+	if (!clock) {
+		return 0;
+	}
+	const GstClockTime current_time = gst_clock_get_time(clock);
+
+	GstClockTime base_time = gst_element_get_base_time(gp->pipeline);
+
+	GstClockTime running_time = current_time - base_time;
+
+	// U_LOG_I("Server clock (second): current time %.3f base time %.3f running time %.3f", current_time / 1.0e9, base_time / 1.0e9, running_time / 1.0e9);
+
+	return current_time;
 }

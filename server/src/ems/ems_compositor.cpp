@@ -338,7 +338,7 @@ to_proto(const struct xrt_pose &pose)
 void
 pack_blit_and_encode(struct ems_compositor *c,
                      int64_t frame_id,
-                     uint64_t begin_ns,
+                     int64_t begin_ns,
                      const struct xrt_layer_projection_view_data *lvd,
                      const struct xrt_layer_projection_view_data *rvd,
                      struct comp_swapchain *lsc,
@@ -346,7 +346,7 @@ pack_blit_and_encode(struct ems_compositor *c,
                      bool flip_y)
 {
 	if (c->offset_ns == 0) {
-		uint64_t now = os_monotonic_get_ns();
+		int64_t now = os_monotonic_get_ns();
 		c->offset_ns = now;
 		c->gstreamer_src->offset_ns = now;
 	}
@@ -357,7 +357,7 @@ pack_blit_and_encode(struct ems_compositor *c,
 	// Getting frame
 	if (!vk_image_readback_to_xf_pool_get_unused_frame(vk, c->pool, &wrap)) {
 		// This mostly happens when the wrapped_buffer_destroy callback in ems_gstreamer_src
-		// is not called by the gst pipeline and we end up with a fully occupied buffer pool.
+		// is not called by the gst pipeline, and we end up with a fully occupied buffer pool.
 		EMS_COMP_ERROR(c, "Failed to get a readback frame.");
 		EMS_COMP_ERROR(c, "Is the GStreamer pipeline consuming buffers? Check XRT_LOG=trace");
 		return;
@@ -519,6 +519,7 @@ pack_blit_and_encode(struct ems_compositor *c,
 	msg.frame_data.frame_sequence_id = frame_id;
 	msg.frame_data.render_begin_time = begin_ns;
 	msg.frame_data.frame_push_time = os_monotonic_get_ns();
+	msg.frame_data.frame_push_clock_time = ems_gstreamer_pipeline_get_current_time(c->gstreamer_pipeline);
 	msg.frame_data.has_P_localSpace_view0 = true;
 	msg.frame_data.P_localSpace_view0 = to_proto(lvd->pose);
 	msg.frame_data.has_P_localSpace_view1 = true;
@@ -552,7 +553,7 @@ pack_blit_and_encode(struct ems_compositor *c,
 static xrt_result_t
 ems_compositor_begin_session(struct xrt_compositor *xc, const struct xrt_begin_session_info *info)
 {
-	struct ems_compositor *c = ems_compositor(xc);
+	const struct ems_compositor *c = ems_compositor(xc);
 	EMS_COMP_DEBUG(c, "BEGIN_SESSION");
 
 	return XRT_SUCCESS;
@@ -561,7 +562,7 @@ ems_compositor_begin_session(struct xrt_compositor *xc, const struct xrt_begin_s
 static xrt_result_t
 ems_compositor_end_session(struct xrt_compositor *xc)
 {
-	struct ems_compositor *c = ems_compositor(xc);
+	const struct ems_compositor *c = ems_compositor(xc);
 	EMS_COMP_DEBUG(c, "END_SESSION");
 
 	return XRT_SUCCESS;
@@ -607,7 +608,7 @@ ems_compositor_mark_frame(struct xrt_compositor *xc,
 {
 	COMP_TRACE_MARKER();
 
-	struct ems_compositor *c = ems_compositor(xc);
+	const struct ems_compositor *c = ems_compositor(xc);
 	EMS_COMP_TRACE(c, "MARK_FRAME %i", point);
 
 	switch (point) {
@@ -623,7 +624,7 @@ ems_compositor_mark_frame(struct xrt_compositor *xc,
 static xrt_result_t
 ems_compositor_begin_frame(struct xrt_compositor *xc, int64_t frame_id)
 {
-	struct ems_compositor *c = ems_compositor(xc);
+	const struct ems_compositor *c = ems_compositor(xc);
 	EMS_COMP_TRACE(c, "BEGIN_FRAME");
 
 	return XRT_SUCCESS;
@@ -632,7 +633,7 @@ ems_compositor_begin_frame(struct xrt_compositor *xc, int64_t frame_id)
 static xrt_result_t
 ems_compositor_discard_frame(struct xrt_compositor *xc, int64_t frame_id)
 {
-	struct ems_compositor *c = ems_compositor(xc);
+	const struct ems_compositor *c = ems_compositor(xc);
 	EMS_COMP_TRACE(c, "DISCARD_FRAME");
 
 	// Shouldn't be called.
@@ -658,7 +659,7 @@ ems_compositor_layer_commit(struct xrt_compositor *xc, xrt_graphics_sync_handle_
 	 */
 
 	// When we begin rendering.
-	uint64_t begin_ns = os_monotonic_get_ns();
+	const int64_t begin_ns = os_monotonic_get_ns();
 	u_pc_mark_point(c->upc, U_TIMING_POINT_BEGIN, frame_id, begin_ns);
 
 	// We want to render here. comp_base filled c->base.slot.layers for us.

@@ -40,6 +40,9 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
                               struct ems_callbacks *callbacks_collection,
                               struct gstreamer_pipeline **out_gp);
 
+uint64_t
+ems_gstreamer_pipeline_get_current_time(struct gstreamer_pipeline *gp);
+
 #ifdef __cplusplus
 }
 #endif

@@ -21,6 +21,7 @@ target_link_libraries(
         ${LIBSOUP_LIBRARIES}
         ${JSONGLIB_LIBRARIES}
         ${GIO_LIBRARIES}
+        gstnet-1.0
 )
 
 target_include_directories(

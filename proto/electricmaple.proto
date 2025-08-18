@@ -121,6 +121,7 @@ message DownFrameDataMessage {
 	Pose P_localSpace_view1 = 3; // Right view
 	int64 render_begin_time = 4; // nanoseconds, when compositor begins rendering
 	int64 frame_push_time = 5; // nanoseconds, when frame is pushed to appsrc
+    int64 frame_push_clock_time = 6; // nanoseconds, in pipeline clock time
 	// TODO fovs here
 }
 

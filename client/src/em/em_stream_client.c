@@ -33,6 +33,7 @@
 #include <gst/rtp/gstrtpbuffer.h>
 #include <gst/video/video-frame.h>
 #include <gst/webrtc/webrtc.h>
+#include <gst/net/gstnet.h>
 #include <linux/time.h>
 #include <openxr/openxr.h>
 #include <pb_decode.h>
@@ -348,6 +349,23 @@ gst_bus_cb(GstBus *bus, GstMessage *message, gpointer data)
 	GstBin *pipeline = GST_BIN(data);
 
 	switch (GST_MESSAGE_TYPE(message)) {
+	case GST_MESSAGE_STATE_CHANGED:
+		GstState old_state, new_state;
+
+		// The pipeline's state has changed.
+		gst_message_parse_state_changed(message, &old_state, &new_state, NULL);
+
+		if (GST_MESSAGE_SRC(message) == GST_OBJECT(pipeline) && new_state == GST_STATE_PLAYING) {
+			// The pipeline is now playing. This is a good time to check if the clock has synced.
+			GstClock *clock = gst_pipeline_get_clock(GST_PIPELINE(pipeline));
+			if (gst_clock_is_synced(clock)) {
+				ALOGI("Clock synchronized! Proceeding with operations");
+				// Now your application can start doing work that depends on a synced clock.
+			} else {
+				ALOGW("Pipeline is PLAYING, but clock not yet synchronized. Waiting...");
+			}
+		}
+		break;
 	case GST_MESSAGE_ERROR: {
 		GError *gerr = NULL;
 		gchar *debug_msg = NULL;
@@ -614,6 +632,9 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	if (error) {
 		ALOGE("Error creating a pipeline from string: %s", error ? error->message : "Unknown");
 	}
+
+	GstClock *client_clock = gst_net_client_clock_new("my-client-clock", DEFAULT_SERVER_IP, 52357, 0);
+	gst_pipeline_use_clock(GST_PIPELINE(sc->pipeline), client_clock);
 
 #ifdef USE_WEBRTC
 	GstElement *webrtcbin = gst_bin_get_by_name(GST_BIN(sc->pipeline), "webrtc");
@@ -942,11 +963,22 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 	}
 
 	if (msg.has_frame_data && msg.frame_data.has_P_localSpace_view0 && msg.frame_data.has_P_localSpace_view1) {
-		ALOGD("Got DownMessage: Frame #%ld V0 (%.2f %.2f %.2f) V1 (%.2f %.2f %.2f) render_begin_time %ld",
-		      msg.frame_data.frame_sequence_id, msg.frame_data.P_localSpace_view0.position.x,
-		      msg.frame_data.P_localSpace_view0.position.y, msg.frame_data.P_localSpace_view0.position.z,
-		      msg.frame_data.P_localSpace_view1.position.x, msg.frame_data.P_localSpace_view1.position.y,
-		      msg.frame_data.P_localSpace_view1.position.z, msg.frame_data.render_begin_time);
+		//		ALOGI("Got DownMessage: Frame #%ld V0 (%.2f %.2f %.2f) V1 (%.2f %.2f %.2f)
+		//render_begin_time %ld", 		      msg.frame_data.frame_sequence_id,
+		//msg.frame_data.P_localSpace_view0.position.x, 		      msg.frame_data.P_localSpace_view0.position.y,
+		//msg.frame_data.P_localSpace_view0.position.z, 		      msg.frame_data.P_localSpace_view1.position.x,
+		//msg.frame_data.P_localSpace_view1.position.y, 		      msg.frame_data.P_localSpace_view1.position.z,
+		//msg.frame_data.frame_push_time);
+
+		GstClock *clock = gst_element_get_clock(sc->pipeline);
+		const GstClockTime current_time = gst_clock_get_time(clock);
+		GstClockTime base_time = gst_element_get_base_time(sc->pipeline);
+		GstClockTime running_time = current_time - base_time;
+		// U_LOG_I("Client clock (second): current time %.3f base time %.3f running time %.3f", current_time
+		// / 1.0e9, base_time / 1.0e9, running_time / 1.0e9);
+
+		int64_t latency = current_time - msg.frame_data.frame_push_clock_time;
+		ALOGI("Frame latency (server appsrc -> client glsinkbin): %.1f ms", latency / 1.0e6);
 
 		ret->base.have_poses = true;
 		ret->base.poses[0] = pose_to_openxr(&msg.frame_data.P_localSpace_view0);
