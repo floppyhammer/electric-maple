@@ -406,6 +406,10 @@ gst_bus_cb(GstBus *bus, GstMessage *message, gpointer data)
 	case GST_MESSAGE_EOS: {
 		g_error("gst_bus_cb: Got EOS!");
 	} break;
+	case GST_MESSAGE_LATENCY: {
+		g_warning("Handling latency");
+		gst_bin_recalculate_latency(pipeline);
+	} break;
 	default: break;
 	}
 	return TRUE;
@@ -1150,5 +1154,7 @@ em_stream_client_adjust_jitterbuffer(EmStreamClient *sc)
 	g_autoptr(GstElement) jitterbuffer = gst_bin_get_by_name(GST_BIN(sc->pipeline), "jitter");
 	g_object_set(jitterbuffer, "latency", jitter_latency, NULL);
 
-	ALOGI("Jitterbuffer latency of the client pipeline change to %d ms", jitter_latency);
+	ALOGI("jitterbuffer latency changed to %d ms", jitter_latency);
+
+	// We'll do gst_bin_recalculate_latency() in gst_bus_cb()
 }
