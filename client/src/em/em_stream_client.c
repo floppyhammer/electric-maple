@@ -111,6 +111,7 @@ struct _EmStreamClient
 	int64_t latency_last_time_query;
 
 	int64_t average_latency; // Nanoseconds
+	int max_jitter_latency;
 };
 
 #if 0
@@ -1149,12 +1150,13 @@ em_stream_client_free_egl_mutex(EmStreamClient *sc)
 void
 em_stream_client_adjust_jitterbuffer(EmStreamClient *sc)
 {
-	int jitter_latency = time_ns_to_ms_f(sc->average_latency) * 1.5f;
+	int target_jitter_latency = time_ns_to_ms_f(sc->average_latency) * 1.5f;
+	sc->max_jitter_latency = MAX(sc->max_jitter_latency - 10, target_jitter_latency);
 
 	g_autoptr(GstElement) jitterbuffer = gst_bin_get_by_name(GST_BIN(sc->pipeline), "jitter");
-	g_object_set(jitterbuffer, "latency", jitter_latency, NULL);
+	g_object_set(jitterbuffer, "latency", sc->max_jitter_latency, NULL);
 
-	ALOGI("jitterbuffer latency changed to %d ms", jitter_latency);
+	ALOGI("jitterbuffer latency changed to %d ms", sc->max_jitter_latency);
 
 	// We'll do gst_bin_recalculate_latency() in gst_bus_cb()
 }
