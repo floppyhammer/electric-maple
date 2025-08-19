@@ -26,7 +26,6 @@
 #include "math/m_space.h"
 #include "os/os_time.h"
 #include "pb_decode.h"
-#include "util/u_debug.h"
 #include "util/u_device.h"
 #include "util/u_distortion_mesh.h"
 #include "util/u_hand_simulation.h"
@@ -48,12 +47,6 @@ ems_motion_controller(struct xrt_device *xdev)
 {
 	return (struct ems_motion_controller *)xdev;
 }
-
-DEBUG_GET_ONCE_LOG_OPTION(sample_log, "EMS_LOG", U_LOGGING_WARN)
-
-#define EMS_TRACE(p, ...) U_LOG_XDEV_IFL_T(&p->base, p->log_level, __VA_ARGS__)
-#define EMS_DEBUG(p, ...) U_LOG_XDEV_IFL_D(&p->base, p->log_level, __VA_ARGS__)
-#define EMS_ERROR(p, ...) U_LOG_XDEV_IFL_E(&p->base, p->log_level, __VA_ARGS__)
 
 xrt_pose
 convert_pose(_em_proto_Pose pose)
@@ -183,7 +176,7 @@ controller_get_tracked_pose(struct xrt_device *xdev,
 		    XRT_SPACE_RELATION_POSITION_TRACKED_BIT);                   //
 	} break;
 	default: {
-		EMS_ERROR(emc, "Unknown input name: %d", name);
+		U_LOG_E("Unknown input name: %d", name);
 		return XRT_ERROR_INPUT_UNSUPPORTED;
 	}
 	}
@@ -349,7 +342,6 @@ ems_motion_controller_create(ems_instance &emsi, enum xrt_device_name device_nam
 	emc->instance = &emsi;
 	emc->grip_pose = default_pose;
 	emc->aim_pose = default_pose;
-	emc->log_level = debug_get_log_option_sample_log();
 	emc->hand_joints = new struct _em_proto_HandJointLocation[XRT_HAND_JOINT_COUNT];
 
 	// Print name.
@@ -380,7 +372,6 @@ ems_motion_controller_create(ems_instance &emsi, enum xrt_device_name device_nam
 	u_var_add_root(emc, emc->base.str, true);
 	u_var_add_pose(emc, &emc->grip_pose, "grip_pose");
 	u_var_add_pose(emc, &emc->aim_pose, "aim_pose");
-	u_var_add_log_level(emc, &emc->log_level, "log_level");
 
 	return emc;
 }
