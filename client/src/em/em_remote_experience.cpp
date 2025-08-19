@@ -638,16 +638,22 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 
 	if (sample == nullptr) {
 		if (exp->prev_sample) {
-//			projectionViews[0].pose = exp->prev_sample->poses[0];
-//			projectionViews[1].pose = exp->prev_sample->poses[1];
+			// Server pose transmission doesn't work for WebRTC for now.
+#ifndef USE_WEBRTC
+			projectionViews[0].pose = exp->prev_sample->poses[0];
+			projectionViews[1].pose = exp->prev_sample->poses[1];
+#endif
 			return EM_POLL_RENDER_RESULT_REUSED_SAMPLE;
 		}
 		return EM_POLL_RENDER_RESULT_NO_SAMPLE_AVAILABLE;
 	}
 
 	// Server poses
-	//		projectionViews[0].pose = sample->poses[0];
-	//		projectionViews[1].pose = sample->poses[1];
+	// Server pose transmission doesn't work for WebRTC for now.
+#ifndef USE_WEBRTC
+	projectionViews[0].pose = sample->poses[0];
+	projectionViews[1].pose = sample->poses[1];
+#endif
 
 	XrSwapchainImageAcquireInfo acquireInfo{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
 	uint32_t imageIndex;
