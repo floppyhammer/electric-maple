@@ -150,6 +150,8 @@ typedef struct _em_proto_DownFrameDataMessage {
     int64_t render_begin_time; /* nanoseconds, when compositor begins rendering */
     int64_t frame_push_time; /* nanoseconds, when frame is pushed to appsrc */
     int64_t frame_push_clock_time; /* nanoseconds, in pipeline clock time */
+    int64_t server_system_clock_pipeline_clock_offset; /* Used to calculate system time offset between server and client */
+    /* TODO fovs here */
 } em_proto_DownFrameDataMessage;
 
 typedef struct _em_proto_DownMessage {
@@ -199,7 +201,7 @@ extern "C" {
 #define em_proto_TouchControllerRight_init_default {false, em_proto_InputClickTouch_init_default, false, em_proto_InputClickTouch_init_default, false, em_proto_InputClickTouch_init_default, false, em_proto_TouchControllerCommon_init_default}
 #define em_proto_UpFrameMessage_init_default     {0, 0, 0, 0}
 #define em_proto_UpMessage_init_default          {0, false, em_proto_TrackingMessage_init_default, false, em_proto_UpFrameMessage_init_default}
-#define em_proto_DownFrameDataMessage_init_default {0, false, em_proto_Pose_init_default, false, em_proto_Pose_init_default, 0, 0, 0}
+#define em_proto_DownFrameDataMessage_init_default {0, false, em_proto_Pose_init_default, false, em_proto_Pose_init_default, 0, 0, 0, 0}
 #define em_proto_DownMessage_init_default        {false, em_proto_DownFrameDataMessage_init_default}
 #define em_proto_Quaternion_init_zero            {0, 0, 0, 0}
 #define em_proto_Vec3_init_zero                  {0, 0, 0}
@@ -215,7 +217,7 @@ extern "C" {
 #define em_proto_TouchControllerRight_init_zero  {false, em_proto_InputClickTouch_init_zero, false, em_proto_InputClickTouch_init_zero, false, em_proto_InputClickTouch_init_zero, false, em_proto_TouchControllerCommon_init_zero}
 #define em_proto_UpFrameMessage_init_zero        {0, 0, 0, 0}
 #define em_proto_UpMessage_init_zero             {0, false, em_proto_TrackingMessage_init_zero, false, em_proto_UpFrameMessage_init_zero}
-#define em_proto_DownFrameDataMessage_init_zero  {0, false, em_proto_Pose_init_zero, false, em_proto_Pose_init_zero, 0, 0, 0}
+#define em_proto_DownFrameDataMessage_init_zero  {0, false, em_proto_Pose_init_zero, false, em_proto_Pose_init_zero, 0, 0, 0, 0}
 #define em_proto_DownMessage_init_zero           {false, em_proto_DownFrameDataMessage_init_zero}
 
 /* Field tags (for use in manual encoding/decoding) */
@@ -280,6 +282,7 @@ extern "C" {
 #define em_proto_DownFrameDataMessage_render_begin_time_tag 4
 #define em_proto_DownFrameDataMessage_frame_push_time_tag 5
 #define em_proto_DownFrameDataMessage_frame_push_clock_time_tag 6
+#define em_proto_DownFrameDataMessage_server_system_clock_pipeline_clock_offset_tag 7
 #define em_proto_DownMessage_frame_data_tag      1
 
 /* Struct field encoding specification for nanopb */
@@ -428,7 +431,8 @@ X(a, STATIC,   OPTIONAL, MESSAGE,  P_localSpace_view0,   2) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  P_localSpace_view1,   3) \
 X(a, STATIC,   SINGULAR, INT64,    render_begin_time,   4) \
 X(a, STATIC,   SINGULAR, INT64,    frame_push_time,   5) \
-X(a, STATIC,   SINGULAR, INT64,    frame_push_clock_time,   6)
+X(a, STATIC,   SINGULAR, INT64,    frame_push_clock_time,   6) \
+X(a, STATIC,   SINGULAR, INT64,    server_system_clock_pipeline_clock_offset,   7)
 #define em_proto_DownFrameDataMessage_CALLBACK NULL
 #define em_proto_DownFrameDataMessage_DEFAULT NULL
 #define em_proto_DownFrameDataMessage_P_localSpace_view0_MSGTYPE em_proto_Pose
@@ -479,8 +483,8 @@ extern const pb_msgdesc_t em_proto_DownMessage_msg;
 /* em_proto_TrackingMessage_size depends on runtime parameters */
 /* em_proto_UpMessage_size depends on runtime parameters */
 #define EM_PROTO_ELECTRICMAPLE_PB_H_MAX_SIZE     em_proto_DownMessage_size
-#define em_proto_DownFrameDataMessage_size       126
-#define em_proto_DownMessage_size                128
+#define em_proto_DownFrameDataMessage_size       137
+#define em_proto_DownMessage_size                140
 #define em_proto_HandJointLocation_size          51
 #define em_proto_InputClickTouch_size            4
 #define em_proto_InputThumbstick_size            16

@@ -912,7 +912,9 @@ ems_gstreamer_pipeline_get_current_time(struct gstreamer_pipeline *gp)
 
 	GstClockTime running_time = current_time - base_time;
 
-	// U_LOG_I("Server clock (second): current time %.3f base time %.3f running time %.3f", current_time / 1.0e9, base_time / 1.0e9, running_time / 1.0e9);
+	// U_LOG_E("Server clock: system time %.3f pipeline time %.3f base time %.3f running time %.3f",
+	//         time_ns_to_s(os_monotonic_get_ns()), time_ns_to_s(current_time), time_ns_to_s(base_time),
+	//         time_ns_to_s(running_time));
 
 	return current_time;
 }

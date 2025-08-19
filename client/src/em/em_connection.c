@@ -360,7 +360,7 @@ emconn_data_channel_message_data_cb(GstWebRTCDataChannel *datachannel, GBytes *b
 		// Initial offset
 		emconn->server_offset = server_offset;
 	} else if (labs(server_offset) < labs(emconn->server_offset)) {
-		// If we get a smaller offset, use it
+		// If we get a smaller offset, use it (compensate transmission latency)
 		emconn->server_offset = server_offset;
 	}
 }

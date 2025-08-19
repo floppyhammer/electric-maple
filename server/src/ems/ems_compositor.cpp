@@ -513,13 +513,17 @@ pack_blit_and_encode(struct ems_compositor *c,
 		return;
 	}
 
+	int64_t system_clock = os_monotonic_get_ns();
+	int64_t pipeline_clock = ems_gstreamer_pipeline_get_current_time(c->gstreamer_pipeline);
+
 	// Set the latest Downstream msg before pushing the frame
 	em_proto_DownMessage msg = em_proto_DownMessage_init_default;
 	msg.has_frame_data = true;
 	msg.frame_data.frame_sequence_id = frame_id;
 	msg.frame_data.render_begin_time = begin_ns;
-	msg.frame_data.frame_push_time = os_monotonic_get_ns();
-	msg.frame_data.frame_push_clock_time = ems_gstreamer_pipeline_get_current_time(c->gstreamer_pipeline);
+	msg.frame_data.frame_push_time = system_clock;
+	msg.frame_data.frame_push_clock_time = pipeline_clock;
+	msg.frame_data.server_system_clock_pipeline_clock_offset = system_clock - pipeline_clock;
 	msg.frame_data.has_P_localSpace_view0 = true;
 	msg.frame_data.P_localSpace_view0 = to_proto(lvd->pose);
 	msg.frame_data.has_P_localSpace_view1 = true;

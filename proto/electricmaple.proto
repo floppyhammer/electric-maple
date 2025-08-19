@@ -122,6 +122,7 @@ message DownFrameDataMessage {
 	int64 render_begin_time = 4; // nanoseconds, when compositor begins rendering
 	int64 frame_push_time = 5; // nanoseconds, when frame is pushed to appsrc
     int64 frame_push_clock_time = 6; // nanoseconds, in pipeline clock time
+    int64 server_system_clock_pipeline_clock_offset = 7;
 	// TODO fovs here
 }
 

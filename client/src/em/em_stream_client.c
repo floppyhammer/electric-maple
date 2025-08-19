@@ -404,20 +404,11 @@ gst_bus_cb(GstBus *bus, GstMessage *message, gpointer data)
 		g_free(debug_msg);
 	} break;
 	case GST_MESSAGE_EOS: {
-		g_error("gst_bus_cb: Got EOS!!");
+		g_error("gst_bus_cb: Got EOS!");
 	} break;
 	default: break;
 	}
 	return TRUE;
-}
-
-static void
-on_stats(GstPromise *promise, GstElement *user_data)
-{
-	const GstStructure *reply = gst_promise_get_reply(promise);
-	gchar *str = gst_structure_to_string(reply);
-	g_free(str);
-	//	GST_INFO("Got stats %" GST_PTR_FORMAT, reply);
 }
 
 static GstFlowReturn
@@ -425,15 +416,11 @@ on_new_sample_cb(GstAppSink *appsink, gpointer user_data)
 {
 	EmStreamClient *sc = (EmStreamClient *)user_data;
 
-	//	GstElement *webrtcbin = gst_bin_get_by_name(GST_BIN(sc->pipeline), "webrtc");
-	//	GstPromise *promise = gst_promise_new_with_change_func((GstPromiseChangeFunc)on_stats, NULL, NULL);
-	//	g_signal_emit_by_name(webrtcbin, "get-stats", NULL, promise);
-
 	int64_t decode_end_time = os_monotonic_get_ns();
 
 	// TODO record the frame ID, get frame pose
 
-	GstSample *prevSample = NULL;
+	GstSample *prev_sample = NULL;
 	GstSample *sample = gst_app_sink_pull_sample(appsink);
 	g_assert_nonnull(sample);
 
@@ -472,14 +459,15 @@ on_new_sample_cb(GstAppSink *appsink, gpointer user_data)
 
 	{
 		g_autoptr(GMutexLocker) locker = g_mutex_locker_new(&sc->sample_mutex);
-		prevSample = sc->sample;
+		prev_sample = sc->sample;
 		sc->sample = sample;
 		sc->sample_decode_end_time = decode_end_time;
 		sc->received_first_frame = true;
 	}
 
-	if (prevSample) {
-		gst_sample_unref(prevSample);
+	// Release the previous sample.
+	if (prev_sample) {
+		gst_sample_unref(prev_sample);
 	}
 
 	return GST_FLOW_OK;
@@ -1008,8 +996,10 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 		const GstClockTime current_time = gst_clock_get_time(clock);
 		GstClockTime base_time = gst_element_get_base_time(sc->pipeline);
 		GstClockTime running_time = current_time - base_time;
-		// U_LOG_I("Client clock (second): current time %.3f base time %.3f running time %.3f", current_time
-		// / 1.0e9, base_time / 1.0e9, running_time / 1.0e9);
+
+//		ALOGI("Client clock: system time %.3f pipeline time %.3f base time %.3f running time %.3f",
+//		      time_ns_to_s(os_monotonic_get_ns()), time_ns_to_s(current_time), time_ns_to_s(base_time),
+//		      time_ns_to_s(running_time));
 
 		int64_t latency = current_time - msg.frame_data.frame_push_clock_time;
 		//		ALOGI("Frame latency (server appsrc -> client glsinkbin): %.1f ms", latency / 1.0e6);
@@ -1034,6 +1024,17 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 
 		// Write frame begin time only if we can convert it to the client clock.
 		int64_t server_clock_offset = em_connection_get_server_clock_offset(sc->connection);
+
+		// In case we haven't got server_clock_offset from WebRTC datachannel.
+		if (server_clock_offset == 0) {
+			int64_t client_system_clock_pipeline_clock_offset = now_ns - current_time;
+			server_clock_offset = client_system_clock_pipeline_clock_offset -
+			                      msg.frame_data.server_system_clock_pipeline_clock_offset;
+
+//			ALOGI("client_system_clock_pipeline_clock_offset %ld now_ns %ld current_time %ld",
+//			      client_system_clock_pipeline_clock_offset, now_ns, current_time);
+		}
+
 		if (server_clock_offset != 0) {
 			ret->base.server_render_begin_time = server_clock_offset + msg.frame_data.render_begin_time;
 			ret->base.server_push_time = server_clock_offset + msg.frame_data.frame_push_time;

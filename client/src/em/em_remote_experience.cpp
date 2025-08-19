@@ -703,7 +703,7 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 		em_stream_client_release_sample(exp->stream_client, exp->prev_sample);
 	}
 	exp->prev_sample = sample;
-	
+
 	// Print benchmark JSON
 	if (sample->server_render_begin_time != 0) {
 		uint64_t client_now = os_monotonic_get_ns();
@@ -716,7 +716,7 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 		uint64_t total_duration = client_now - sample->server_render_begin_time;
 
 		ALOGD(
-		    "BENCHMARK {\"frame\": %ld, \"server_render_ms\": %f, \"server_encode_transmit_ms\": %f, "
+		    "LATENCY BENCHMARK {\"frame\": %ld, \"server_render_ms\": %f, \"server_encode_transmit_ms\": %f, "
 		    "\"client_decode_ms\": %f, \"client_wait_ms\": %f, \"client_render_ms\": %f, \"total_ms\": %f}",
 		    sample->frame_sequence_id, time_ns_to_ms_f(server_render_duration),
 		    time_ns_to_ms_f(server_encode_transmit_duration), time_ns_to_ms_f(client_decode_duration),
