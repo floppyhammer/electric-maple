@@ -110,7 +110,7 @@ struct _EmStreamClient
 	int64_t latency_calculation_window; // Nanoseconds
 	int64_t latency_last_time_query;
 
-	int64_t average_latency;
+	int64_t average_latency; // Nanoseconds
 };
 
 #if 0
@@ -236,7 +236,7 @@ em_stream_client_init(EmStreamClient *sc)
 	sc->preserved_metadata_struct_buf = NULL;
 
 	sc->latency_collection = g_array_new(FALSE, FALSE, sizeof(gint64));
-	sc->latency_calculation_window = 1000000000;
+	sc->latency_calculation_window = time_s_to_ns(3);
 	sc->latency_last_time_query = os_monotonic_get_ns();
 
 	ALOGI("%s: done creating stuff", __FUNCTION__);
@@ -612,13 +612,19 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	// clang-format on
 #else
 	// clang-format off
-        gchar *pipeline_string = g_strdup_printf(
-            "udpsrc port=5600 buffer-size=8000000 "
-            "caps=\"application/x-rtp,media=video,clock-rate=90000,encoding-name=H264\" ! "
-            "rtpjitterbuffer name=jitter do-lost=1 latency=50 ! "
-            "rtph264depay name=depay ! "
-            "decodebin3 ! "
-            "glsinkbin name=glsink");
+	gchar *pipeline_string = g_strdup_printf(
+	    "udpsrc port=5600 buffer-size=8000000 "
+	    "caps=\"application/x-rtp,media=video,clock-rate=90000,encoding-name=H264\" ! "
+	    "rtpjitterbuffer name=jitter do-lost=1 latency=50 ! "
+	    "rtph264depay name=depay ! "
+	#ifndef USE_DECODEBIN3
+	    "h264parse ! "
+	    "amcviddec-c2mtkavcdecoder ! "
+	    "video/x-raw(memory:GLMemory),format=(string)RGBA,texture-target=(string)external-oes ! "
+	#else
+	    "decodebin3 ! "
+	#endif
+	    "glsinkbin name=glsink");
 	// clang-format on
 #endif
 
@@ -997,9 +1003,9 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 		GstClockTime base_time = gst_element_get_base_time(sc->pipeline);
 		GstClockTime running_time = current_time - base_time;
 
-//		ALOGI("Client clock: system time %.3f pipeline time %.3f base time %.3f running time %.3f",
-//		      time_ns_to_s(os_monotonic_get_ns()), time_ns_to_s(current_time), time_ns_to_s(base_time),
-//		      time_ns_to_s(running_time));
+		//		ALOGI("Client clock: system time %.3f pipeline time %.3f base time %.3f running time
+		//%.3f", 		      time_ns_to_s(os_monotonic_get_ns()), time_ns_to_s(current_time),
+		// time_ns_to_s(base_time), 		      time_ns_to_s(running_time));
 
 		int64_t latency = current_time - msg.frame_data.frame_push_clock_time;
 		//		ALOGI("Frame latency (server appsrc -> client glsinkbin): %.1f ms", latency / 1.0e6);
@@ -1014,6 +1020,8 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 
 			sc->latency_last_time_query = now_ns;
 			sc->average_latency = ave_latency;
+
+			em_stream_client_adjust_jitterbuffer(sc);
 		}
 
 		ret->base.have_poses = true;
@@ -1031,8 +1039,9 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 			server_clock_offset = client_system_clock_pipeline_clock_offset -
 			                      msg.frame_data.server_system_clock_pipeline_clock_offset;
 
-//			ALOGI("client_system_clock_pipeline_clock_offset %ld now_ns %ld current_time %ld",
-//			      client_system_clock_pipeline_clock_offset, now_ns, current_time);
+			//			ALOGI("client_system_clock_pipeline_clock_offset %ld now_ns %ld
+			// current_time %ld", 			      client_system_clock_pipeline_clock_offset, now_ns,
+			// current_time);
 		}
 
 		if (server_clock_offset != 0) {
@@ -1131,4 +1140,15 @@ em_stream_client_free_egl_mutex(EmStreamClient *sc)
 		em_egl_mutex_destroy(&sc->egl_mutex);
 	}
 	sc->egl_mutex = NULL;
+}
+
+void
+em_stream_client_adjust_jitterbuffer(EmStreamClient *sc)
+{
+	int jitter_latency = time_ns_to_ms_f(sc->average_latency) * 1.5f;
+
+	g_autoptr(GstElement) jitterbuffer = gst_bin_get_by_name(GST_BIN(sc->pipeline), "jitter");
+	g_object_set(jitterbuffer, "latency", jitter_latency, NULL);
+
+	ALOGI("Jitterbuffer latency of the client pipeline change to %d ms", jitter_latency);
 }

@@ -107,6 +107,7 @@ message UpFrameMessage {
 	int64 decode_complete_time = 2; // nanoseconds, in client OpenXR time domain
 	int64 begin_frame_time = 3; // nanoseconds, in client OpenXR time domain
 	int64 display_time = 4; // nanoseconds, in client OpenXR time domain
+	int64 average_latency = 5;
 }
 
 message UpMessage {

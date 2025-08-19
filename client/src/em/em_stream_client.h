@@ -128,6 +128,9 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 void
 em_stream_client_release_sample(EmStreamClient *sc, struct em_sample *ems);
 
+void
+em_stream_client_adjust_jitterbuffer(EmStreamClient *sc);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif // __cplusplus

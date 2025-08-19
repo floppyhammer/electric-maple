@@ -585,6 +585,7 @@ report_frame_timing(EmRemoteExperience *exp,
 	msg.decode_complete_time = xrTimeDecodeEnd;
 	msg.begin_frame_time = xrTimeBeginFrame;
 	msg.display_time = predictedDisplayTime;
+	msg.average_latency = em_stream_client_get_average_frame_latency(exp->stream_client);
 
 	em_proto_UpMessage upMsg = em_proto_UpMessage_init_default;
 	upMsg.frame = msg;

@@ -74,6 +74,8 @@ struct ems_gstreamer_pipeline
 	GMutex metadata_preservation_mutex;
 	char preserved_metadata[RTP_TWOBYTES_HDR_EXT_MAX_SIZE];
 	guint preserved_metadata_size;
+
+	int64_t client_average_latency;
 };
 
 static gboolean
@@ -309,7 +311,7 @@ ProtoMessage_decode_hand_joint_locations(pb_istream_t *istream, const pb_field_t
 
 /// Used by both WebRTC & WebSocket
 static void
-handle_up_message(GBytes *data, const struct ems_gstreamer_pipeline *egp)
+handle_up_message(GBytes *data, struct ems_gstreamer_pipeline *egp)
 {
 	em_UpMessageSuper message_super = {};
 	em_proto_UpMessage message = em_proto_UpMessage_init_default;
@@ -344,6 +346,7 @@ handle_up_message(GBytes *data, const struct ems_gstreamer_pipeline *egp)
 		    "display_time %ld",
 		    message.frame.frame_sequence_id, message.frame.decode_complete_time, message.frame.begin_frame_time,
 		    message.frame.display_time);
+		egp->client_average_latency = message.frame.average_latency;
 	}
 }
 
@@ -406,7 +409,6 @@ GstPadProbeReturn
 rtppay_src_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 {
 	struct ems_gstreamer_pipeline *egp = (struct ems_gstreamer_pipeline *)user_data;
-
 
 	GstBuffer *buffer = gst_pad_probe_info_get_buffer(info);
 
@@ -917,4 +919,16 @@ ems_gstreamer_pipeline_get_current_time(struct gstreamer_pipeline *gp)
 	//         time_ns_to_s(running_time));
 
 	return current_time;
+}
+
+void
+ems_gstreamer_pipeline_adjust_bitrate(struct gstreamer_pipeline *gp)
+{
+	// g_autoptr(GstElement) jitterbuffer = gst_bin_get_by_name(GST_BIN(sc->pipeline), "jitter");
+	// g_object_set(jitterbuffer, "latency", jitter_latency, NULL);
+	//
+	// if (sc->average_latency > time_ms_f_to_ns(100)) {
+	//
+	// } else {
+	// }
 }

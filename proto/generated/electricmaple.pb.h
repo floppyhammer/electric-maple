@@ -131,6 +131,7 @@ typedef struct _em_proto_UpFrameMessage {
     int64_t decode_complete_time; /* nanoseconds, in client OpenXR time domain */
     int64_t begin_frame_time; /* nanoseconds, in client OpenXR time domain */
     int64_t display_time; /* nanoseconds, in client OpenXR time domain */
+    int64_t average_latency;
 } em_proto_UpFrameMessage;
 
 typedef struct _em_proto_UpMessage {
@@ -150,8 +151,7 @@ typedef struct _em_proto_DownFrameDataMessage {
     int64_t render_begin_time; /* nanoseconds, when compositor begins rendering */
     int64_t frame_push_time; /* nanoseconds, when frame is pushed to appsrc */
     int64_t frame_push_clock_time; /* nanoseconds, in pipeline clock time */
-    int64_t server_system_clock_pipeline_clock_offset; /* Used to calculate system time offset between server and client */
-    /* TODO fovs here */
+    int64_t server_system_clock_pipeline_clock_offset; /* TODO fovs here */
 } em_proto_DownFrameDataMessage;
 
 typedef struct _em_proto_DownMessage {
@@ -199,7 +199,7 @@ extern "C" {
 #define em_proto_TouchControllerCommon_init_default {false, em_proto_InputThumbstick_init_default, false, em_proto_InputValueTouch_init_default, false, em_proto_InputValueTouch_init_default, 0}
 #define em_proto_TouchControllerLeft_init_default {false, em_proto_InputClickTouch_init_default, false, em_proto_InputClickTouch_init_default, false, em_proto_InputClickTouch_init_default, false, em_proto_TouchControllerCommon_init_default}
 #define em_proto_TouchControllerRight_init_default {false, em_proto_InputClickTouch_init_default, false, em_proto_InputClickTouch_init_default, false, em_proto_InputClickTouch_init_default, false, em_proto_TouchControllerCommon_init_default}
-#define em_proto_UpFrameMessage_init_default     {0, 0, 0, 0}
+#define em_proto_UpFrameMessage_init_default     {0, 0, 0, 0, 0}
 #define em_proto_UpMessage_init_default          {0, false, em_proto_TrackingMessage_init_default, false, em_proto_UpFrameMessage_init_default}
 #define em_proto_DownFrameDataMessage_init_default {0, false, em_proto_Pose_init_default, false, em_proto_Pose_init_default, 0, 0, 0, 0}
 #define em_proto_DownMessage_init_default        {false, em_proto_DownFrameDataMessage_init_default}
@@ -215,7 +215,7 @@ extern "C" {
 #define em_proto_TouchControllerCommon_init_zero {false, em_proto_InputThumbstick_init_zero, false, em_proto_InputValueTouch_init_zero, false, em_proto_InputValueTouch_init_zero, 0}
 #define em_proto_TouchControllerLeft_init_zero   {false, em_proto_InputClickTouch_init_zero, false, em_proto_InputClickTouch_init_zero, false, em_proto_InputClickTouch_init_zero, false, em_proto_TouchControllerCommon_init_zero}
 #define em_proto_TouchControllerRight_init_zero  {false, em_proto_InputClickTouch_init_zero, false, em_proto_InputClickTouch_init_zero, false, em_proto_InputClickTouch_init_zero, false, em_proto_TouchControllerCommon_init_zero}
-#define em_proto_UpFrameMessage_init_zero        {0, 0, 0, 0}
+#define em_proto_UpFrameMessage_init_zero        {0, 0, 0, 0, 0}
 #define em_proto_UpMessage_init_zero             {0, false, em_proto_TrackingMessage_init_zero, false, em_proto_UpFrameMessage_init_zero}
 #define em_proto_DownFrameDataMessage_init_zero  {0, false, em_proto_Pose_init_zero, false, em_proto_Pose_init_zero, 0, 0, 0, 0}
 #define em_proto_DownMessage_init_zero           {false, em_proto_DownFrameDataMessage_init_zero}
@@ -273,6 +273,7 @@ extern "C" {
 #define em_proto_UpFrameMessage_decode_complete_time_tag 2
 #define em_proto_UpFrameMessage_begin_frame_time_tag 3
 #define em_proto_UpFrameMessage_display_time_tag 4
+#define em_proto_UpFrameMessage_average_latency_tag 5
 #define em_proto_UpMessage_up_message_id_tag     1
 #define em_proto_UpMessage_tracking_tag          2
 #define em_proto_UpMessage_frame_tag             3
@@ -412,7 +413,8 @@ X(a_, STATIC,   OPTIONAL, MESSAGE,  common,            4)
 X(a, STATIC,   SINGULAR, INT64,    frame_sequence_id,   1) \
 X(a, STATIC,   SINGULAR, INT64,    decode_complete_time,   2) \
 X(a, STATIC,   SINGULAR, INT64,    begin_frame_time,   3) \
-X(a, STATIC,   SINGULAR, INT64,    display_time,      4)
+X(a, STATIC,   SINGULAR, INT64,    display_time,      4) \
+X(a, STATIC,   SINGULAR, INT64,    average_latency,   5)
 #define em_proto_UpFrameMessage_CALLBACK NULL
 #define em_proto_UpFrameMessage_DEFAULT NULL
 
@@ -494,7 +496,7 @@ extern const pb_msgdesc_t em_proto_DownMessage_msg;
 #define em_proto_TouchControllerCommon_size      38
 #define em_proto_TouchControllerLeft_size        58
 #define em_proto_TouchControllerRight_size       58
-#define em_proto_UpFrameMessage_size             44
+#define em_proto_UpFrameMessage_size             55
 #define em_proto_Vec2_size                       10
 #define em_proto_Vec3_size                       15
 

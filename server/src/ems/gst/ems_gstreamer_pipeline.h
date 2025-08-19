@@ -43,6 +43,9 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 uint64_t
 ems_gstreamer_pipeline_get_current_time(struct gstreamer_pipeline *gp);
 
+void
+ems_gstreamer_pipeline_adjust_bitrate(struct gstreamer_pipeline *gp);
+
 #ifdef __cplusplus
 }
 #endif
