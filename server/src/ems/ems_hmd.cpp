@@ -31,7 +31,6 @@
 #include "math/m_mathinclude.h"
 #include "os/os_time.h"
 #include "pb_decode.h"
-#include "util/u_debug.h"
 #include "util/u_device.h"
 #include "util/u_distortion_mesh.h"
 #include "util/u_logging.h"
@@ -62,12 +61,6 @@ ems_hmd(struct xrt_device *xdev)
 {
 	return (struct ems_hmd *)xdev;
 }
-
-DEBUG_GET_ONCE_LOG_OPTION(sample_log, "EMS_LOG", U_LOGGING_WARN)
-
-#define EMS_TRACE(p, ...) U_LOG_XDEV_IFL_T(&p->base, p->log_level, __VA_ARGS__)
-#define EMS_DEBUG(p, ...) U_LOG_XDEV_IFL_D(&p->base, p->log_level, __VA_ARGS__)
-#define EMS_ERROR(p, ...) U_LOG_XDEV_IFL_E(&p->base, p->log_level, __VA_ARGS__)
 
 static void
 ems_hmd_destroy(struct xrt_device *xdev)
@@ -102,7 +95,7 @@ ems_hmd_get_tracked_pose(struct xrt_device *xdev,
 	struct ems_hmd *eh = ems_hmd(xdev);
 
 	if (name != XRT_INPUT_GENERIC_HEAD_POSE) {
-		EMS_ERROR(eh, "unknown input name");
+		U_LOG_E("Unknown input name");
 		return XRT_ERROR_INPUT_UNSUPPORTED;
 	}
 
@@ -240,8 +233,6 @@ ems_hmd_create(ems_instance &emsi)
 	eh->base.supported.position_tracking = false;
 
 	// Private data.
-	eh->instance = &emsi;
-	eh->log_level = debug_get_log_option_sample_log();
 #ifndef USE_PREDICTION
 	eh->pose = (struct xrt_pose){XRT_QUAT_IDENTITY, {0.0f, 1.6f, 0.0f}};
 #endif

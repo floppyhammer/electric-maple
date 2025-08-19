@@ -339,7 +339,6 @@ ems_motion_controller_create(ems_instance &emsi, enum xrt_device_name device_nam
 	emc->base.device_type = device_type;
 
 	// Private fields.
-	emc->instance = &emsi;
 	emc->grip_pose = default_pose;
 	emc->aim_pose = default_pose;
 	emc->hand_joints = new struct _em_proto_HandJointLocation[XRT_HAND_JOINT_COUNT];

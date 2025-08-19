@@ -57,9 +57,6 @@ struct ems_hmd
 	struct xrt_pose pose;
 #endif
 
-	// Should outlive us
-	struct ems_instance *instance;
-
 	std::unique_ptr<ems_hmd_recvbuf> received;
 	enum u_logging_level log_level;
 };
@@ -72,9 +69,6 @@ struct ems_motion_controller
 	struct xrt_pose grip_pose;
 
 	struct xrt_pose aim_pose;
-
-	// Should outlive us
-	struct ems_instance *instance;
 
 	enum u_logging_level log_level;
 
