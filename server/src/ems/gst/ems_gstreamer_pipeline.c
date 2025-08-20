@@ -343,10 +343,44 @@ handle_up_message(GBytes *data, struct ems_gstreamer_pipeline *egp)
 	if (message.has_frame) {
 		U_LOG_D(
 		    "Client frame message: frame_sequence_id %ld decode_complete_time %ld begin_frame_time %ld "
-		    "display_time %ld",
+		    "display_time %ld average latency %.1f",
 		    message.frame.frame_sequence_id, message.frame.decode_complete_time, message.frame.begin_frame_time,
-		    message.frame.display_time);
+		    message.frame.display_time, time_ns_to_ms_f(message.frame.average_latency));
 		egp->client_average_latency = message.frame.average_latency;
+
+		static int64_t last_time_change_bitrate = 0;
+		static float max_latency_over_window = 0;
+		static int current_bitrate = 4000;
+
+		if (last_time_change_bitrate == 0) {
+			last_time_change_bitrate = os_monotonic_get_ns();
+		} else {
+			if (time_ns_to_s(os_monotonic_get_ns() - last_time_change_bitrate) > 5) {
+				float max_latency_f = time_ns_to_ms_f(max_latency_over_window);
+				U_LOG_E("Max client latency %.1f", max_latency_f);
+				int target_bitrate = 0;
+
+				if (max_latency_f < 100) {
+					target_bitrate = 8000;
+				} else if (max_latency_f >= 100 && max_latency_f < 200) {
+					target_bitrate = 4000;
+				} else if (max_latency_f >= 200 && max_latency_f < 300) {
+					target_bitrate = 2000;
+				} else {
+					target_bitrate = 1000;
+				}
+
+				if (target_bitrate != current_bitrate) {
+					U_LOG_E("Adjust bitrate from %d to %d", current_bitrate, target_bitrate);
+					ems_gstreamer_pipeline_adjust_bitrate(&egp->base, target_bitrate);
+					current_bitrate = target_bitrate;
+				}
+
+				last_time_change_bitrate = os_monotonic_get_ns();
+				max_latency_over_window = 0;
+			}
+		}
+		max_latency_over_window = MAX(egp->client_average_latency, max_latency_over_window);
 	}
 }
 
@@ -855,7 +889,7 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 
 	signaling_server = ems_signaling_server_new();
 
-#define USE_ENCODEBIN2
+	// #define USE_ENCODEBIN2
 
 #ifndef USE_ENCODEBIN2
 	struct ems_arguments *args = malloc(sizeof(struct ems_arguments));
@@ -871,17 +905,17 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 		    // Removing this queue will result in readback errors (Gst can't keep up consuming) and introduce 4x
 		    // latency This does not seem to happen for GPU encoders.
 		    "queue ! "
-		    "x264enc tune=zerolatency sliced-threads=true speed-preset=veryfast bframes=0 bitrate=%d",
+		    "x264enc name=enc tune=zerolatency sliced-threads=true speed-preset=veryfast bframes=0 bitrate=%d",
 		    args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_NVH264) {
 		const char *nvenc_pipe =
 		    "videoconvert !"
-		    "nvh264enc zerolatency=true bitrate=%d rc-mode=cbr preset=low-latency";
+		    "nvh264enc name=enc zerolatency=true bitrate=%d rc-mode=cbr preset=low-latency";
 		encoder_str = g_strdup_printf(nvenc_pipe, args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_NVAUTOGPUH264) {
 		const char *nvenc_pipe =
 		    "cudaupload ! cudaconvert ! "
-		    "nvautogpuh264enc bitrate=%d rate-control=cbr preset=p1 tune=low-latency "
+		    "nvautogpuh264enc name=enc bitrate=%d rate-control=cbr preset=p1 tune=low-latency "
 		    "multi-pass=two-pass-quarter zero-reorder-delay=true cc-insert=disabled cabac=false";
 		encoder_str = g_strdup_printf(nvenc_pipe, args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_VULKANH264) {
@@ -889,7 +923,7 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 		encoder_str = g_strdup_printf(
 		    "videoconvert ! "
 		    "video/x-raw,format=NV12 ! "
-		    "vulkanupload ! vulkanh264enc average-bitrate=%d ! h264parse",
+		    "vulkanupload ! vulkanh264enc name=enc average-bitrate=%d ! h264parse",
 		    args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_OPENH264) {
 		encoder_str = g_strdup_printf(
@@ -898,16 +932,17 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 		    // Removing this queue will result in readback errors (Gst can't keep up consuming) and introduce
 		    // 10x latency This does not seem to happen for GPU encoders.
 		    "queue ! "
-		    "openh264enc complexity=high rate-control=quality bitrate=%d",
+		    "openh264enc name=enc complexity=high rate-control=quality bitrate=%d",
 		    args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_VAAPIH264) {
 		encoder_str = g_strdup_printf(
-		    "videoconvert ! video/x-raw,format=NV12 ! vaapih264enc bitrate=%d rate-control=cbr aud=true "
+		    "videoconvert ! video/x-raw,format=NV12 ! vaapih264enc name=enc bitrate=%d rate-control=cbr "
+		    "aud=true "
 		    "cabac=true quality-level=7",
 		    args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_VAH264) {
 		encoder_str = g_strdup_printf(
-		    "videoconvert ! video/x-raw,format=NV12 ! vah264enc bitrate=%d rate-control=cbr aud=true "
+		    "videoconvert ! video/x-raw,format=NV12 ! vah264enc name=enc bitrate=%d rate-control=cbr aud=true "
 		    "cabac=true target-usage=7",
 		    args->bitrate);
 	} else {
@@ -1024,13 +1059,8 @@ ems_gstreamer_pipeline_get_current_time(struct gstreamer_pipeline *gp)
 }
 
 void
-ems_gstreamer_pipeline_adjust_bitrate(struct gstreamer_pipeline *gp)
+ems_gstreamer_pipeline_adjust_bitrate(struct gstreamer_pipeline *gp, int target_bitrate)
 {
-	// g_autoptr(GstElement) jitterbuffer = gst_bin_get_by_name(GST_BIN(sc->pipeline), "jitter");
-	// g_object_set(jitterbuffer, "latency", jitter_latency, NULL);
-	//
-	// if (sc->average_latency > time_ms_f_to_ns(100)) {
-	//
-	// } else {
-	// }
+	g_autoptr(GstElement) encoder = gst_bin_get_by_name(GST_BIN(gp->pipeline), "enc");
+	g_object_set(encoder, "bitrate", target_bitrate, NULL);
 }

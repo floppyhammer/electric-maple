@@ -44,7 +44,7 @@ uint64_t
 ems_gstreamer_pipeline_get_current_time(struct gstreamer_pipeline *gp);
 
 void
-ems_gstreamer_pipeline_adjust_bitrate(struct gstreamer_pipeline *gp);
+ems_gstreamer_pipeline_adjust_bitrate(struct gstreamer_pipeline *gp, int target_bitrate);
 
 #ifdef __cplusplus
 }
