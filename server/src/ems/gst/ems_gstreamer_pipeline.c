@@ -43,9 +43,9 @@
 #define WEBRTC_TEE_NAME "webrtctee"
 
 #ifdef ANDROID
-#define DEFAULT_BITRATE "40000000"
+#define DEFAULT_BITRATE 40000000
 #else
-#define DEFAULT_BITRATE "4000"
+#define DEFAULT_BITRATE 4000
 #endif
 
 // TODO: Can we define the below at a higher level so it can also be
@@ -816,6 +816,30 @@ gstAndroidLog(GstDebugCategory *category,
 	}
 }
 
+typedef enum
+{
+	EMS_ENCODER_TYPE_X264,
+	EMS_ENCODER_TYPE_NVH264,
+	EMS_ENCODER_TYPE_NVAUTOGPUH264,
+	EMS_ENCODER_TYPE_VULKANH264,
+	EMS_ENCODER_TYPE_OPENH264,
+	EMS_ENCODER_TYPE_VAAPIH264,
+	EMS_ENCODER_TYPE_VAH264
+} EmsEncoderType;
+
+struct ems_arguments
+{
+	// GFile *stream_debug_file;
+	uint32_t bitrate;
+	EmsEncoderType encoder_type;
+	gboolean benchmark_down_msg_loss;
+	gboolean benchmark_latency;
+	gboolean use_localhost;
+	guint webrtc_stats_print_interval;
+	// GFile *webrtc_stats_out_directory;
+	gboolean use_udp;
+};
+
 void
 ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
                               const char *appsrc_name,
@@ -831,22 +855,100 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 
 	signaling_server = ems_signaling_server_new();
 
+#define USE_ENCODEBIN2
+
+#ifndef USE_ENCODEBIN2
+	struct ems_arguments *args = malloc(sizeof(struct ems_arguments));
+	memset(args, 0, sizeof(struct ems_arguments));
+	args->encoder_type = EMS_ENCODER_TYPE_X264;
+	args->bitrate = DEFAULT_BITRATE;
+
+	gchar *encoder_str = NULL;
+	if (args->encoder_type == EMS_ENCODER_TYPE_X264) {
+		encoder_str = g_strdup_printf(
+		    "videoconvert ! "
+		    "video/x-raw,format=NV12 ! "
+		    // Removing this queue will result in readback errors (Gst can't keep up consuming) and introduce 4x
+		    // latency This does not seem to happen for GPU encoders.
+		    "queue ! "
+		    "x264enc tune=zerolatency sliced-threads=true speed-preset=veryfast bframes=0 bitrate=%d",
+		    args->bitrate);
+	} else if (args->encoder_type == EMS_ENCODER_TYPE_NVH264) {
+		const char *nvenc_pipe =
+		    "videoconvert !"
+		    "nvh264enc zerolatency=true bitrate=%d rc-mode=cbr preset=low-latency";
+		encoder_str = g_strdup_printf(nvenc_pipe, args->bitrate);
+	} else if (args->encoder_type == EMS_ENCODER_TYPE_NVAUTOGPUH264) {
+		const char *nvenc_pipe =
+		    "cudaupload ! cudaconvert ! "
+		    "nvautogpuh264enc bitrate=%d rate-control=cbr preset=p1 tune=low-latency "
+		    "multi-pass=two-pass-quarter zero-reorder-delay=true cc-insert=disabled cabac=false";
+		encoder_str = g_strdup_printf(nvenc_pipe, args->bitrate);
+	} else if (args->encoder_type == EMS_ENCODER_TYPE_VULKANH264) {
+		// TODO: Make vulkancolorconvert work with vulkanh264enc
+		encoder_str = g_strdup_printf(
+		    "videoconvert ! "
+		    "video/x-raw,format=NV12 ! "
+		    "vulkanupload ! vulkanh264enc average-bitrate=%d ! h264parse",
+		    args->bitrate);
+	} else if (args->encoder_type == EMS_ENCODER_TYPE_OPENH264) {
+		encoder_str = g_strdup_printf(
+		    "videoconvert ! "
+		    "video/x-raw,format=I420 ! "
+		    // Removing this queue will result in readback errors (Gst can't keep up consuming) and introduce
+		    // 10x latency This does not seem to happen for GPU encoders.
+		    "queue ! "
+		    "openh264enc complexity=high rate-control=quality bitrate=%d",
+		    args->bitrate);
+	} else if (args->encoder_type == EMS_ENCODER_TYPE_VAAPIH264) {
+		encoder_str = g_strdup_printf(
+		    "videoconvert ! video/x-raw,format=NV12 ! vaapih264enc bitrate=%d rate-control=cbr aud=true "
+		    "cabac=true quality-level=7",
+		    args->bitrate);
+	} else if (args->encoder_type == EMS_ENCODER_TYPE_VAH264) {
+		encoder_str = g_strdup_printf(
+		    "videoconvert ! video/x-raw,format=NV12 ! vah264enc bitrate=%d rate-control=cbr aud=true "
+		    "cabac=true target-usage=7",
+		    args->bitrate);
+	} else {
+		U_LOG_E("Unexpected encoder type.");
+		abort();
+	}
+#endif
+
 	gchar *pipeline_str = g_strdup_printf(
 	    "appsrc name=%s ! "
+
+#ifdef USE_ENCODEBIN2
 	    "videoconvert ! "
 	    "videorate ! "
 	    "video/x-raw,format=NV12,framerate=60/1 ! "
 	    "encodebin2 "
 	    "profile=\"video/"
-	    "x-h264|element-properties,tune=4,sliced-threads=1,speed-preset=1,bframes=0,bitrate=%s,key-int-max=120\" ! "
+	    "x-h264|element-properties,tune=4,sliced-threads=1,speed-preset=1,bframes=0,bitrate=%d,key-int-max=120\" ! "
+#else
+	    "%s ! "                        //
+	    "video/x-h264,profile=main ! " //
+	    "queue ! "
+#endif
 	    "rtph264pay name=rtppay config-interval=-1 aggregate-mode=zero-latency ! "
 	    "application/x-rtp,payload=96,ssrc=(uint)3484078952 ! "
+#ifdef USE_ENCODEBIN2
+
 #ifdef USE_WEBRTC
 	    "tee name=%s allow-not-linked=true",
 	    appsrc_name, DEFAULT_BITRATE, WEBRTC_TEE_NAME);
 #else
 	    "udpsink name=udpsink port=5600", // host will be assigned later
 	    appsrc_name, DEFAULT_BITRATE);
+#endif
+#else
+	    "udpsink name=udpsink port=5600", // host will be assigned later
+	    appsrc_name, encoder_str);
+#endif
+
+#ifndef USE_ENCODEBIN2
+	g_free(encoder_str);
 #endif
 
 	// No webrtc bin yet until later!
