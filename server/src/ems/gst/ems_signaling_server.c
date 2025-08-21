@@ -248,7 +248,7 @@ ems_signaling_server_send_to_websocket_client(EmsSignalingServer *server, EmsCli
 void
 ems_signaling_server_send_sdp_offer(EmsSignalingServer *server, EmsClientId client_id, const gchar *sdp)
 {
-	g_debug("Send SDP offer: %s", sdp);
+	U_LOG_E("Send SDP offer: %s", sdp);
 
 	JsonBuilder *builder = json_builder_new();
 	json_builder_begin_object(builder);

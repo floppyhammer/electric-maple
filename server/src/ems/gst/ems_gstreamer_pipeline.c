@@ -649,10 +649,8 @@ webrtc_client_connected_cb(EmsSignalingServer *server,
 	GstPromise *promise = gst_promise_new_with_change_func((GstPromiseChangeFunc)on_offer_created, webrtcbin, NULL);
 	g_signal_emit_by_name(webrtcbin, "create-offer", NULL, promise);
 
-	GST_DEBUG_BIN_TO_DOT_FILE(pipeline, GST_DEBUG_GRAPH_SHOW_ALL, "rtcbin");
-
 	if (!ems_gstreamer_pipeline_add_payload_pad_probe(egp)) {
-		U_LOG_E("Failed to add payload pad probe.");
+		U_LOG_E("Failed to add payload pad probes!");
 	}
 
 	ret = gst_element_set_state(webrtcbin, GST_STATE_PLAYING);

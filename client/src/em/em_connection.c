@@ -467,7 +467,7 @@ em_conn_send_sdp_answer(EmConnection *em_conn, const gchar *sdp)
 	JsonNode *root;
 	gchar *msg_str;
 
-	ALOGI("Send answer: %s", sdp);
+	ALOGE("Send SDP answer: %s", sdp);
 
 	builder = json_builder_new();
 	json_builder_begin_object(builder);
@@ -559,7 +559,7 @@ em_conn_webrtc_process_sdp_offer(EmConnection *em_conn, const gchar *sdp)
 	GstSDPMessage *sdp_msg = NULL;
 	GstWebRTCSessionDescription *desc = NULL;
 
-	ALOGI("Received offer: %s\n", sdp);
+	ALOGI("Received SDP offer: %s\n", sdp);
 
 	if (gst_sdp_message_new_from_text(sdp, &sdp_msg) != GST_SDP_OK) {
 		g_debug("Error parsing SDP description");

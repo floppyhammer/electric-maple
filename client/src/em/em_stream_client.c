@@ -506,7 +506,7 @@ rtpdepay_sink_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 	if (!gst_rtp_buffer_get_extension(&rtp_buffer)) {
 		// TODO: This happens for most RTP buffers we receive as they are not ours.
 		// Is there a smarter way to filter them?
-		//		ALOGW("Skipping RTP buffer without extension bit.");
+		ALOGE("Skipping RTP buffer without extension bit.");
 		goto no_buf;
 	}
 
@@ -656,9 +656,11 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 		if (jitterbuffer) {
 			GstPad *srcpad = gst_element_get_static_pad(jitterbuffer, "src");
 			g_assert(srcpad);
-			//        gst_pad_add_probe(srcpad, GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM,
+			//        gst_pad_add_probe(srcpad, GST_PAD_PROBE_TYPE_BUFFER,
 			//        jitterbuffer_event_probe_cb, NULL, NULL);
 			gst_clear_object(&srcpad);
+
+			gst_object_unref(jitterbuffer);
 		}
 	}
 #endif
@@ -717,7 +719,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 			gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, rtpdepay_sink_pad_probe, sc, NULL);
 			gst_object_unref(pad);
 		} else {
-			ALOGE("Could not find static sink pad in depay.");
+			ALOGE("Could not find static sink pad in depay");
 		}
 	}
 	{
@@ -726,9 +728,10 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 			gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, rtpdepay_src_pad_probe, sc, NULL);
 			gst_object_unref(pad);
 		} else {
-			ALOGE("Could not find static src pad in depay.");
+			ALOGE("Could not find static src pad in depay");
 		}
 	}
+	gst_object_unref(depay);
 
 	// This actually hands over the pipeline. Once our own handler returns, the pipeline will be started by the
 	// connection.
