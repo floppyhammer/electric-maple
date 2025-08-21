@@ -438,7 +438,7 @@ data_channel_message_string_cb(GstWebRTCDataChannel *data_channel, gchar *str, s
 GstPadProbeReturn
 rtppay_sink_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 {
-	struct ems_gstreamer_pipeline *egp = (struct ems_gstreamer_pipeline *)user_data;
+	struct ems_gstreamer_pipeline *egp = user_data;
 
 	GstBuffer *buffer = gst_pad_probe_info_get_buffer(info);
 
@@ -452,18 +452,19 @@ rtppay_sink_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 
 	GstBuffer *struct_buf;
 	if (!gst_structure_get(custom_structure, "protobuf", GST_TYPE_BUFFER, &struct_buf, NULL)) {
-		U_LOG_E("Could not read protobuf from struct");
+		U_LOG_E("Could not read protobuf from struct!");
 		return GST_PAD_PROBE_OK;
 	}
 
 	GstMapInfo map_info;
 	if (!gst_buffer_map(struct_buf, &map_info, GST_MAP_READ)) {
-		U_LOG_E("Failed to map custom meta buffer.");
+		U_LOG_E("Failed to map custom meta buffer!");
 		return GST_PAD_PROBE_OK;
 	}
 
 	g_autoptr(GMutexLocker) locker = g_mutex_locker_new(&egp->metadata_preservation_mutex);
 
+	// Copy struct_buf to egp->preserved_metadata
 	memcpy(egp->preserved_metadata, map_info.data, map_info.size);
 	egp->preserved_metadata_size = map_info.size;
 
@@ -475,7 +476,7 @@ rtppay_sink_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 GstPadProbeReturn
 rtppay_src_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 {
-	struct ems_gstreamer_pipeline *egp = (struct ems_gstreamer_pipeline *)user_data;
+	struct ems_gstreamer_pipeline *egp = user_data;
 
 	GstBuffer *buffer = gst_pad_probe_info_get_buffer(info);
 
@@ -484,7 +485,7 @@ rtppay_src_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 	buffer = gst_buffer_make_writable(buffer);
 
 	if (!gst_rtp_buffer_map(buffer, GST_MAP_WRITE, &rtp_buffer)) {
-		U_LOG_E("Failed to map GstBuffer");
+		U_LOG_E("Failed to map GstBuffer!");
 		return GST_PAD_PROBE_OK;
 	}
 
@@ -529,13 +530,13 @@ rtppay_src_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 	// Copy metadata into RTP header
 	if (!gst_rtp_buffer_add_extension_twobytes_header(&rtp_buffer, 0, RTP_TWOBYTES_HDR_EXT_ID,
 	                                                  egp->preserved_metadata, egp->preserved_metadata_size)) {
-		U_LOG_E("Failed to add extension data !");
+		U_LOG_E("Failed to add extension data!");
 		return GST_PAD_PROBE_OK;
 	}
 
 	// The bit should be written by gst_rtp_buffer_add_extension_twobytes_header
 	if (!gst_rtp_buffer_get_extension(&rtp_buffer)) {
-		U_LOG_E("The RTP extension bit was not set.");
+		U_LOG_E("The RTP extension bit was not set!");
 	}
 
 	gst_rtp_buffer_unmap(&rtp_buffer);
@@ -589,6 +590,8 @@ ems_gstreamer_pipeline_add_payload_pad_probe(struct ems_gstreamer_pipeline *self
 		gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, rtppay_src_pad_probe, self, NULL);
 		gst_object_unref(pad);
 	}
+
+	gst_object_unref(rtppay);
 
 	return true;
 }
@@ -921,8 +924,6 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	}
 
 	signaling_server = ems_signaling_server_new();
-
-	// #define USE_ENCODEBIN2
 
 #ifndef USE_ENCODEBIN2
 	struct ems_arguments *args = malloc(sizeof(struct ems_arguments));
