@@ -624,7 +624,7 @@ webrtc_client_connected_cb(EmsSignalingServer *server,
 	// I also think this would work if the pipeline state is READY but /shrug
 
 	// TODO add priority
-	GstStructure *data_channel_options = gst_structure_new_from_string("data-channel-options, ordered=false");
+	GstStructure *data_channel_options = gst_structure_new_from_string("data-channel-options, ordered=true");
 	g_signal_emit_by_name(webrtcbin, "create-data-channel", "channel", data_channel_options, &egp->data_channel);
 	gst_clear_structure(&data_channel_options);
 
