@@ -11,10 +11,7 @@
 
 #pragma once
 
-// clang-format off
 #include "xr_platform_deps.h"
-#include <openxr/openxr_platform.h>
-// clang-format on
 
 #include <vector>
 
