@@ -79,28 +79,61 @@ struct ems_gstreamer_pipeline
 };
 
 static gboolean
-gst_bus_cb(GstBus *bus, GstMessage *message, gpointer user_data)
+gst_bus_cb(GstBus *bus, GstMessage *msg, gpointer user_data)
 {
 	struct ems_gstreamer_pipeline *egp = (struct ems_gstreamer_pipeline *)user_data;
 	GstBin *pipeline = GST_BIN(egp->base.pipeline);
 
-	switch (GST_MESSAGE_TYPE(message)) {
-	case GST_MESSAGE_STATE_CHANGED:
+	switch (GST_MESSAGE_TYPE(msg)) {
+	case GST_MESSAGE_STATE_CHANGED: {
 		GstState old_state, new_state;
 
 		// The pipeline's state has changed.
-		gst_message_parse_state_changed(message, &old_state, &new_state, NULL);
+		gst_message_parse_state_changed(msg, &old_state, &new_state, NULL);
 
-		if (GST_MESSAGE_SRC(message) == GST_OBJECT(pipeline) && new_state == GST_STATE_PLAYING) {
+		if (GST_MESSAGE_SRC(msg) == GST_OBJECT(pipeline) && new_state == GST_STATE_PLAYING) {
 			GstClock *clock = gst_element_get_clock(egp->base.pipeline);
 			egp->ntp = gst_net_time_provider_new(clock, "0.0.0.0", 52357);
 			gst_object_unref(clock);
 		}
-		break;
+	} break;
+	case GST_MESSAGE_QOS: {
+		const GstStructure *s = gst_message_get_structure(msg);
+		const GValue *val = gst_structure_get_value(s, "avg-intra-downstream-bitrate");
+		if (val) {
+			const gdouble avg_intra_downstream_bitrate = g_value_get_double(val);
+			g_print("QoS message: Average Intra Downstream Bitrate = %f bps\n",
+			        avg_intra_downstream_bitrate);
+		}
+
+		val = gst_structure_get_value(s, "avg-downstream-bitrate");
+		if (val) {
+			const gdouble avg_downstream_bitrate = g_value_get_double(val);
+			g_print("QoS message: Average Downstream Bitrate = %f bps\n", avg_downstream_bitrate);
+
+			// This is where you implement your dynamic bitrate adjustment logic
+			// For example, if the average bitrate is too low, you might decrease the encoder bitrate
+			// The value "500000" is an example and should be adjusted to your needs
+			// if (avg_downstream_bitrate < 500000) {
+			// 	g_object_set(video_encoder, "bitrate", (gint)avg_downstream_bitrate * 0.8, NULL);
+			// 	g_print("Adjusting encoder bitrate to %d\n", (gint)avg_downstream_bitrate * 0.8);
+			// }
+		}
+
+		val = gst_structure_get_value(s, "rtt");
+		if (val) {
+		}
+
+		val = gst_structure_get_value(s, "jitter");
+		if (val) {
+		}
+	}
+
+	break;
 	case GST_MESSAGE_ERROR: {
 		GError *gerr;
 		gchar *debug_msg;
-		gst_message_parse_error(message, &gerr, &debug_msg);
+		gst_message_parse_error(msg, &gerr, &debug_msg);
 		GST_DEBUG_BIN_TO_DOT_FILE(pipeline, GST_DEBUG_GRAPH_SHOW_ALL, "mss-pipeline-ERROR");
 		g_error("Error: %s (%s)", gerr->message, debug_msg);
 		g_error_free(gerr);
@@ -109,7 +142,7 @@ gst_bus_cb(GstBus *bus, GstMessage *message, gpointer user_data)
 	case GST_MESSAGE_WARNING: {
 		GError *gerr;
 		gchar *debug_msg;
-		gst_message_parse_warning(message, &gerr, &debug_msg);
+		gst_message_parse_warning(msg, &gerr, &debug_msg);
 		GST_DEBUG_BIN_TO_DOT_FILE(pipeline, GST_DEBUG_GRAPH_SHOW_ALL, "mss-pipeline-WARNING");
 		g_warning("Warning: %s (%s)", gerr->message, debug_msg);
 		g_error_free(gerr);
