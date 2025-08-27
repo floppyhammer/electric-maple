@@ -923,6 +923,26 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 
 	signaling_server = ems_signaling_server_new();
 
+	struct ems_gstreamer_pipeline *egp = U_TYPED_CALLOC(struct ems_gstreamer_pipeline);
+	egp->base.node.break_apart = break_apart;
+	egp->base.node.destroy = destroy;
+	egp->base.xfctx = xfctx;
+	egp->callbacks = callbacks_collection;
+
+	// setenv("GST_TRACERS", "latency(flags=pipeline+element+reported)", 1);
+	// setenv("GST_DEBUG", "GST_TRACER:7", 1);
+	// setenv("GST_DEBUG_FILE", "./latency.log", 1);
+
+	gst_init(NULL, NULL);
+
+#ifdef __ANDROID__
+	gst_debug_add_log_function(&gstAndroidLog, NULL, NULL);
+#endif
+	gst_debug_set_default_threshold(GST_LEVEL_WARNING);
+	gst_debug_set_threshold_for_name("decodebin2", GST_LEVEL_INFO);
+	gst_debug_set_threshold_for_name("webrtcbin", GST_LEVEL_INFO);
+	gst_debug_set_threshold_for_name("webrtcbindatachannel", GST_LEVEL_INFO);
+
 #ifndef USE_ENCODEBIN2
 	struct ems_arguments *args = malloc(sizeof(struct ems_arguments));
 	memset(args, 0, sizeof(struct ems_arguments));
@@ -933,7 +953,8 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	if (args->encoder_type == EMS_ENCODER_TYPE_X264) {
 		encoder_str = g_strdup_printf(
 		    "videoconvert ! "
-		    "video/x-raw,format=NV12 ! "
+		    "videorate ! "
+		    "video/x-raw,format=NV12,framerate=60/1 ! "
 		    // Removing this queue will result in readback errors (Gst can't keep up consuming) and introduce 4x
 		    // latency This does not seem to happen for GPU encoders.
 		    "queue ! "
@@ -953,14 +974,14 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_VULKANH264) {
 		// TODO: Make vulkancolorconvert work with vulkanh264enc
 		encoder_str = g_strdup_printf(
-		    "videoconvert ! "
-		    "video/x-raw,format=NV12 ! "
+		    "videoconvert ! videorate ! "
+		    "video/x-raw,format=NV12,framerate=60/1 ! "
 		    "vulkanupload ! vulkanh264enc name=enc average-bitrate=%d ! h264parse",
 		    args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_OPENH264) {
 		encoder_str = g_strdup_printf(
-		    "videoconvert ! "
-		    "video/x-raw,format=I420 ! "
+		    "videoconvert ! videorate ! "
+		    "video/x-raw,format=I420,framerate=60/1 ! "
 		    // Removing this queue will result in readback errors (Gst can't keep up consuming) and introduce
 		    // 10x latency This does not seem to happen for GPU encoders.
 		    "queue ! "
@@ -968,13 +989,15 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 		    args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_VAAPIH264) {
 		encoder_str = g_strdup_printf(
-		    "videoconvert ! video/x-raw,format=NV12 ! vaapih264enc name=enc bitrate=%d rate-control=cbr "
+		    "videoconvert ! videorate ! video/x-raw,format=NV12,framerate=60/1 ! vaapih264enc name=enc "
+		    "bitrate=%d rate-control=cbr "
 		    "aud=true "
 		    "cabac=true quality-level=7",
 		    args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_VAH264) {
 		encoder_str = g_strdup_printf(
-		    "videoconvert ! video/x-raw,format=NV12 ! vah264enc name=enc bitrate=%d rate-control=cbr aud=true "
+		    "videoconvert ! videorate ! video/x-raw,format=NV12,framerate=60/1 ! vah264enc name=enc bitrate=%d "
+		    "rate-control=cbr aud=true "
 		    "cabac=true target-usage=7",
 		    args->bitrate);
 	} else {
@@ -1021,26 +1044,6 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	// No webrtc bin yet until later!
 
 	U_LOG_I("EMS gstreamer pipeline: %s", pipeline_str);
-
-	struct ems_gstreamer_pipeline *egp = U_TYPED_CALLOC(struct ems_gstreamer_pipeline);
-	egp->base.node.break_apart = break_apart;
-	egp->base.node.destroy = destroy;
-	egp->base.xfctx = xfctx;
-	egp->callbacks = callbacks_collection;
-
-	// setenv("GST_TRACERS", "latency(flags=pipeline+element+reported)", 1);
-	// setenv("GST_DEBUG", "GST_TRACER:7", 1);
-	// setenv("GST_DEBUG_FILE", "./latency.log", 1);
-
-	gst_init(NULL, NULL);
-
-#ifdef __ANDROID__
-	gst_debug_add_log_function(&gstAndroidLog, NULL, NULL);
-#endif
-	gst_debug_set_default_threshold(GST_LEVEL_WARNING);
-	gst_debug_set_threshold_for_name("decodebin2", GST_LEVEL_INFO);
-	gst_debug_set_threshold_for_name("webrtcbin", GST_LEVEL_INFO);
-	gst_debug_set_threshold_for_name("webrtcbindatachannel", GST_LEVEL_INFO);
 
 	GstElement *pipeline = gst_parse_launch(pipeline_str, &error);
 	g_assert_no_error(error);
