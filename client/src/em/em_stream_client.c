@@ -618,6 +618,12 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 #else
 	// clang-format off
 	gchar *pipeline_string = g_strdup_printf(
+		"udpsrc port=5601 buffer-size=8000000 "
+		"caps=\"application/x-rtp,media=audio\" ! "
+		"rtpopusdepay ! "
+		"opusdec ! "
+		"openslessink "
+
 	    "udpsrc port=5600 buffer-size=8000000 "
 	    "caps=\"application/x-rtp,media=video,clock-rate=90000,encoding-name=H264\" ! "
 	    "rtpjitterbuffer name=jitter do-lost=1 latency=50 ! "
