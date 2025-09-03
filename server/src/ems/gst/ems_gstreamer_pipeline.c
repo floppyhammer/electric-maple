@@ -656,10 +656,19 @@ webrtc_client_connected_cb(EmsSignalingServer *server,
 	ret = gst_element_set_state(webrtcbin, GST_STATE_PLAYING);
 	g_assert(ret != GST_STATE_CHANGE_FAILURE);
 #else
-	GstElement *udpsink = gst_bin_get_by_name(GST_BIN(egp->base.pipeline), "udpsink");
-	g_assert(udpsink);
-	g_object_set(udpsink, "host", client_address, NULL);
-	gst_object_unref(udpsink);
+	{
+		GstElement *udpsink = gst_bin_get_by_name(GST_BIN(egp->base.pipeline), "udpsink");
+		g_assert(udpsink);
+		g_object_set(udpsink, "host", client_address, NULL);
+		gst_object_unref(udpsink);
+	}
+
+	{
+		GstElement *udpsink = gst_bin_get_by_name(GST_BIN(egp->base.pipeline), "udpsink-audio");
+		g_assert(udpsink);
+		g_object_set(udpsink, "host", client_address, NULL);
+		gst_object_unref(udpsink);
+	}
 
 	if (!ems_gstreamer_pipeline_add_payload_pad_probe(egp)) {
 		U_LOG_E("Failed to add payload pad probe.");
@@ -1007,8 +1016,19 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 #endif
 
 	gchar *pipeline_str = g_strdup_printf(
-	    "appsrc name=%s ! "
+	    "rtpbin name=rtpbin "
+	    "pulsesrc device=\"alsa_output.pci-0000_c6_00.1.hdmi-stereo-extra2.monitor\" ! "
+	    "audioconvert ! "
+	    "audioresample ! "
+	    "queue ! "
+	    "opusenc perfect-timestamp=true ! "
+	    "rtpopuspay ! "
+	    "application/x-rtp,encoding-name=OPUS,media=audio,payload=127,ssrc=(uint)3484078953 ! "
+	    "rtpbin.send_rtp_sink_1 "
+	    "rtpbin. ! "
+	    "udpsink name=udpsink-audio port=5601 sync=false async=false "
 
+	    "appsrc name=%s ! "
 #ifdef USE_ENCODEBIN2
 	    "videoconvert ! "
 	    "videorate ! "
@@ -1023,17 +1043,19 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 #endif
 	    "rtph264pay name=rtppay config-interval=-1 aggregate-mode=zero-latency ! "
 	    "application/x-rtp,payload=96,ssrc=(uint)3484078952 ! "
+	    "rtpbin.send_rtp_sink_0 "
 #ifdef USE_ENCODEBIN2
 
 #ifdef USE_WEBRTC
 	    "tee name=%s allow-not-linked=true",
 	    appsrc_name, DEFAULT_BITRATE, WEBRTC_TEE_NAME);
 #else
-	    "udpsink name=udpsink port=5600", // host will be assigned later
+	    "udpsink name=udpsink port=5600", // Host will be assigned later
 	    appsrc_name, DEFAULT_BITRATE);
 #endif
 #else
-	    "udpsink name=udpsink port=5600", // host will be assigned later
+	    "rtpbin. ! "
+	    "udpsink name=udpsink port=5600 sync=false async=false ", // Host will be assigned later
 	    appsrc_name, encoder_str);
 #endif
 

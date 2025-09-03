@@ -112,6 +112,8 @@ struct _EmStreamClient
 
 	int64_t average_latency; // Nanoseconds
 	int max_jitter_latency;
+
+	guint timeout_src_id_dot_data;
 };
 
 #if 0
@@ -594,6 +596,19 @@ jitterbuffer_event_probe_cb(GstPad *pad, GstPadProbeInfo *info, gpointer user_da
 	return GST_PAD_PROBE_OK;
 }
 
+static gboolean
+check_pipeline_dot_data(EmStreamClient *sc)
+{
+	if (!sc || !sc->pipeline) {
+		return G_SOURCE_CONTINUE;
+	}
+
+	gchar *dot_data = gst_debug_bin_to_dot_data(GST_BIN(sc->pipeline), GST_DEBUG_GRAPH_SHOW_ALL);
+	g_free(dot_data);
+
+	return G_SOURCE_CONTINUE;
+}
+
 static void
 on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 {
@@ -616,27 +631,33 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
             "glsinkbin name=glsink");
 	// clang-format on
 #else
-	// clang-format off
 	gchar *pipeline_string = g_strdup_printf(
-		"udpsrc port=5601 buffer-size=8000000 "
-		"caps=\"application/x-rtp,media=audio\" ! "
-		"rtpopusdepay ! "
-		"opusdec ! "
-		"openslessink "
-
+	    "rtpbin name=rtpbin latency=50 "
+	    // Video
 	    "udpsrc port=5600 buffer-size=8000000 "
-	    "caps=\"application/x-rtp,media=video,clock-rate=90000,encoding-name=H264\" ! "
-	    "rtpjitterbuffer name=jitter do-lost=1 latency=50 ! "
+	    "caps=\"application/x-rtp,media=video,payload=96,clock-rate=90000,encoding-name=H264\" ! "
+	    "rtpbin.recv_rtp_sink_0 "
+	    //	    // Audio
+	    "udpsrc port=5601 buffer-size=8000000 "
+	    "caps=\"application/x-rtp,media=audio,payload=127,clock-rate=48000,encoding-name=OPUS\" ! "
+	    "rtpbin.recv_rtp_sink_1 "
+
+	    "rtpbin. ! "
+	    "rtpopusdepay ! "
+	    "opusdec ! "
+	    "openslessink "
+
+	    "rtpbin. ! "
+	    //	    "rtpjitterbuffer name=jitter do-lost=1 latency=50 ! "
 	    "rtph264depay name=depay ! "
-	#ifndef USE_DECODEBIN3
+#ifndef USE_DECODEBIN3
 	    "h264parse ! "
 	    "amcviddec-c2mtkavcdecoder ! "
 	    "video/x-raw(memory:GLMemory),format=(string)RGBA,texture-target=(string)external-oes ! "
-	#else
+#else
 	    "decodebin3 ! "
-	#endif
+#endif
 	    "glsinkbin name=glsink");
-	// clang-format on
 #endif
 
 	sc->pipeline = gst_object_ref_sink(gst_parse_launch(pipeline_string, &error));
@@ -742,6 +763,8 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	// This actually hands over the pipeline. Once our own handler returns, the pipeline will be started by the
 	// connection.
 	g_signal_emit_by_name(em_conn, "set-pipeline", GST_PIPELINE(sc->pipeline), NULL);
+
+	sc->timeout_src_id_dot_data = g_timeout_add_seconds(3, G_SOURCE_FUNC(check_pipeline_dot_data), sc);
 }
 
 static void

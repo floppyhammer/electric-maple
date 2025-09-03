@@ -640,10 +640,10 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 	if (sample == nullptr) {
 		if (exp->prev_sample) {
 			// Server pose transmission doesn't work for WebRTC for now.
-#ifndef USE_WEBRTC
-			projectionViews[0].pose = exp->prev_sample->poses[0];
-			projectionViews[1].pose = exp->prev_sample->poses[1];
-#endif
+			// #ifndef USE_WEBRTC
+			//			projectionViews[0].pose = exp->prev_sample->poses[0];
+			//			projectionViews[1].pose = exp->prev_sample->poses[1];
+			// #endif
 			return EM_POLL_RENDER_RESULT_REUSED_SAMPLE;
 		}
 		return EM_POLL_RENDER_RESULT_NO_SAMPLE_AVAILABLE;
@@ -651,10 +651,10 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 
 	// Server poses
 	// Server pose transmission doesn't work for WebRTC for now.
-#ifndef USE_WEBRTC
-	projectionViews[0].pose = sample->poses[0];
-	projectionViews[1].pose = sample->poses[1];
-#endif
+	// #ifndef USE_WEBRTC
+	//	projectionViews[0].pose = sample->poses[0];
+	//	projectionViews[1].pose = sample->poses[1];
+	// #endif
 
 	XrSwapchainImageAcquireInfo acquireInfo{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
 	uint32_t imageIndex;
@@ -717,8 +717,9 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 		uint64_t total_duration = client_now - sample->server_render_begin_time;
 
 		ALOGD(
-		    "LATENCY BENCHMARK {\"frame\": %ld, \"server_render_ms\": %f, \"server_encode_transmit_ms\": %f, "
-		    "\"client_decode_ms\": %f, \"client_wait_ms\": %f, \"client_render_ms\": %f, \"total_ms\": %f}",
+		    "BENCHMARK {\"frame\": %ld, \"server_render_ms\": %.1f, \"server_encode_transmit_ms\": %.1f, "
+		    "\"client_decode_ms\": %.1f, \"client_wait_ms\": %.1f, \"client_render_ms\": %.1f, \"total_ms\": "
+		    "%.1f}",
 		    sample->frame_sequence_id, time_ns_to_ms_f(server_render_duration),
 		    time_ns_to_ms_f(server_encode_transmit_duration), time_ns_to_ms_f(client_decode_duration),
 		    time_ns_to_ms_f(client_wait_duration), time_ns_to_ms_f(client_render_duration),
