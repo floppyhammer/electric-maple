@@ -437,14 +437,14 @@ on_new_sample_cb(GstAppSink *appsink, gpointer user_data)
 	GstBuffer *buffer = gst_sample_get_buffer(sample);
 	GstCustomMeta *custom_meta = gst_buffer_get_custom_meta(buffer, "down-message");
 	if (!custom_meta) {
-		ALOGW("sample_cb: Dropping buffer without down-message.");
+		ALOGW("new_sample_cb: got buffer without down-message.");
 		//		drop_frame = true;
 	}
 
 	int64_t last_frame_diff_ns = decode_end_time - sc->sample_decode_end_time;
 	if (last_frame_diff_ns >= time_s_to_ns(EM_NO_DOWN_MSG_FALLBACK_TIMEOUT_SECS)) {
-		ALOGW("sample_cb: Not dropping frame, since we haven't had one since a second.");
-		drop_frame = false;
+		ALOGW("new_sample_cb: Not dropping frame, since we haven't had one since a second.");
+		//		drop_frame = false;
 	}
 
 	bool skipped_frames_threshold_reached = false;
@@ -508,7 +508,7 @@ rtpdepay_sink_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 	if (!gst_rtp_buffer_get_extension(&rtp_buffer)) {
 		// TODO: This happens for most RTP buffers we receive as they are not ours.
 		// Is there a smarter way to filter them?
-		ALOGE("Skipping RTP buffer without extension bit.");
+		ALOGE("No extension bit on RTP buffer!");
 		goto no_buf;
 	}
 
@@ -517,7 +517,7 @@ rtpdepay_sink_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 	if (!gst_rtp_buffer_get_extension_twobytes_header(&rtp_buffer, NULL, RTP_TWOBYTES_HDR_EXT_ID,
 	                                                  0 /* NOTE: We do not support multi-extension-elements.*/,
 	                                                  &payload_ptr, &size)) {
-		ALOGE("Could not retrieve twobyte rtp extension on buffer!");
+		ALOGE("Could not retrieve twobyte extension on RTP buffer!");
 		goto no_buf;
 	}
 
@@ -1185,10 +1185,12 @@ em_stream_client_adjust_jitterbuffer(EmStreamClient *sc)
 	int target_jitter_latency = time_ns_to_ms_f(sc->average_latency) * 1.5f;
 	sc->max_jitter_latency = MAX(sc->max_jitter_latency - 10, target_jitter_latency);
 
-	g_autoptr(GstElement) jitterbuffer = gst_bin_get_by_name(GST_BIN(sc->pipeline), "jitter");
-	g_object_set(jitterbuffer, "latency", sc->max_jitter_latency, NULL);
-
-	ALOGI("jitterbuffer latency changed to %d ms", sc->max_jitter_latency);
+	GstElement *jitterbuffer = gst_bin_get_by_name(GST_BIN(sc->pipeline), "jitter");
+	if (jitterbuffer) {
+		g_object_set(jitterbuffer, "latency", sc->max_jitter_latency, NULL);
+		g_object_unref(jitterbuffer);
+		ALOGI("jitterbuffer latency changed to %d ms", sc->max_jitter_latency);
+	}
 
 	// We'll do gst_bin_recalculate_latency() in gst_bus_cb()
 }
