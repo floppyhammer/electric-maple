@@ -901,7 +901,9 @@ typedef enum
 	EMS_ENCODER_TYPE_VULKANH264,
 	EMS_ENCODER_TYPE_OPENH264,
 	EMS_ENCODER_TYPE_VAAPIH264,
-	EMS_ENCODER_TYPE_VAH264
+	EMS_ENCODER_TYPE_VAH264,
+	EMS_ENCODER_TYPE_AMC,
+	EMS_ENCODER_TYPE_AUTO,
 } EmsEncoderType;
 
 struct ems_arguments
@@ -952,10 +954,9 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	gst_debug_set_threshold_for_name("webrtcbin", GST_LEVEL_INFO);
 	gst_debug_set_threshold_for_name("webrtcbindatachannel", GST_LEVEL_INFO);
 
-#ifndef USE_ENCODEBIN2
 	struct ems_arguments *args = malloc(sizeof(struct ems_arguments));
 	memset(args, 0, sizeof(struct ems_arguments));
-	args->encoder_type = EMS_ENCODER_TYPE_X264;
+	args->encoder_type = EMS_ENCODER_TYPE_AUTO;
 	args->bitrate = DEFAULT_BITRATE;
 
 	gchar *encoder_str = NULL;
@@ -967,7 +968,7 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 		    // Removing this queue will result in readback errors (Gst can't keep up consuming) and introduce 4x
 		    // latency This does not seem to happen for GPU encoders.
 		    "queue ! "
-		    "x264enc name=enc tune=zerolatency sliced-threads=true speed-preset=veryfast bframes=0 bitrate=%d",
+		    "x264enc name=enc tune=zerolatency sliced-threads=true speed-preset=ultrafast bframes=0 bitrate=%d",
 		    args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_NVH264) {
 		const char *nvenc_pipe =
@@ -998,25 +999,39 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 		    args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_VAAPIH264) {
 		encoder_str = g_strdup_printf(
-		    "videoconvert ! videorate ! video/x-raw,format=NV12,framerate=60/1 ! vaapih264enc name=enc "
-		    "bitrate=%d rate-control=cbr "
-		    "aud=true "
-		    "cabac=true quality-level=7",
+		    "videoconvert ! videorate ! video/x-raw,format=NV12,framerate=60/1 ! "
+		    "vaapih264enc name=enc bitrate=%d rate-control=cbr aud=true cabac=true quality-level=7",
 		    args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_VAH264) {
 		encoder_str = g_strdup_printf(
-		    "videoconvert ! videorate ! video/x-raw,format=NV12,framerate=60/1 ! vah264enc name=enc bitrate=%d "
-		    "rate-control=cbr aud=true "
-		    "cabac=true target-usage=7",
+		    "videoconvert ! videorate ! video/x-raw,format=NV12,framerate=60/1 ! "
+		    "vah264enc name=enc bitrate=%d rate-control=cbr aud=true cabac=true target-usage=7",
+		    args->bitrate);
+	} else if (args->encoder_type == EMS_ENCODER_TYPE_AMC) {
+		encoder_str = g_strdup_printf(
+		    "videoconvert ! "
+		    "videorate ! "
+		    "video/x-raw,format=NV12,framerate=30/1 ! "
+		    "amcvidenc-c2qtiavcencoder name=enc bitrate=%d ! "
+		    //            "video/x-h264,profile=main ! "
+		    "h264parse",
+		    args->bitrate);
+	} else if (args->encoder_type == EMS_ENCODER_TYPE_AUTO) {
+		encoder_str = g_strdup_printf(
+		    "videoconvert ! videorate ! video/x-raw,format=NV12,framerate=30/1 ! "
+		    "encodebin2 profile=\"video/"
+		    "x-h264|element-properties,tune=4,sliced-threads=1,speed-preset=1,bframes=0,bitrate=%d,key-int-max="
+		    "120\"",
 		    args->bitrate);
 	} else {
 		U_LOG_E("Unexpected encoder type.");
 		abort();
 	}
-#endif
+	free(args);
 
 	gchar *pipeline_str = g_strdup_printf(
 	    "rtpbin name=rtpbin "
+	    // Audio
 	    "pulsesrc device=\"alsa_output.pci-0000_c6_00.1.hdmi-stereo-extra2.monitor\" ! "
 	    "audioconvert ! "
 	    "audioresample ! "
@@ -1027,41 +1042,25 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	    "rtpbin.send_rtp_sink_1 "
 	    "rtpbin. ! "
 	    "udpsink name=udpsink-audio port=5601 sync=false async=false "
-
+	    // Video
 	    "appsrc name=%s ! "
-#ifdef USE_ENCODEBIN2
-	    "videoconvert ! "
-	    "videorate ! "
-	    "video/x-raw,format=NV12,framerate=60/1 ! "
-	    "encodebin2 "
-	    "profile=\"video/"
-	    "x-h264|element-properties,tune=4,sliced-threads=1,speed-preset=1,bframes=0,bitrate=%d,key-int-max=120\" ! "
-#else
 	    "%s ! "                        //
 	    "video/x-h264,profile=main ! " //
 	    "queue ! "
-#endif
 	    "rtph264pay name=rtppay config-interval=-1 aggregate-mode=zero-latency ! "
 	    "application/x-rtp,payload=96,ssrc=(uint)3484078952 ! "
-	    "rtpbin.send_rtp_sink_0 "
-#ifdef USE_ENCODEBIN2
-
 #ifdef USE_WEBRTC
+#error No longer available
 	    "tee name=%s allow-not-linked=true",
-	    appsrc_name, DEFAULT_BITRATE, WEBRTC_TEE_NAME);
+	    appsrc_name, encoder_str, WEBRTC_TEE_NAME);
 #else
-	    "udpsink name=udpsink port=5600", // Host will be assigned later
-	    appsrc_name, DEFAULT_BITRATE);
-#endif
-#else
+	    "rtpbin.send_rtp_sink_0 "
 	    "rtpbin. ! "
-	    "udpsink name=udpsink port=5600 sync=false async=false ", // Host will be assigned later
+	    "udpsink name=udpsink port=5600 sync=false async=false", // Host will be assigned later
 	    appsrc_name, encoder_str);
 #endif
 
-#ifndef USE_ENCODEBIN2
 	g_free(encoder_str);
-#endif
 
 	// No webrtc bin yet until later!
 
