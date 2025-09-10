@@ -609,6 +609,22 @@ check_pipeline_dot_data(EmStreamClient *sc)
 	return G_SOURCE_CONTINUE;
 }
 
+
+static GstPadProbeReturn
+audiodepay_src_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
+{
+	GstBuffer *buf = GST_PAD_PROBE_INFO_BUFFER(info);
+
+	const GstClockTime pts = GST_BUFFER_PTS(buf);
+	const GstClockTime dts = GST_BUFFER_DTS(buf);
+	const GstClockTime duration = GST_BUFFER_DURATION(buf);
+
+	//	ALOGD("Audio buffer probe: PTS: %" GST_TIME_FORMAT ", Duration: %" GST_TIME_FORMAT "",
+	//GST_TIME_ARGS(pts), GST_TIME_ARGS(duration));
+
+	return GST_PAD_PROBE_OK;
+}
+
 static void
 on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 {
@@ -632,23 +648,22 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	// clang-format on
 #else
 	gchar *pipeline_string = g_strdup_printf(
-	    "rtpbin name=rtpbin latency=50 "
+	    "rtpbin name=rtpbin latency=0 "
 	    // Video
 	    "udpsrc port=5600 buffer-size=8000000 "
 	    "caps=\"application/x-rtp,media=video,payload=96,clock-rate=90000,encoding-name=H264\" ! "
 	    "rtpbin.recv_rtp_sink_0 "
-	    //	    // Audio
+	    // Audio
 	    "udpsrc port=5601 buffer-size=8000000 "
 	    "caps=\"application/x-rtp,media=audio,payload=127,clock-rate=48000,encoding-name=OPUS\" ! "
 	    "rtpbin.recv_rtp_sink_1 "
 
 	    "rtpbin. ! "
-	    "rtpopusdepay ! "
+	    "rtpopusdepay name=audiodepay ! "
 	    "opusdec ! "
 	    "openslessink "
 
 	    "rtpbin. ! "
-	    //	    "rtpjitterbuffer name=jitter do-lost=1 latency=50 ! "
 	    "rtph264depay name=depay ! "
 #ifndef USE_DECODEBIN3
 	    "h264parse ! "
@@ -657,7 +672,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 #else
 	    "decodebin3 ! "
 #endif
-	    "glsinkbin name=glsink");
+	    "glsinkbin name=glsink sync=false");
 #endif
 
 	sc->pipeline = gst_object_ref_sink(gst_parse_launch(pipeline_string, &error));
@@ -759,6 +774,18 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 		}
 	}
 	gst_object_unref(depay);
+
+	GstElement *audio_depay = gst_bin_get_by_name(GST_BIN(sc->pipeline), "audiodepay");
+	{
+		GstPad *pad = gst_element_get_static_pad(audio_depay, "src");
+		if (pad != NULL) {
+			gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, audiodepay_src_pad_probe, sc, NULL);
+			gst_object_unref(pad);
+		} else {
+			ALOGE("Could not find static src pad in audiodepay");
+		}
+	}
+	gst_object_unref(audio_depay);
 
 	// This actually hands over the pipeline. Once our own handler returns, the pipeline will be started by the
 	// connection.
@@ -1185,12 +1212,12 @@ em_stream_client_adjust_jitterbuffer(EmStreamClient *sc)
 	int target_jitter_latency = time_ns_to_ms_f(sc->average_latency) * 1.5f;
 	sc->max_jitter_latency = MAX(sc->max_jitter_latency - 10, target_jitter_latency);
 
-	GstElement *jitterbuffer = gst_bin_get_by_name(GST_BIN(sc->pipeline), "jitter");
-	if (jitterbuffer) {
-		g_object_set(jitterbuffer, "latency", sc->max_jitter_latency, NULL);
-		g_object_unref(jitterbuffer);
-		ALOGI("jitterbuffer latency changed to %d ms", sc->max_jitter_latency);
-	}
+	//	GstElement *jitterbuffer = gst_bin_get_by_name(GST_BIN(sc->pipeline), "jitter");
+	//	if (jitterbuffer) {
+	//		g_object_set(jitterbuffer, "latency", sc->max_jitter_latency, NULL);
+	//		g_object_unref(jitterbuffer);
+	//		ALOGI("jitterbuffer latency changed to %d ms", sc->max_jitter_latency);
+	//	}
 
 	// We'll do gst_bin_recalculate_latency() in gst_bus_cb()
 }
