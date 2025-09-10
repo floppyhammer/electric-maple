@@ -362,23 +362,23 @@ gst_bus_cb(GstBus *bus, GstMessage *message, gpointer data)
 	GstBin *pipeline = GST_BIN(data);
 
 	switch (GST_MESSAGE_TYPE(message)) {
-	case GST_MESSAGE_STATE_CHANGED:
-		GstState old_state, new_state;
-
-		// The pipeline's state has changed.
-		gst_message_parse_state_changed(message, &old_state, &new_state, NULL);
-
-		if (GST_MESSAGE_SRC(message) == GST_OBJECT(pipeline) && new_state == GST_STATE_PLAYING) {
-			// The pipeline is now playing. This is a good time to check if the clock has synced.
-			GstClock *clock = gst_pipeline_get_clock(GST_PIPELINE(pipeline));
-			if (gst_clock_is_synced(clock)) {
-				ALOGI("Clock synchronized! Proceeding with operations");
-				// Now your application can start doing work that depends on a synced clock.
-			} else {
-				ALOGW("Pipeline is PLAYING, but clock not yet synchronized. Waiting...");
-			}
-		}
-		break;
+	case GST_MESSAGE_STATE_CHANGED: {
+//		GstState old_state, new_state;
+//
+//		// The pipeline's state has changed.
+//		gst_message_parse_state_changed(message, &old_state, &new_state, NULL);
+//
+//		if (GST_MESSAGE_SRC(message) == GST_OBJECT(pipeline) && new_state == GST_STATE_PLAYING) {
+//			// The pipeline is now playing. This is a good time to check if the clock has synced.
+//			GstClock *clock = gst_pipeline_get_clock(GST_PIPELINE(pipeline));
+//			if (gst_clock_is_synced(clock)) {
+//				ALOGI("Clock synchronized! Proceeding with operations");
+//				// Now your application can start doing work that depends on a synced clock.
+//			} else {
+//				ALOGW("Pipeline is PLAYING, but clock not yet synchronized. Waiting...");
+//			}
+//		}
+	} break;
 	case GST_MESSAGE_ERROR: {
 		GError *gerr = NULL;
 		gchar *debug_msg = NULL;
@@ -620,7 +620,7 @@ audiodepay_src_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 	const GstClockTime duration = GST_BUFFER_DURATION(buf);
 
 	//	ALOGD("Audio buffer probe: PTS: %" GST_TIME_FORMAT ", Duration: %" GST_TIME_FORMAT "",
-	//GST_TIME_ARGS(pts), GST_TIME_ARGS(duration));
+	// GST_TIME_ARGS(pts), GST_TIME_ARGS(duration));
 
 	return GST_PAD_PROBE_OK;
 }
@@ -648,7 +648,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	// clang-format on
 #else
 	gchar *pipeline_string = g_strdup_printf(
-	    "rtpbin name=rtpbin latency=0 "
+	    "rtpbin name=rtpbin latency=50 ntp-sync=true "
 	    // Video
 	    "udpsrc port=5600 buffer-size=8000000 "
 	    "caps=\"application/x-rtp,media=video,payload=96,clock-rate=90000,encoding-name=H264\" ! "
@@ -667,7 +667,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	    "rtph264depay name=depay ! "
 #ifndef USE_DECODEBIN3
 	    "h264parse ! "
-	    "amcviddec-c2mtkavcdecoder ! "
+	    "amcviddec-c2qtiavcdecoder ! "
 	    "video/x-raw(memory:GLMemory),format=(string)RGBA,texture-target=(string)external-oes ! "
 #else
 	    "decodebin3 ! "
