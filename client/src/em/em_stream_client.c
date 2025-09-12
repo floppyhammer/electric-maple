@@ -362,23 +362,23 @@ gst_bus_cb(GstBus *bus, GstMessage *message, gpointer data)
 	GstBin *pipeline = GST_BIN(data);
 
 	switch (GST_MESSAGE_TYPE(message)) {
-	case GST_MESSAGE_STATE_CHANGED: {
-//		GstState old_state, new_state;
-//
-//		// The pipeline's state has changed.
-//		gst_message_parse_state_changed(message, &old_state, &new_state, NULL);
-//
-//		if (GST_MESSAGE_SRC(message) == GST_OBJECT(pipeline) && new_state == GST_STATE_PLAYING) {
-//			// The pipeline is now playing. This is a good time to check if the clock has synced.
-//			GstClock *clock = gst_pipeline_get_clock(GST_PIPELINE(pipeline));
-//			if (gst_clock_is_synced(clock)) {
-//				ALOGI("Clock synchronized! Proceeding with operations");
-//				// Now your application can start doing work that depends on a synced clock.
-//			} else {
-//				ALOGW("Pipeline is PLAYING, but clock not yet synchronized. Waiting...");
-//			}
-//		}
-	} break;
+	case GST_MESSAGE_STATE_CHANGED:
+		GstState old_state, new_state;
+
+		// The pipeline's state has changed.
+		gst_message_parse_state_changed(message, &old_state, &new_state, NULL);
+
+		if (GST_MESSAGE_SRC(message) == GST_OBJECT(pipeline) && new_state == GST_STATE_PLAYING) {
+			// The pipeline is now playing. This is a good time to check if the clock has synced.
+			GstClock *clock = gst_pipeline_get_clock(GST_PIPELINE(pipeline));
+			if (gst_clock_is_synced(clock)) {
+				ALOGI("Clock synchronized! Proceeding with operations");
+				// Now your application can start doing work that depends on a synced clock.
+			} else {
+				ALOGW("Pipeline is PLAYING, but clock not yet synchronized. Waiting...");
+			}
+		}
+		break;
 	case GST_MESSAGE_ERROR: {
 		GError *gerr = NULL;
 		gchar *debug_msg = NULL;
@@ -609,9 +609,8 @@ check_pipeline_dot_data(EmStreamClient *sc)
 	return G_SOURCE_CONTINUE;
 }
 
-
 static GstPadProbeReturn
-audiodepay_src_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
+video_rtp_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 {
 	GstBuffer *buf = GST_PAD_PROBE_INFO_BUFFER(info);
 
@@ -619,8 +618,59 @@ audiodepay_src_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 	const GstClockTime dts = GST_BUFFER_DTS(buf);
 	const GstClockTime duration = GST_BUFFER_DURATION(buf);
 
-	//	ALOGD("Audio buffer probe: PTS: %" GST_TIME_FORMAT ", Duration: %" GST_TIME_FORMAT "",
-	// GST_TIME_ARGS(pts), GST_TIME_ARGS(duration));
+	static uint16_t prev_seq_num_video = 0;
+
+	GstMapInfo map;
+	if (gst_buffer_map(buf, &map, GST_MAP_READ)) {
+		if (map.size >= 12) {
+			const guint8 *data = map.data;
+			const uint16_t seq_num = (data[2] << 8) | data[3]; // For big-endian systems
+
+//			if (seq_num - prev_seq_num_video > 1 || seq_num < prev_seq_num_video) {
+//				ALOGW("Video buffer probe: Discontinuous sequence number!");
+//			}
+
+//			ALOGV("Video buffer probe: PTS: %" GST_TIME_FORMAT ", Duration: %" GST_TIME_FORMAT
+//			      ", Sequence number: %u",
+//			      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), seq_num);
+
+			prev_seq_num_video = seq_num;
+		}
+		gst_buffer_unmap(buf, &map);
+	}
+
+	return GST_PAD_PROBE_OK;
+}
+
+static GstPadProbeReturn
+audio_rtp_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
+{
+	GstBuffer *buf = GST_PAD_PROBE_INFO_BUFFER(info);
+
+	const GstClockTime pts = GST_BUFFER_PTS(buf);
+	const GstClockTime dts = GST_BUFFER_DTS(buf);
+	const GstClockTime duration = GST_BUFFER_DURATION(buf);
+
+	static uint16_t prev_seq_num_audio = 0;
+
+	GstMapInfo map;
+	if (gst_buffer_map(buf, &map, GST_MAP_READ)) {
+		if (map.size >= 12) {
+			const guint8 *data = map.data;
+			const uint16_t seq_num = (data[2] << 8) | data[3]; // For big-endian systems
+
+//			if (seq_num - prev_seq_num_audio > 1 || seq_num < prev_seq_num_audio) {
+//				ALOGW("Audio buffer probe: Discontinuous sequence number!");
+//			}
+
+//			ALOGV("Audio buffer probe: PTS: %" GST_TIME_FORMAT ", Duration: %" GST_TIME_FORMAT
+//			      ", Sequence number: %u",
+//			      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), seq_num);
+
+			prev_seq_num_audio = seq_num;
+		}
+		gst_buffer_unmap(buf, &map);
+	}
 
 	return GST_PAD_PROBE_OK;
 }
@@ -648,21 +698,22 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	// clang-format on
 #else
 	gchar *pipeline_string = g_strdup_printf(
-	    "rtpbin name=rtpbin latency=50 ntp-sync=true "
+	    "rtpbin name=rtpbin latency=50 "
 	    // Video
-	    "udpsrc port=5600 buffer-size=8000000 "
+	    "udpsrc name=videoudpsrc port=5600 buffer-size=8000000 "
 	    "caps=\"application/x-rtp,media=video,payload=96,clock-rate=90000,encoding-name=H264\" ! "
 	    "rtpbin.recv_rtp_sink_0 "
 	    // Audio
-	    "udpsrc port=5601 buffer-size=8000000 "
+	    "udpsrc name=audioudpsrc port=5601 buffer-size=8000000 "
 	    "caps=\"application/x-rtp,media=audio,payload=127,clock-rate=48000,encoding-name=OPUS\" ! "
 	    "rtpbin.recv_rtp_sink_1 "
-
+	    // Audio
 	    "rtpbin. ! "
 	    "rtpopusdepay name=audiodepay ! "
 	    "opusdec ! "
+	    "queue ! "
 	    "openslessink "
-
+	    // Video
 	    "rtpbin. ! "
 	    "rtph264depay name=depay ! "
 #ifndef USE_DECODEBIN3
@@ -672,6 +723,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 #else
 	    "decodebin3 ! "
 #endif
+	    "queue ! "
 	    "glsinkbin name=glsink sync=false");
 #endif
 
@@ -775,17 +827,29 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	}
 	gst_object_unref(depay);
 
-	GstElement *audio_depay = gst_bin_get_by_name(GST_BIN(sc->pipeline), "audiodepay");
+	GstElement *video_udpsrc = gst_bin_get_by_name(GST_BIN(sc->pipeline), "videoudpsrc");
 	{
-		GstPad *pad = gst_element_get_static_pad(audio_depay, "src");
+		GstPad *pad = gst_element_get_static_pad(video_udpsrc, "src");
 		if (pad != NULL) {
-			gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, audiodepay_src_pad_probe, sc, NULL);
+			gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, video_rtp_probe, sc, NULL);
 			gst_object_unref(pad);
 		} else {
-			ALOGE("Could not find static src pad in audiodepay");
+			ALOGE("Could not find static src pad in video_udpsrc");
 		}
 	}
-	gst_object_unref(audio_depay);
+	gst_object_unref(video_udpsrc);
+
+	GstElement *audio_udpsrc = gst_bin_get_by_name(GST_BIN(sc->pipeline), "audioudpsrc");
+	{
+		GstPad *pad = gst_element_get_static_pad(audio_udpsrc, "src");
+		if (pad != NULL) {
+			gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, audio_rtp_probe, sc, NULL);
+			gst_object_unref(pad);
+		} else {
+			ALOGE("Could not find static src pad in audio_udpsrc");
+		}
+	}
+	gst_object_unref(audio_udpsrc);
 
 	// This actually hands over the pipeline. Once our own handler returns, the pipeline will be started by the
 	// connection.
@@ -1077,10 +1141,18 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 		g_array_append_val(sc->latency_collection, latency);
 
 		int64_t now_ns = os_monotonic_get_ns();
+
+		static GstClockTime start_clocktime = 0;
+		if (start_clocktime == 0) {
+			start_clocktime = running_time;
+		}
+
 		if (now_ns - sc->latency_last_time_query > sc->latency_calculation_window) {
 			int64_t ave_latency = em_stream_client_get_average_frame_latency(sc);
-			ALOGI("Average frame latency (server appsrc -> client glsinkbin): %.1f ms",
-			      ave_latency / 1.0e6);
+			ALOGI(
+			    "Average frame latency (server appsrc -> client glsinkbin): %.1f ms, running time "
+			    "%" GST_TIME_FORMAT,
+			    time_ns_to_ms_f(ave_latency), GST_TIME_ARGS(running_time - start_clocktime));
 
 			sc->latency_last_time_query = now_ns;
 			sc->average_latency = ave_latency;

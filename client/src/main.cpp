@@ -556,25 +556,20 @@ android_main(struct android_app *app)
 	gst_init(NULL, NULL);
 	ALOGI("Initialized GStreamer");
 
-//	constexpr const char *gst_debug_string = "*:2,webrtc*:4,sctp*:4,dtls*:4,amcvideodec:4,rtpjitterbuffer:4";
-//	gst_debug_set_threshold_from_string(gst_debug_string, true);
+	// Set up gst logger
+	gst_debug_set_default_threshold(GST_LEVEL_WARNING);
+	//			 gst_debug_set_threshold_for_name("webrtcbin", GST_LEVEL_MEMDUMP);
+	//			 gst_debug_set_threshold_for_name("webrtcbindatachannel", GST_LEVEL_TRACE);
 
 	// Set rank for decoder c2qtiavcdecoder
-	GstRegistry *plugins_register = gst_registry_get();
-	GstPluginFeature *dec = gst_registry_lookup_feature(plugins_register, "amcviddec-c2qtiavcdecoder");
-	if (dec == NULL) {
-		ALOGW("c2qtiavcdecoder not available!");
-	} else {
-		gst_plugin_feature_set_rank(dec, GST_RANK_PRIMARY + 1);
-		gst_object_unref(dec);
-	}
-
-	// Set up gst logger
-	{
-		// gst_debug_set_default_threshold(GST_LEVEL_WARNING);
-		// gst_debug_set_threshold_for_name("webrtcbin", GST_LEVEL_MEMDUMP);
-		// gst_debug_set_threshold_for_name("webrtcbindatachannel", GST_LEVEL_TRACE);
-	}
+	//	GstRegistry *plugins_register = gst_registry_get();
+	//	GstPluginFeature *dec = gst_registry_lookup_feature(plugins_register, "amcviddec-c2qtiavcdecoder");
+	//	if (dec == NULL) {
+	//		ALOGW("c2qtiavcdecoder not available!");
+	//	} else {
+	//		gst_plugin_feature_set_rank(dec, GST_RANK_PRIMARY + 1);
+	//		gst_object_unref(dec);
+	//	}
 
 	// Set up our own objects
 	ALOGI("%s: creating stream client object", __FUNCTION__);

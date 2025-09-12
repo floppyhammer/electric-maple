@@ -186,16 +186,22 @@ Renderer::reset()
 void
 Renderer::draw(GLuint texture, GLenum texture_target) const
 {
+	CHECK_GL_ERROR();
+
 	// Use the shader program
 	glUseProgram(program);
+	CHECK_GL_ERROR();
 
 	// Bind the texture
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(texture_target, texture);
 	glUniform1i(textureSamplerLocation_, 0);
+	CHECK_GL_ERROR();
 
 	// Draw the quad
 	glBindVertexArray(quadVAO);
+	CHECK_GL_ERROR();
+
 	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 	glBindVertexArray(0);
 

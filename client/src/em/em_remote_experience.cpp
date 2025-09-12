@@ -716,14 +716,14 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 		uint64_t client_render_duration = client_now - sample->client_render_begin_time;
 		uint64_t total_duration = client_now - sample->server_render_begin_time;
 
-		ALOGD(
-		    "BENCHMARK {\"frame\": %ld, \"server_render_ms\": %.1f, \"server_encode_transmit_ms\": %.1f, "
-		    "\"client_decode_ms\": %.1f, \"client_wait_ms\": %.1f, \"client_render_ms\": %.1f, \"total_ms\": "
-		    "%.1f}",
-		    sample->frame_sequence_id, time_ns_to_ms_f(server_render_duration),
-		    time_ns_to_ms_f(server_encode_transmit_duration), time_ns_to_ms_f(client_decode_duration),
-		    time_ns_to_ms_f(client_wait_duration), time_ns_to_ms_f(client_render_duration),
-		    time_ns_to_ms_f(total_duration));
+//		ALOGD(
+//		    "BENCHMARK {\"frame\": %ld, \"server_render_ms\": %.1f, \"server_encode_transmit_ms\": %.1f, "
+//		    "\"client_decode_ms\": %.1f, \"client_wait_ms\": %.1f, \"client_render_ms\": %.1f, \"total_ms\": "
+//		    "%.1f}",
+//		    sample->frame_sequence_id, time_ns_to_ms_f(server_render_duration),
+//		    time_ns_to_ms_f(server_encode_transmit_duration), time_ns_to_ms_f(client_decode_duration),
+//		    time_ns_to_ms_f(client_wait_duration), time_ns_to_ms_f(client_render_duration),
+//		    time_ns_to_ms_f(total_duration));
 	}
 
 	// Send frame report
