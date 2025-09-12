@@ -626,13 +626,14 @@ video_rtp_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 			const guint8 *data = map.data;
 			const uint16_t seq_num = (data[2] << 8) | data[3]; // For big-endian systems
 
-//			if (seq_num - prev_seq_num_video > 1 || seq_num < prev_seq_num_video) {
-//				ALOGW("Video buffer probe: Discontinuous sequence number!");
-//			}
+			//			if (seq_num - prev_seq_num_video > 1 || seq_num < prev_seq_num_video) {
+			//				ALOGW("Video buffer probe: Discontinuous sequence number!");
+			//			}
 
-//			ALOGV("Video buffer probe: PTS: %" GST_TIME_FORMAT ", Duration: %" GST_TIME_FORMAT
-//			      ", Sequence number: %u",
-//			      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), seq_num);
+			//			ALOGV("Video buffer probe: PTS: %" GST_TIME_FORMAT ", Duration: %"
+			// GST_TIME_FORMAT
+			//			      ", Sequence number: %u",
+			//			      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), seq_num);
 
 			prev_seq_num_video = seq_num;
 		}
@@ -659,13 +660,14 @@ audio_rtp_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 			const guint8 *data = map.data;
 			const uint16_t seq_num = (data[2] << 8) | data[3]; // For big-endian systems
 
-//			if (seq_num - prev_seq_num_audio > 1 || seq_num < prev_seq_num_audio) {
-//				ALOGW("Audio buffer probe: Discontinuous sequence number!");
-//			}
+			//			if (seq_num - prev_seq_num_audio > 1 || seq_num < prev_seq_num_audio) {
+			//				ALOGW("Audio buffer probe: Discontinuous sequence number!");
+			//			}
 
-//			ALOGV("Audio buffer probe: PTS: %" GST_TIME_FORMAT ", Duration: %" GST_TIME_FORMAT
-//			      ", Sequence number: %u",
-//			      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), seq_num);
+			//			ALOGV("Audio buffer probe: PTS: %" GST_TIME_FORMAT ", Duration: %"
+			// GST_TIME_FORMAT
+			//			      ", Sequence number: %u",
+			//			      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), seq_num);
 
 			prev_seq_num_audio = seq_num;
 		}
@@ -924,7 +926,9 @@ em_stream_client_set_egl_context(EmStreamClient *sc,
                                  bool adopt_mutex_interface,
                                  EGLSurface pbuffer_surface)
 {
+	// Free old mutex interface if any
 	em_stream_client_free_egl_mutex(sc);
+
 	sc->own_egl_mutex = adopt_mutex_interface;
 	sc->egl_mutex = egl_mutex;
 
@@ -932,7 +936,7 @@ em_stream_client_set_egl_context(EmStreamClient *sc,
 		ALOGV("em_stream_client_set_egl_context: Failed to make egl context current");
 		return;
 	}
-	ALOGI("wrapping egl context");
+	ALOGI("Wrapping egl context");
 
 	sc->egl.display = egl_mutex->display;
 	sc->egl.android_main_context = egl_mutex->context;
@@ -964,7 +968,6 @@ em_stream_client_egl_begin_pbuffer(EmStreamClient *sc)
 void
 em_stream_client_egl_end(EmStreamClient *sc)
 {
-	// ALOGI("%s: Make egl context un-current", __FUNCTION__);
 	em_egl_mutex_end(sc->egl_mutex);
 }
 
@@ -1157,7 +1160,7 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 			sc->latency_last_time_query = now_ns;
 			sc->average_latency = ave_latency;
 
-			em_stream_client_adjust_jitterbuffer(sc);
+			//			em_stream_client_adjust_jitterbuffer(sc);
 		}
 
 		ret->base.have_poses = true;

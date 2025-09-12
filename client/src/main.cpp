@@ -406,12 +406,6 @@ connected_cb(EmConnection *connection, struct em_state *state)
 void
 android_main(struct android_app *app)
 {
-	// Debugging gstreamer.
-	// GST_DEBUG = *:3 will give you ONLY ERROR-level messages.
-	// GST_DEBUG = *:6 will give you ALL messages (make sure you BOOST your android-studio's
-	// Logcat buffer to be able to capture everything gstreamer's going to spit at you !
-	// in Tools -> logcat -> Cycle Buffer Size (I set it to 102400 KB).
-
 	JNIEnv *env = nullptr;
 	(*app->activity->vm).AttachCurrentThread(&env, NULL);
 	app->onAppCmd = onAppCmd;
@@ -483,6 +477,7 @@ android_main(struct android_app *app)
 	                              .formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY};
 
 	result = xrGetSystem(_state.instance, &systemInfo, &_state.system);
+	(void)result;
 
 	uint32_t viewConfigurationCount;
 	XrViewConfigurationType viewConfigurations[2];
@@ -553,23 +548,13 @@ android_main(struct android_app *app)
 	//
 
 	// Set up gstreamer
-	gst_init(NULL, NULL);
+	gst_init(nullptr, nullptr);
 	ALOGI("Initialized GStreamer");
 
 	// Set up gst logger
 	gst_debug_set_default_threshold(GST_LEVEL_WARNING);
 	//			 gst_debug_set_threshold_for_name("webrtcbin", GST_LEVEL_MEMDUMP);
 	//			 gst_debug_set_threshold_for_name("webrtcbindatachannel", GST_LEVEL_TRACE);
-
-	// Set rank for decoder c2qtiavcdecoder
-	//	GstRegistry *plugins_register = gst_registry_get();
-	//	GstPluginFeature *dec = gst_registry_lookup_feature(plugins_register, "amcviddec-c2qtiavcdecoder");
-	//	if (dec == NULL) {
-	//		ALOGW("c2qtiavcdecoder not available!");
-	//	} else {
-	//		gst_plugin_feature_set_rank(dec, GST_RANK_PRIMARY + 1);
-	//		gst_object_unref(dec);
-	//	}
 
 	// Set up our own objects
 	ALOGI("%s: creating stream client object", __FUNCTION__);
@@ -602,8 +587,8 @@ android_main(struct android_app *app)
 	// End of remote-rendering-specific setup, into main loop
 	//
 
-	// Main rendering loop.
 	ALOGI("Starting main rendering loop");
+
 	while (!app->destroyRequested) {
 		if (poll_events(app, _state)) {
 			em_remote_experience_poll_and_render_frame(remote_experience, _state.input);
@@ -628,7 +613,7 @@ android_main(struct android_app *app)
 	// End RR cleanup
 	//
 
-	initialEglData = nullptr;
+	initialEglData.reset();
 
 	(*app->activity->vm).DetachCurrentThread();
 }

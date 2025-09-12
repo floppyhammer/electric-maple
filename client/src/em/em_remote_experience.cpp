@@ -464,16 +464,16 @@ em_remote_experience_poll_and_render_frame(EmRemoteExperience *exp, InputState &
 {
 	XrFrameState frameState = {.type = XR_TYPE_FRAME_STATE};
 	XrSession session = exp->xr_not_owned.session;
-	XrResult result = xrWaitFrame(session, NULL, &frameState);
+	XrResult result = xrWaitFrame(session, nullptr, &frameState);
 
 	if (XR_FAILED(result)) {
 		ALOGE("xrWaitFrame failed");
 		return EM_POLL_RENDER_RESULT_ERROR_WAITFRAME;
 	}
 
-	XrFrameBeginInfo beginfo = {.type = XR_TYPE_FRAME_BEGIN_INFO};
+	XrFrameBeginInfo beginInfo = {.type = XR_TYPE_FRAME_BEGIN_INFO};
 
-	result = xrBeginFrame(session, &beginfo);
+	result = xrBeginFrame(session, &beginInfo);
 
 	if (XR_FAILED(result)) {
 		ALOGE("xrBeginFrame failed");
@@ -520,6 +520,7 @@ em_remote_experience_poll_and_render_frame(EmRemoteExperience *exp, InputState &
 
 	// Render
 
+	// Set EGL context
 	if (!em_stream_client_egl_begin_pbuffer(exp->stream_client)) {
 		ALOGE("FRED: mainloop_one: Failed make egl context current");
 		return EM_POLL_RENDER_RESULT_ERROR_EGL;
@@ -549,6 +550,7 @@ em_remote_experience_poll_and_render_frame(EmRemoteExperience *exp, InputState &
 		return EM_POLL_RENDER_RESULT_ERROR_ENDFRAME;
 	}
 
+	// Unset EGL context
 	em_stream_client_egl_end(exp->stream_client);
 
 	if (em_connection_get_status(exp->connection) == EM_STATUS_CONNECTED) {
@@ -716,14 +718,16 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 		uint64_t client_render_duration = client_now - sample->client_render_begin_time;
 		uint64_t total_duration = client_now - sample->server_render_begin_time;
 
-//		ALOGD(
-//		    "BENCHMARK {\"frame\": %ld, \"server_render_ms\": %.1f, \"server_encode_transmit_ms\": %.1f, "
-//		    "\"client_decode_ms\": %.1f, \"client_wait_ms\": %.1f, \"client_render_ms\": %.1f, \"total_ms\": "
-//		    "%.1f}",
-//		    sample->frame_sequence_id, time_ns_to_ms_f(server_render_duration),
-//		    time_ns_to_ms_f(server_encode_transmit_duration), time_ns_to_ms_f(client_decode_duration),
-//		    time_ns_to_ms_f(client_wait_duration), time_ns_to_ms_f(client_render_duration),
-//		    time_ns_to_ms_f(total_duration));
+		//		ALOGD(
+		//		    "BENCHMARK {\"frame\": %ld, \"server_render_ms\": %.1f,
+		//\"server_encode_transmit_ms\": %.1f, "
+		//		    "\"client_decode_ms\": %.1f, \"client_wait_ms\": %.1f, \"client_render_ms\": %.1f,
+		//\"total_ms\": "
+		//		    "%.1f}",
+		//		    sample->frame_sequence_id, time_ns_to_ms_f(server_render_duration),
+		//		    time_ns_to_ms_f(server_encode_transmit_duration),
+		// time_ns_to_ms_f(client_decode_duration), 		    time_ns_to_ms_f(client_wait_duration),
+		// time_ns_to_ms_f(client_render_duration), 		    time_ns_to_ms_f(total_duration));
 	}
 
 	// Send frame report

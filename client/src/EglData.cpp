@@ -70,7 +70,7 @@ EglData::EglData()
 		throw std::runtime_error("Failed to find suitable EGL config");
 	}
 
-	ALOGI("Got %d egl configs, just taking the first one.", num_configs);
+	ALOGI("Got %d EGL configs, just taking the first one.", num_configs);
 	config = configs[0];
 
 	EGLint contextAttributes[] = {EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE};
@@ -80,8 +80,9 @@ EglData::EglData()
 		ALOGE("Failed to create EGL context");
 		throw std::runtime_error("Failed to create EGL context");
 	}
+
 	CHECK_EGL_ERROR();
-	ALOGI("EGL: Created context");
+	ALOGI("Created EGL context");
 
 	// TODO why are we making a 16x16 pbuffer surface? Do we even need it?
 	EGLint surfaceAttributes[] = {
@@ -99,8 +100,9 @@ EglData::EglData()
 		eglDestroyContext(display, context);
 		throw std::runtime_error("Failed to create EGL surface");
 	}
+
 	CHECK_EGL_ERROR();
-	ALOGI("EGL: Created surface");
+	ALOGI("Created EGL surface");
 }
 
 EglData::~EglData()

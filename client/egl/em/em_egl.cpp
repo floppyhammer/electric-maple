@@ -98,13 +98,12 @@ em_egl_mutex_create(EGLDisplay display, EGLContext context)
 {
 	try {
 		auto ret = std::make_unique<EmEglMutex>(display, context);
-
 		return &ret.release()->base;
 	} catch (std::exception const &e) {
 		ALOGE("Caught exception in %s: %s", __FUNCTION__, e.what());
-		return NULL;
+		return nullptr;
 	} catch (...) {
 		ALOGE("Caught exception in %s", __FUNCTION__);
-		return NULL;
+		return nullptr;
 	}
 }
