@@ -700,7 +700,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	// clang-format on
 #else
 	gchar *pipeline_string = g_strdup_printf(
-	    "rtpbin name=rtpbin latency=50 "
+	    "rtpbin name=rtpbin latency=80 "
 	    // Video
 	    "udpsrc name=videoudpsrc port=5600 buffer-size=8000000 "
 	    "caps=\"application/x-rtp,media=video,payload=96,clock-rate=90000,encoding-name=H264\" ! "
