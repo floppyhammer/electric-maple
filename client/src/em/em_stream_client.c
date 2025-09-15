@@ -726,7 +726,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	    "decodebin3 ! "
 #endif
 	    "queue ! "
-	    "glsinkbin name=glsink sync=false");
+	    "glsinkbin name=glsink"); // Setting sync=false on sink here won't work, as the sink will be replaced later.
 #endif
 
 	sc->pipeline = gst_object_ref_sink(gst_parse_launch(pipeline_string, &error));
@@ -795,6 +795,9 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 
 	g_autoptr(GstElement) glsinkbin = gst_bin_get_by_name(GST_BIN(sc->pipeline), "glsink");
 	g_object_set(glsinkbin, "sink", sc->appsink, NULL);
+
+	// Disable clock sync to reduce latency (we have to do this after setting sink manually)
+	g_object_set(glsinkbin, "sync", FALSE, NULL);
 
 	{
 		g_autoptr(GstBus) bus = gst_element_get_bus(sc->pipeline);
