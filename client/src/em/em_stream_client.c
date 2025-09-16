@@ -717,21 +717,13 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	// clang-format on
 #else
 	gchar *pipeline_string = g_strdup_printf(
-	    "rtpbin name=rtpbin latency=80 "
+	    "rtpbin name=rtpbin latency=80 ntp-sync=false "
 	    // Video
-	    "udpsrc name=videoudpsrc port=5600 buffer-size=8000000 "
+	    "udpsrc port=5000 buffer-size=8000000 "
 	    "caps=\"application/x-rtp,media=video,payload=96,clock-rate=90000,encoding-name=H264\" ! "
 	    "rtpbin.recv_rtp_sink_0 "
-	    // Audio
-	    "udpsrc name=audioudpsrc port=5601 buffer-size=8000000 "
-	    "caps=\"application/x-rtp,media=audio,payload=127,clock-rate=48000,encoding-name=OPUS\" ! "
-	    "rtpbin.recv_rtp_sink_1 "
-	    // Audio
-	    "rtpbin. ! "
-	    "rtpopusdepay name=audiodepay ! "
-	    "opusdec ! "
-	    "queue ! "
-	    "openslessink "
+//	    "udpsrc address=0.0.0.0 port=5001 ! rtpbin.recv_rtcp_sink_0 "
+//	    "rtpbin.send_rtcp_src_0 ! udpsink port=5005 host=10.11.9.31 sync=true async=true "
 	    // Video
 	    "rtpbin. ! "
 	    "rtph264depay name=depay ! "
@@ -743,7 +735,20 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	    "decodebin3 ! "
 #endif
 	    "queue ! "
-	    "glsinkbin name=glsink"); // Setting sync=false on sink here won't work, as the sink will be replaced later.
+	    "glsinkbin name=glsink " // Setting sync=false on sink here won't work, as the sink will be replaced later.
+
+	    // Audio
+	    "udpsrc port=5002 buffer-size=8000000 "
+	    "caps=\"application/x-rtp,media=audio,payload=127,clock-rate=48000,encoding-name=OPUS\" ! "
+	    "rtpbin.recv_rtp_sink_1 "
+//	    "udpsrc address=0.0.0.0 port=5003 ! rtpbin.recv_rtcp_sink_1 "
+//	    "rtpbin.send_rtcp_src_1 ! udpsink port=5007 host=10.11.9.31 sync=false async=false "
+	    // Audio
+	    "rtpbin. ! "
+	    "rtpopusdepay name=audiodepay ! "
+	    "opusdec ! "
+	    "queue ! "
+	    "openslessink ");
 #endif
 
 	sc->pipeline = gst_object_ref_sink(gst_parse_launch(pipeline_string, &error));
