@@ -660,19 +660,36 @@ audio_rtp_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 			const guint8 *data = map.data;
 			const uint16_t seq_num = (data[2] << 8) | data[3]; // For big-endian systems
 
-			//			if (seq_num - prev_seq_num_audio > 1 || seq_num < prev_seq_num_audio) {
-			//				ALOGW("Audio buffer probe: Discontinuous sequence number!");
-			//			}
+			if (seq_num - prev_seq_num_audio > 1 || seq_num < prev_seq_num_audio) {
+				ALOGW("Audio buffer probe: Discontinuous sequence number!");
+			}
 
-			//			ALOGV("Audio buffer probe: PTS: %" GST_TIME_FORMAT ", Duration: %"
-			// GST_TIME_FORMAT
-			//			      ", Sequence number: %u",
-			//			      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), seq_num);
+			ALOGV("Audio buffer probe: PTS: %" GST_TIME_FORMAT ", Duration: %" GST_TIME_FORMAT
+			      ", Sequence number: %u",
+			      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), seq_num);
 
 			prev_seq_num_audio = seq_num;
 		}
 		gst_buffer_unmap(buf, &map);
 	}
+
+	return GST_PAD_PROBE_OK;
+}
+
+static GstPadProbeReturn
+audio_depay_src_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
+{
+	GstBuffer *buf = GST_PAD_PROBE_INFO_BUFFER(info);
+
+	const GstClockTime pts = GST_BUFFER_PTS(buf);
+	const GstClockTime dts = GST_BUFFER_DTS(buf);
+	const GstClockTime duration = GST_BUFFER_DURATION(buf);
+
+	gsize buffer_size = gst_buffer_get_size(buf);
+
+	ALOGW("Audio depay src probe: PTS: %" GST_TIME_FORMAT ", Duration: %" GST_TIME_FORMAT
+	        ", Buffer size: %" G_GSIZE_FORMAT " bytes",
+	        GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), buffer_size);
 
 	return GST_PAD_PROBE_OK;
 }
@@ -844,17 +861,31 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	}
 	gst_object_unref(video_udpsrc);
 
-	GstElement *audio_udpsrc = gst_bin_get_by_name(GST_BIN(sc->pipeline), "audioudpsrc");
+	if (0) {
+		GstElement *audio_udpsrc = gst_bin_get_by_name(GST_BIN(sc->pipeline), "audioudpsrc");
+		{
+			GstPad *pad = gst_element_get_static_pad(audio_udpsrc, "src");
+			if (pad != NULL) {
+				gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, audio_rtp_probe, sc, NULL);
+				gst_object_unref(pad);
+			} else {
+				ALOGE("Could not find static src pad in audio_udpsrc");
+			}
+		}
+		gst_object_unref(audio_udpsrc);
+	}
+
+	GstElement *audio_depay = gst_bin_get_by_name(GST_BIN(sc->pipeline), "audiodepay");
 	{
-		GstPad *pad = gst_element_get_static_pad(audio_udpsrc, "src");
+		GstPad *pad = gst_element_get_static_pad(audio_depay, "src");
 		if (pad != NULL) {
-			gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, audio_rtp_probe, sc, NULL);
+			gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, audio_depay_src_probe, sc, NULL);
 			gst_object_unref(pad);
 		} else {
-			ALOGE("Could not find static src pad in audio_udpsrc");
+			ALOGE("Could not find static src pad in audio_depay");
 		}
 	}
-	gst_object_unref(audio_udpsrc);
+	gst_object_unref(audio_depay);
 
 	// This actually hands over the pipeline. Once our own handler returns, the pipeline will be started by the
 	// connection.
