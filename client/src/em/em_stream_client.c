@@ -630,13 +630,14 @@ video_rtp_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 			const guint8 *data = map.data;
 			const uint16_t seq_num = (data[2] << 8) | data[3]; // For big-endian systems
 
-//			if (seq_num - prev_seq_num_video > 1 || seq_num < prev_seq_num_video) {
-//				ALOGW("Video buffer probe: Discontinuous sequence number!");
-//			}
-//
-//			ALOGV("Video buffer probe: PTS: %" GST_TIME_FORMAT ", Duration: %" GST_TIME_FORMAT
-//			      ", Sequence number: %u",
-//			      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), seq_num);
+			//			if (seq_num - prev_seq_num_video > 1 || seq_num < prev_seq_num_video) {
+			//				ALOGW("Video buffer probe: Discontinuous sequence number!");
+			//			}
+			//
+			//			ALOGV("Video buffer probe: PTS: %" GST_TIME_FORMAT ", Duration: %"
+			// GST_TIME_FORMAT
+			//			      ", Sequence number: %u",
+			//			      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), seq_num);
 
 			prev_seq_num_video = seq_num;
 		}
@@ -663,13 +664,14 @@ audio_rtp_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 			const guint8 *data = map.data;
 			const uint16_t seq_num = (data[2] << 8) | data[3]; // For big-endian systems
 
-//			if (seq_num - prev_seq_num_audio > 1 || seq_num < prev_seq_num_audio) {
-//				ALOGW("Audio buffer probe: Discontinuous sequence number!");
-//			}
-//
-//			ALOGV("Audio buffer probe: PTS: %" GST_TIME_FORMAT ", Duration: %" GST_TIME_FORMAT
-//			      ", Sequence number: %u",
-//			      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), seq_num);
+			//			if (seq_num - prev_seq_num_audio > 1 || seq_num < prev_seq_num_audio) {
+			//				ALOGW("Audio buffer probe: Discontinuous sequence number!");
+			//			}
+			//
+			//			ALOGV("Audio buffer probe: PTS: %" GST_TIME_FORMAT ", Duration: %"
+			// GST_TIME_FORMAT
+			//			      ", Sequence number: %u",
+			//			      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), seq_num);
 
 			prev_seq_num_audio = seq_num;
 		}
@@ -697,16 +699,77 @@ audio_depay_src_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 	return GST_PAD_PROBE_OK;
 }
 
+static GstPadProbeReturn
+video_depay_src_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
+{
+	GstBuffer *buf = GST_PAD_PROBE_INFO_BUFFER(info);
+
+	const GstClockTime pts = GST_BUFFER_PTS(buf);
+	const GstClockTime dts = GST_BUFFER_DTS(buf);
+	const GstClockTime duration = GST_BUFFER_DURATION(buf);
+
+	gsize buffer_size = gst_buffer_get_size(buf);
+
+	//	ALOGW("Audio depay src probe: PTS: %" GST_TIME_FORMAT ", Duration: %" GST_TIME_FORMAT
+	//	      ", Buffer size: %" G_GSIZE_FORMAT " bytes",
+	//	      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), buffer_size);
+
+	return GST_PAD_PROBE_OK;
+}
+
+gboolean
+print_jitterbuffter_stats(GstElement *jitterbuffer)
+{
+	if (!jitterbuffer) {
+		return G_SOURCE_CONTINUE;
+	}
+
+	gchar *name = gst_object_get_name(GST_OBJECT(jitterbuffer));
+	ALOGI("The name of the element is: %s", name);
+	g_free(name);
+
+	gint percent;
+	g_object_get(G_OBJECT(jitterbuffer), "percent", &percent, NULL);
+	ALOGI("Jitterbuffer percent: %d", percent);
+
+	GstStructure *stats = NULL;
+	g_object_get(G_OBJECT(jitterbuffer), "stats", &stats, NULL);
+
+	if (stats) {
+		guint64 num_pushed, num_lost, avg_jitter;
+
+		// Extract values from the GstStructure
+		if (gst_structure_get_uint64(stats, "num-pushed", &num_pushed)) {
+			ALOGI("Number of buffers pushed: %" G_GUINT64_FORMAT, num_pushed);
+		}
+
+		if (gst_structure_get_uint64(stats, "num-lost", &num_lost)) {
+			ALOGI("Number of packets lost: %" G_GUINT64_FORMAT, num_lost);
+		}
+
+		if (gst_structure_get_uint64(stats, "avg-jitter", &avg_jitter)) {
+			ALOGI("Average jitter: %.2f ms", time_ns_to_ms_f(avg_jitter));
+		}
+
+		// Free the GstStructure
+		gst_structure_free(stats);
+	}
+
+	return G_SOURCE_CONTINUE;
+}
+
 static void
-new_jitterbuffer_callback(GstElement *rtpbin, GstElement *jitterbuffer, guint session, guint ssrc, gpointer udata)
+new_jitterbuffer_callback(GstElement *rtpbin, GstElement *jitterbuffer, guint session, guint ssrc, EmStreamClient *sc)
 {
 	//	GstPad *srcpad = gst_element_get_static_pad(jitterbuffer, "src");
 	//	g_assert(srcpad);
 	//	//        gst_pad_add_probe(srcpad, GST_PAD_PROBE_TYPE_BUFFER,
 	//	//        jitterbuffer_event_probe_cb, NULL, NULL);
 	//	gst_clear_object(&srcpad);
-//		g_object_set(jitterbuffer, "drop-on-latency", TRUE, NULL);
-//	g_object_set(jitterbuffer, "mode", "none", NULL);
+	//		g_object_set(jitterbuffer, "drop-on-latency", TRUE, NULL);
+	//	g_object_set(jitterbuffer, "mode", "none", NULL);
+	// FIXME: the returned id is leaked, but this is for test so we don't handle it for now
+	g_timeout_add_seconds(1, G_SOURCE_FUNC(print_jitterbuffter_stats), jitterbuffer);
 }
 
 static void
@@ -793,7 +856,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 #else
 	GstElement *rtpbin = gst_bin_get_by_name(GST_BIN(sc->pipeline), "rtpbin");
 	if (rtpbin) {
-		g_signal_connect(rtpbin, "new-jitterbuffer", G_CALLBACK(new_jitterbuffer_callback), NULL);
+		g_signal_connect(rtpbin, "new-jitterbuffer", G_CALLBACK(new_jitterbuffer_callback), sc);
 		gst_object_unref(rtpbin);
 	}
 #endif
@@ -893,17 +956,17 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	}
 	gst_object_unref(audio_udpsrc);
 
-	GstElement *audio_depay = gst_bin_get_by_name(GST_BIN(sc->pipeline), "audiodepay");
-	{
-		GstPad *pad = gst_element_get_static_pad(audio_depay, "src");
-		if (pad != NULL) {
-			gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, audio_depay_src_probe, sc, NULL);
-			gst_object_unref(pad);
-		} else {
-			ALOGE("Could not find static src pad in audio_depay");
-		}
-	}
-	gst_object_unref(audio_depay);
+//	GstElement *audio_depay = gst_bin_get_by_name(GST_BIN(sc->pipeline), "audiodepay");
+//	{
+//		GstPad *pad = gst_element_get_static_pad(audio_depay, "src");
+//		if (pad != NULL) {
+//			gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, audio_depay_src_probe, sc, NULL);
+//			gst_object_unref(pad);
+//		} else {
+//			ALOGE("Could not find static src pad in audio_depay");
+//		}
+//	}
+//	gst_object_unref(audio_depay);
 
 	// This actually hands over the pipeline. Once our own handler returns, the pipeline will be started by the
 	// connection.
