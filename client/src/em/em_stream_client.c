@@ -691,9 +691,9 @@ audio_depay_src_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 
 	gsize buffer_size = gst_buffer_get_size(buf);
 
-	ALOGW("Audio depay src probe: PTS: %" GST_TIME_FORMAT ", Duration: %" GST_TIME_FORMAT
-	      ", Buffer size: %" G_GSIZE_FORMAT " bytes",
-	      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), buffer_size);
+	//	ALOGW("Audio depay src probe: PTS: %" GST_TIME_FORMAT ", Duration: %" GST_TIME_FORMAT
+	//	      ", Buffer size: %" G_GSIZE_FORMAT " bytes",
+	//	      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), buffer_size);
 
 	return GST_PAD_PROBE_OK;
 }
@@ -729,10 +729,9 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	    "udpsrc port=5000 buffer-size=8000000 "
 	    "caps=\"application/x-rtp,media=video,payload=96,clock-rate=90000,encoding-name=H264\" ! "
 	    "rtpbin.recv_rtp_sink_0 "
-#ifdef USE_MANUAL_NTP
 	    "udpsrc port=5001 ! rtpbin.recv_rtcp_sink_0 "
-	    "rtpbin.send_rtcp_src_0 ! udpsink port=5005 host=10.11.9.31 sync=true async=true "
-#endif
+	    "rtpbin.send_rtcp_src_0 ! udpsink host=" DEFAULT_SERVER_IP
+	    " port=5005 sync=true async=true "
 	    // Video
 	    "rtpbin. ! "
 	    "rtph264depay name=depay ! "
@@ -750,11 +749,11 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	    "udpsrc port=5002 buffer-size=8000000 "
 	    "caps=\"application/x-rtp,media=audio,payload=127,clock-rate=48000,encoding-name=OPUS\" ! "
 	    "rtpbin.recv_rtp_sink_1 "
-#ifdef USE_MANUAL_NTP
 	    "udpsrc port=5003 ! rtpbin.recv_rtcp_sink_1 "
-	    "rtpbin.send_rtcp_src_1 ! udpsink port=5007 host=10.11.9.31 sync=false async=false "
-#endif
-	    // Audio
+	    "rtpbin.send_rtcp_src_1 ! udpsink host=" DEFAULT_SERVER_IP
+	    " port=5007 sync=false async=false "
+
+	    //  Audio
 	    "rtpbin. ! "
 	    "rtpopusdepay name=audiodepay ! "
 	    "opusdec ! "
@@ -772,8 +771,8 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	}
 
 #ifdef USE_MANUAL_NTP
-	GstClock *client_clock = gst_net_client_clock_new("my-client-clock", DEFAULT_SERVER_IP, 52357, 0);
-	gst_pipeline_use_clock(GST_PIPELINE(sc->pipeline), client_clock);
+	GstClock *net_clock = gst_net_client_clock_new("my-net-clock", DEFAULT_SERVER_IP, 52357, 0);
+	gst_pipeline_use_clock(GST_PIPELINE(sc->pipeline), net_clock);
 #endif
 
 #ifdef USE_WEBRTC
@@ -1186,11 +1185,11 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 		GstClockTime base_time = gst_element_get_base_time(sc->pipeline);
 		GstClockTime running_time = current_time - base_time;
 
-		ALOGI(
-		    "Client clock: system time %.3f pipeline time %.3f base time %.3f running time "
-		    "%.3f",
-		    time_ns_to_s(os_monotonic_get_ns()), time_ns_to_s(current_time), time_ns_to_s(base_time),
-		    time_ns_to_s(running_time));
+		//		ALOGI(
+		//		    "Client clock: system time %.3f pipeline time %.3f base time %.3f running time "
+		//		    "%.3f",
+		//		    time_ns_to_s(os_monotonic_get_ns()), time_ns_to_s(current_time),
+		// time_ns_to_s(base_time), 		    time_ns_to_s(running_time));
 
 		int64_t latency = current_time - msg.frame_data.frame_push_clock_time;
 		//		ALOGI("Frame latency (server appsrc -> client glsinkbin): %.1f ms", latency / 1.0e6);
