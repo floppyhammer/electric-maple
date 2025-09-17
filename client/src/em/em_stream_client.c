@@ -664,13 +664,14 @@ audio_rtp_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 			const guint8 *data = map.data;
 			const uint16_t seq_num = (data[2] << 8) | data[3]; // For big-endian systems
 
-			if (seq_num - prev_seq_num_audio > 1 || seq_num < prev_seq_num_audio) {
-				ALOGW("Audio buffer probe: Discontinuous sequence number!");
-			}
-
-			ALOGV("Audio buffer probe: PTS: %" GST_TIME_FORMAT ", Duration: %" GST_TIME_FORMAT
-			      ", Sequence number: %u",
-			      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), seq_num);
+			//			if (seq_num - prev_seq_num_audio > 1 || seq_num < prev_seq_num_audio) {
+			//				ALOGW("Audio buffer probe: Discontinuous sequence number!");
+			//			}
+			//
+			//			ALOGV("Audio buffer probe: PTS: %" GST_TIME_FORMAT ", Duration: %"
+			//GST_TIME_FORMAT
+			//			      ", Sequence number: %u",
+			//			      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), seq_num);
 
 			prev_seq_num_audio = seq_num;
 		}
@@ -726,7 +727,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	    "ntp-sync=true "
 #endif
 	    // Video
-	    "udpsrc port=5000 buffer-size=8000000 "
+	    "udpsrc name=videoudpsrc port=5000 buffer-size=8000000 "
 	    "caps=\"application/x-rtp,media=video,payload=96,clock-rate=90000,encoding-name=H264\" ! "
 	    "rtpbin.recv_rtp_sink_0 "
 	    "udpsrc port=5001 ! rtpbin.recv_rtcp_sink_0 "
@@ -746,7 +747,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	    "glsinkbin name=glsink " // Setting sync=false on sink here won't work, as the sink will be replaced later.
 
 	    // Audio
-	    "udpsrc port=5002 buffer-size=8000000 "
+	    "udpsrc name=audioudpsrc port=5002 buffer-size=8000000 "
 	    "caps=\"application/x-rtp,media=audio,payload=127,clock-rate=48000,encoding-name=OPUS\" ! "
 	    "rtpbin.recv_rtp_sink_1 "
 	    "udpsrc port=5003 ! rtpbin.recv_rtcp_sink_1 "
@@ -878,19 +879,17 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	}
 	gst_object_unref(video_udpsrc);
 
-	if (0) {
-		GstElement *audio_udpsrc = gst_bin_get_by_name(GST_BIN(sc->pipeline), "audioudpsrc");
-		{
-			GstPad *pad = gst_element_get_static_pad(audio_udpsrc, "src");
-			if (pad != NULL) {
-				gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, audio_rtp_probe, sc, NULL);
-				gst_object_unref(pad);
-			} else {
-				ALOGE("Could not find static src pad in audio_udpsrc");
-			}
+	GstElement *audio_udpsrc = gst_bin_get_by_name(GST_BIN(sc->pipeline), "audioudpsrc");
+	{
+		GstPad *pad = gst_element_get_static_pad(audio_udpsrc, "src");
+		if (pad != NULL) {
+			gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, audio_rtp_probe, sc, NULL);
+			gst_object_unref(pad);
+		} else {
+			ALOGE("Could not find static src pad in audio_udpsrc");
 		}
-		gst_object_unref(audio_udpsrc);
 	}
+	gst_object_unref(audio_udpsrc);
 
 	GstElement *audio_depay = gst_bin_get_by_name(GST_BIN(sc->pipeline), "audiodepay");
 	{
