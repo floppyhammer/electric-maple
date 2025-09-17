@@ -669,7 +669,7 @@ audio_rtp_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 			//			}
 			//
 			//			ALOGV("Audio buffer probe: PTS: %" GST_TIME_FORMAT ", Duration: %"
-			//GST_TIME_FORMAT
+			// GST_TIME_FORMAT
 			//			      ", Sequence number: %u",
 			//			      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), seq_num);
 
@@ -732,7 +732,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	    "rtpbin.recv_rtp_sink_0 "
 	    "udpsrc port=5001 ! rtpbin.recv_rtcp_sink_0 "
 	    "rtpbin.send_rtcp_src_0 ! udpsink host=" DEFAULT_SERVER_IP
-	    " port=5005 sync=true async=true "
+	    " port=5005 sync=false async=false "
 	    // Video
 	    "rtpbin. ! "
 	    "rtph264depay name=depay ! "
