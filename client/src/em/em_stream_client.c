@@ -723,7 +723,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 #else
 	gchar *pipeline_string = g_strdup_printf(
 	    "rtpbin name=rtpbin latency=80 "
-#ifdef USE_MANUAL_NTP
+#ifndef USE_MANUAL_NTP
 	    "ntp-sync=true "
 #endif
 	    // Video
