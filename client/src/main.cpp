@@ -553,7 +553,7 @@ android_main(struct android_app *app)
 
 	// Set up gst logger
 	gst_debug_set_default_threshold(GST_LEVEL_WARNING);
-	gst_debug_set_threshold_for_name("rtpjitterbuffer", GST_LEVEL_LOG);
+//	gst_debug_set_threshold_for_name("rtpjitterbuffer", GST_LEVEL_LOG);
 	//			 gst_debug_set_threshold_for_name("webrtcbindatachannel", GST_LEVEL_TRACE);
 
 	// Set up our own objects

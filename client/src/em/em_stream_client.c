@@ -543,6 +543,20 @@ no_buf:
 static GstPadProbeReturn
 rtpdepay_src_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 {
+	GstBuffer *buf = GST_PAD_PROBE_INFO_BUFFER(info);
+
+	const GstClockTime pts = GST_BUFFER_PTS(buf);
+	const GstClockTime dts = GST_BUFFER_DTS(buf);
+	const GstClockTime duration = GST_BUFFER_DURATION(buf);
+
+	gsize buffer_size = gst_buffer_get_size(buf);
+
+	//	ALOGW("Video depay src probe: PTS: %" GST_TIME_FORMAT " DTS: %" GST_TIME_FORMAT ", Duration: %"
+	// GST_TIME_FORMAT
+	//	      ", Buffer size: %" G_GSIZE_FORMAT " bytes",
+	//	      GST_TIME_ARGS(pts), GST_TIME_ARGS(dts), GST_TIME_ARGS(duration), buffer_size);
+
+
 	EmStreamClient *sc = (EmStreamClient *)user_data;
 
 	g_autoptr(GMutexLocker) locker = g_mutex_locker_new(&sc->metadata_preservation_mutex);
@@ -622,6 +636,17 @@ video_rtp_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 	const GstClockTime dts = GST_BUFFER_DTS(buf);
 	const GstClockTime duration = GST_BUFFER_DURATION(buf);
 
+	GstRTPBuffer rtp_buffer = {0};
+	guint32 rtp_timestamp = 0;
+
+	if (gst_rtp_buffer_map(buf, GST_MAP_READ, &rtp_buffer)) {
+		rtp_timestamp = gst_rtp_buffer_get_timestamp(&rtp_buffer);
+
+		//		ALOGW("RTP Timestamp: %" GST_TIME_FORMAT, GST_TIME_ARGS(rtp_timestamp));
+
+		gst_rtp_buffer_unmap(&rtp_buffer);
+	}
+
 	static uint16_t prev_seq_num_video = 0;
 
 	GstMapInfo map;
@@ -638,6 +663,11 @@ video_rtp_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 			// GST_TIME_FORMAT
 			//			      ", Sequence number: %u",
 			//			      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), seq_num);
+
+			//			ALOGV("Video buffer probe: PTS: %" GST_TIME_FORMAT ", RTP PTS: %u, DTS:
+			//%" GST_TIME_FORMAT 			      " Duration: %" GST_TIME_FORMAT ", Sequence number:
+			//%u", 			      GST_TIME_ARGS(pts), rtp_timestamp, GST_TIME_ARGS(dts),
+			// GST_TIME_ARGS(duration), seq_num);
 
 			prev_seq_num_video = seq_num;
 		}
@@ -656,6 +686,17 @@ audio_rtp_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 	const GstClockTime dts = GST_BUFFER_DTS(buf);
 	const GstClockTime duration = GST_BUFFER_DURATION(buf);
 
+	GstRTPBuffer rtp_buffer = {0};
+	guint32 rtp_timestamp = 0;
+
+	if (gst_rtp_buffer_map(buf, GST_MAP_READ, &rtp_buffer)) {
+		rtp_timestamp = gst_rtp_buffer_get_timestamp(&rtp_buffer);
+
+		//		ALOGW("RTP Timestamp: %" GST_TIME_FORMAT, GST_TIME_ARGS(rtp_timestamp));
+
+		gst_rtp_buffer_unmap(&rtp_buffer);
+	}
+
 	static uint16_t prev_seq_num_audio = 0;
 
 	GstMapInfo map;
@@ -668,10 +709,10 @@ audio_rtp_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 			//				ALOGW("Audio buffer probe: Discontinuous sequence number!");
 			//			}
 			//
-			//			ALOGV("Audio buffer probe: PTS: %" GST_TIME_FORMAT ", Duration: %"
-			// GST_TIME_FORMAT
-			//			      ", Sequence number: %u",
-			//			      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), seq_num);
+			//			ALOGV("Audio buffer probe: PTS: %" GST_TIME_FORMAT ", RTP PTS: %u, DTS:
+			//%" GST_TIME_FORMAT 			      " Duration: %" GST_TIME_FORMAT ", Sequence number:
+			//%u", 			      GST_TIME_ARGS(pts), rtp_timestamp, GST_TIME_ARGS(dts),
+			// GST_TIME_ARGS(duration), seq_num);
 
 			prev_seq_num_audio = seq_num;
 		}
@@ -691,10 +732,11 @@ audio_depay_src_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 	const GstClockTime duration = GST_BUFFER_DURATION(buf);
 
 	gsize buffer_size = gst_buffer_get_size(buf);
-
-	//	ALOGW("Audio depay src probe: PTS: %" GST_TIME_FORMAT ", Duration: %" GST_TIME_FORMAT
+	//
+	//	ALOGD("Audio depay src probe: PTS: %" GST_TIME_FORMAT " DTS: %" GST_TIME_FORMAT ", Duration: %"
+	// GST_TIME_FORMAT
 	//	      ", Buffer size: %" G_GSIZE_FORMAT " bytes",
-	//	      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), buffer_size);
+	//	      GST_TIME_ARGS(pts), GST_TIME_ARGS(dts), GST_TIME_ARGS(duration), buffer_size);
 
 	return GST_PAD_PROBE_OK;
 }
@@ -710,9 +752,10 @@ video_depay_src_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 
 	gsize buffer_size = gst_buffer_get_size(buf);
 
-	//	ALOGW("Audio depay src probe: PTS: %" GST_TIME_FORMAT ", Duration: %" GST_TIME_FORMAT
+	//	ALOGW("Video depay src probe: PTS: %" GST_TIME_FORMAT " DTS: %" GST_TIME_FORMAT ", Duration: %"
+	// GST_TIME_FORMAT
 	//	      ", Buffer size: %" G_GSIZE_FORMAT " bytes",
-	//	      GST_TIME_ARGS(pts), GST_TIME_ARGS(duration), buffer_size);
+	//	      GST_TIME_ARGS(pts), GST_TIME_ARGS(dts), GST_TIME_ARGS(duration), buffer_size);
 
 	return GST_PAD_PROBE_OK;
 }
@@ -893,11 +936,14 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	gst_app_sink_set_callbacks(GST_APP_SINK(sc->appsink), &callbacks, sc, NULL);
 	sc->received_first_frame = false;
 
-	g_autoptr(GstElement) glsinkbin = gst_bin_get_by_name(GST_BIN(sc->pipeline), "glsink");
-	g_object_set(glsinkbin, "sink", sc->appsink, NULL);
+	{
+		g_autoptr(GstElement) glsinkbin = gst_bin_get_by_name(GST_BIN(sc->pipeline), "glsink");
+		g_object_set(glsinkbin, "sink", sc->appsink, NULL);
 
-	// Disable clock sync to reduce latency (we have to do this after setting sink manually)
-	g_object_set(glsinkbin, "sync", FALSE, NULL);
+		// TODO: enable this
+		// Disable audio/video clock sync to reduce latency (we have to do this after setting sink manually)
+		g_object_set(glsinkbin, "sync", FALSE, NULL);
+	}
 
 	{
 		g_autoptr(GstBus) bus = gst_element_get_bus(sc->pipeline);
@@ -956,20 +1002,20 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	}
 	gst_object_unref(audio_udpsrc);
 
-//	GstElement *audio_depay = gst_bin_get_by_name(GST_BIN(sc->pipeline), "audiodepay");
-//	{
-//		GstPad *pad = gst_element_get_static_pad(audio_depay, "src");
-//		if (pad != NULL) {
-//			gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, audio_depay_src_probe, sc, NULL);
-//			gst_object_unref(pad);
-//		} else {
-//			ALOGE("Could not find static src pad in audio_depay");
-//		}
-//	}
-//	gst_object_unref(audio_depay);
+	GstElement *audio_depay = gst_bin_get_by_name(GST_BIN(sc->pipeline), "audiodepay");
+	{
+		GstPad *pad = gst_element_get_static_pad(audio_depay, "src");
+		if (pad != NULL) {
+			gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, audio_depay_src_probe, sc, NULL);
+			gst_object_unref(pad);
+		} else {
+			ALOGE("Could not find static src pad in audio_depay");
+		}
+	}
+	gst_object_unref(audio_depay);
 
-	// This actually hands over the pipeline. Once our own handler returns, the pipeline will be started by the
-	// connection.
+	// This actually hands over the pipeline. Once our own handler returns,
+	// the pipeline will be started by the connection.
 	g_signal_emit_by_name(em_conn, "set-pipeline", GST_PIPELINE(sc->pipeline), NULL);
 
 	sc->timeout_src_id_dot_data = g_timeout_add_seconds(3, G_SOURCE_FUNC(check_pipeline_dot_data), sc);
