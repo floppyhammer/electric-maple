@@ -624,6 +624,19 @@ check_pipeline_dot_data(EmStreamClient *sc)
 	gchar *dot_data = gst_debug_bin_to_dot_data(GST_BIN(sc->pipeline), GST_DEBUG_GRAPH_SHOW_ALL);
 	g_free(dot_data);
 
+	GstElement *audio_sink = gst_bin_get_by_name(GST_BIN(sc->pipeline), "audio-sink");
+	if (audio_sink) {
+		guint64 buffer_time;
+		g_object_get(G_OBJECT(audio_sink), "buffer-time", &buffer_time, NULL);
+		ALOGI("audio_sink buffer_time: %lu", buffer_time);
+
+		guint64 latency_time;
+		g_object_get(G_OBJECT(audio_sink), "latency-time", &latency_time, NULL);
+		ALOGI("audio_sink latency_time: %lu", latency_time);
+
+		gst_object_unref(audio_sink);
+	}
+
 	return G_SOURCE_CONTINUE;
 }
 
@@ -852,6 +865,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	    // Video
 	    "rtpbin. ! "
 	    "rtph264depay name=depay ! "
+	    "queue ! "
 #ifndef USE_DECODEBIN3
 	    "h264parse ! "
 	    "amcviddec-c2qtiavcdecoder ! "
@@ -861,7 +875,6 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 #endif
 	    "queue ! "
 	    "glsinkbin name=glsink " // Setting sync=false on sink here won't work, as the sink will be replaced later.
-
 	    // Audio
 	    "udpsrc name=audioudpsrc port=5002 buffer-size=8000000 "
 	    "caps=\"application/x-rtp,media=audio,payload=127,clock-rate=48000,encoding-name=OPUS\" ! "
@@ -869,13 +882,13 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	    "udpsrc port=5003 ! rtpbin.recv_rtcp_sink_1 "
 	    "rtpbin.send_rtcp_src_1 ! udpsink host=" DEFAULT_SERVER_IP
 	    " port=5007 sync=false async=false "
-
 	    //  Audio
 	    "rtpbin. ! "
 	    "rtpopusdepay name=audiodepay ! "
+	    "queue ! "
 	    "opusdec ! "
 	    "queue ! "
-	    "openslessink ");
+	    "openslessink name=audio-sink buffer-time=10000 latency-time=5000 ");
 #endif
 
 	sc->pipeline = gst_object_ref_sink(gst_parse_launch(pipeline_string, &error));
@@ -942,7 +955,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 
 		// TODO: enable this
 		// Disable audio/video clock sync to reduce latency (we have to do this after setting sink manually)
-		g_object_set(glsinkbin, "sync", FALSE, NULL);
+		g_object_set(glsinkbin, "sync", TRUE, NULL);
 	}
 
 	{
