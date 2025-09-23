@@ -18,7 +18,7 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif // __cplusplus
+#endif
 
 struct em_sample;
 
@@ -133,4 +133,4 @@ em_stream_client_adjust_jitterbuffer(EmStreamClient *sc);
 
 #ifdef __cplusplus
 } // extern "C"
-#endif // __cplusplus
+#endif

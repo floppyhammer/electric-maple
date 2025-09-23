@@ -628,11 +628,15 @@ check_pipeline_dot_data(EmStreamClient *sc)
 	if (audio_sink) {
 		guint64 buffer_time;
 		g_object_get(G_OBJECT(audio_sink), "buffer-time", &buffer_time, NULL);
-		ALOGI("audio_sink buffer_time: %lu", buffer_time);
+		ALOGI("audio_sink buffer-time: %lu", buffer_time);
 
 		guint64 latency_time;
 		g_object_get(G_OBJECT(audio_sink), "latency-time", &latency_time, NULL);
-		ALOGI("audio_sink latency_time: %lu", latency_time);
+		ALOGI("audio_sink latency-time: %lu", latency_time);
+
+		gboolean provide_clock;
+		g_object_get(G_OBJECT(audio_sink), "provide-clock", &provide_clock, NULL);
+		ALOGI("audio_sink provide-clock: %d", provide_clock);
 
 		gst_object_unref(audio_sink);
 	}
@@ -888,7 +892,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	    "queue ! "
 	    "opusdec ! "
 	    "queue ! "
-	    "openslessink name=audio-sink buffer-time=10000 latency-time=5000 ");
+	    "openslessink name=audio-sink sync=true provide-clock=false buffer-time=20000 latency-time=20000 ");
 #endif
 
 	sc->pipeline = gst_object_ref_sink(gst_parse_launch(pipeline_string, &error));
@@ -953,9 +957,9 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 		g_autoptr(GstElement) glsinkbin = gst_bin_get_by_name(GST_BIN(sc->pipeline), "glsink");
 		g_object_set(glsinkbin, "sink", sc->appsink, NULL);
 
-		// TODO: enable this
-		// Disable audio/video clock sync to reduce latency (we have to do this after setting sink manually)
-		g_object_set(glsinkbin, "sync", TRUE, NULL);
+		// (sync=false) Disable audio/video clock sync to reduce latency (we have to do this after setting sink
+		// manually)
+		g_object_set(glsinkbin, "sync", FALSE, NULL);
 	}
 
 	{
@@ -1246,12 +1250,12 @@ struct em_sample *
 em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode_end)
 {
 	if (!sc->appsink) {
-		// not setup yet.
+		// Not setup yet.
 		return NULL;
 	}
 
-	// We actually pull the sample in the new-sample signal handler, so here we're just receiving the sample already
-	// pulled.
+	// We actually pull the sample in the new-sample signal handler,
+	// so here we're just receiving the sample already pulled.
 	GstSample *sample = NULL;
 	int64_t decode_end_time = 0;
 	{
@@ -1303,6 +1307,7 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 		// msg.frame_data.P_localSpace_view1.position.x, msg.frame_data.P_localSpace_view1.position.y,
 		// msg.frame_data.P_localSpace_view1.position.z, msg.frame_data.frame_push_time);
 
+		// Pipeline clock time
 		GstClock *clock = gst_element_get_clock(sc->pipeline);
 		const GstClockTime current_time = gst_clock_get_time(clock);
 		GstClockTime base_time = gst_element_get_base_time(sc->pipeline);

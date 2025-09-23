@@ -51,6 +51,7 @@ struct _EmConnection
 
 	enum em_status status;
 
+	/// Offset between the server and client system clock.
 	int64_t server_offset;
 };
 
@@ -351,6 +352,7 @@ emconn_data_channel_message_data_cb(GstWebRTCDataChannel *datachannel, GBytes *b
 		return;
 	}
 
+	// This is a bad way to sync the server and client clock (transmission latency not counted).
 	uint64_t server_now = *(uint64_t *)bytes_pointer;
 	int64_t server_offset = (int64_t)client_now - (int64_t)(server_now);
 
