@@ -403,11 +403,11 @@ handle_up_message(GBytes *data, struct ems_gstreamer_pipeline *egp)
 					target_bitrate = 1000;
 				}
 
-				if (target_bitrate != current_bitrate) {
-					U_LOG_E("Adjust bitrate from %d to %d", current_bitrate, target_bitrate);
-					ems_gstreamer_pipeline_adjust_bitrate(&egp->base, target_bitrate);
-					current_bitrate = target_bitrate;
-				}
+				// if (target_bitrate != current_bitrate) {
+				// 	U_LOG_E("Adjust bitrate from %d to %d", current_bitrate, target_bitrate);
+				// 	ems_gstreamer_pipeline_adjust_bitrate(&egp->base, target_bitrate);
+				// 	current_bitrate = target_bitrate;
+				// }
 
 				last_time_change_bitrate = os_monotonic_get_ns();
 				max_latency_over_window = 0;
@@ -657,7 +657,7 @@ webrtc_client_connected_cb(EmsSignalingServer *server,
 	g_assert(ret != GST_STATE_CHANGE_FAILURE);
 #else
 	{
-		GstElement *udpsink = gst_bin_get_by_name(GST_BIN(egp->base.pipeline), "udpsink");
+		GstElement *udpsink = gst_bin_get_by_name(GST_BIN(egp->base.pipeline), "udpsink-video");
 		g_assert(udpsink);
 		g_object_set(udpsink, "host", client_address, NULL);
 		gst_object_unref(udpsink);
@@ -919,9 +919,28 @@ struct ems_arguments
 	gboolean use_udp;
 };
 
+gboolean
+check_element_exists(const gchar *element_name)
+{
+	GstElementFactory *factory;
+
+	// Find the element factory by name
+	factory = gst_element_factory_find(element_name);
+
+	if (factory == NULL) {
+		U_LOG_W("Element '%s' does not exist.", element_name);
+		return FALSE;
+	} else {
+		U_LOG_W("Element '%s' exists.", element_name);
+		gst_object_unref(factory); // Unref the factory after use
+		return TRUE;
+	}
+}
+
 void
 ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
-                              const char *appsrc_name,
+                              const char *video_appsrc_name,
+                              const char *audio_appsrc_name,
                               struct ems_callbacks *callbacks_collection,
                               struct gstreamer_pipeline **out_gp)
 {
@@ -956,8 +975,8 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 
 	struct ems_arguments *args = malloc(sizeof(struct ems_arguments));
 	memset(args, 0, sizeof(struct ems_arguments));
-	args->encoder_type = EMS_ENCODER_TYPE_AUTO;
-	args->bitrate = DEFAULT_BITRATE;
+	args->encoder_type = EMS_ENCODER_TYPE_X264;
+	args->bitrate = 16000;
 
 	gchar *encoder_str = NULL;
 	if (args->encoder_type == EMS_ENCODER_TYPE_X264) {
@@ -968,25 +987,30 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 		    // Removing this queue will result in readback errors (Gst can't keep up consuming) and introduce 4x
 		    // latency This does not seem to happen for GPU encoders.
 		    "queue ! "
-		    "x264enc name=enc tune=zerolatency sliced-threads=true speed-preset=ultrafast bframes=0 bitrate=%d",
+		    "x264enc name=enc tune=zerolatency sliced-threads=true speed-preset=ultrafast bframes=0 bitrate=%d "
+		    "key-int-max=120 ! "
+		    "video/x-h264,profile=baseline",
 		    args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_NVH264) {
 		const char *nvenc_pipe =
 		    "videoconvert !"
-		    "nvh264enc name=enc zerolatency=true bitrate=%d rc-mode=cbr preset=low-latency";
+		    "nvh264enc name=enc zerolatency=true bitrate=%d rc-mode=cbr preset=low-latency ! "
+		    "video/x-h264,profile=main";
 		encoder_str = g_strdup_printf(nvenc_pipe, args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_NVAUTOGPUH264) {
 		const char *nvenc_pipe =
 		    "cudaupload ! cudaconvert ! "
 		    "nvautogpuh264enc name=enc bitrate=%d rate-control=cbr preset=p1 tune=low-latency "
-		    "multi-pass=two-pass-quarter zero-reorder-delay=true cc-insert=disabled cabac=false";
+		    "multi-pass=two-pass-quarter zero-reorder-delay=true cc-insert=disabled cabac=false ! "
+		    "video/x-h264,profile=main";
 		encoder_str = g_strdup_printf(nvenc_pipe, args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_VULKANH264) {
 		// TODO: Make vulkancolorconvert work with vulkanh264enc
 		encoder_str = g_strdup_printf(
 		    "videoconvert ! videorate ! "
 		    "video/x-raw,format=NV12,framerate=60/1 ! "
-		    "vulkanupload ! vulkanh264enc name=enc average-bitrate=%d ! h264parse",
+		    "vulkanupload ! vulkanh264enc name=enc average-bitrate=%d ! h264parse ! "
+		    "video/x-h264,profile=main",
 		    args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_OPENH264) {
 		encoder_str = g_strdup_printf(
@@ -995,30 +1019,52 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 		    // Removing this queue will result in readback errors (Gst can't keep up consuming) and introduce
 		    // 10x latency This does not seem to happen for GPU encoders.
 		    "queue ! "
-		    "openh264enc name=enc complexity=high rate-control=quality bitrate=%d",
+		    "openh264enc name=enc complexity=high rate-control=quality bitrate=%d ! "
+		    "video/x-h264,profile=main",
 		    args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_VAAPIH264) {
 		encoder_str = g_strdup_printf(
 		    "videoconvert ! videorate ! video/x-raw,format=NV12,framerate=60/1 ! "
-		    "vaapih264enc name=enc bitrate=%d rate-control=cbr aud=true cabac=true quality-level=7",
+		    "vaapih264enc name=enc bitrate=%d rate-control=cbr aud=true cabac=true quality-level=7 ! "
+		    "video/x-h264,profile=main",
 		    args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_VAH264) {
 		encoder_str = g_strdup_printf(
 		    "videoconvert ! videorate ! video/x-raw,format=NV12,framerate=60/1 ! "
-		    "vah264enc name=enc bitrate=%d rate-control=cbr aud=true cabac=true target-usage=7",
+		    "vah264enc name=enc bitrate=%d rate-control=cbr aud=true cabac=true target-usage=7 ! "
+		    "video/x-h264,profile=main",
 		    args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_AMC) {
+		args->bitrate *= 10000;
+
+		const char *encoder_name = NULL;
+		if (check_element_exists("amcvidenc-c2qtiavcencoder")) {
+			encoder_name = "amcvidenc-c2qtiavcencoder";
+		} else if (check_element_exists("amcvidenc-c2mtkavcencoder")) {
+			encoder_name = "amcvidenc-c2mtkavcencoder";
+		} else {
+			U_LOG_E("No available AMC encoder, exiting");
+			abort();
+		}
+
+		U_LOG_W("Using AMC encoder: %s", encoder_name);
+
 		encoder_str = g_strdup_printf(
 		    "videoconvert ! "
 		    "videorate ! "
 		    "video/x-raw,format=NV12,framerate=30/1 ! "
-		    "amcvidenc-c2qtiavcencoder name=enc bitrate=%d ! "
-		    //            "video/x-h264,profile=main ! "
+		    "%s name=enc bitrate=%d ! "
+		    "video/x-h264,profile=high ! "
 		    "h264parse",
-		    args->bitrate);
+		    encoder_name, args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_AUTO) {
+#ifdef ANDROID
+		args->bitrate *= 10000;
+#endif
+
 		encoder_str = g_strdup_printf(
-		    "videoconvert ! videorate ! video/x-raw,format=NV12,framerate=30/1 ! "
+		    "videoconvert ! videorate ! "
+		    "video/x-raw,format=NV12,framerate=30/1 ! "
 		    "encodebin2 profile=\"video/"
 		    "x-h264|element-properties,tune=4,sliced-threads=1,speed-preset=1,bframes=0,bitrate=%d,key-int-max="
 		    "120\"",
@@ -1031,24 +1077,12 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 
 	gchar *pipeline_str = g_strdup_printf(
 	    "rtpbin name=rtpbin "
-	    // Audio
-	    "pulsesrc device=\"alsa_output.pci-0000_c6_00.1.hdmi-stereo-extra2.monitor\" ! "
-	    "audioconvert ! "
-	    "audioresample ! "
-	    "queue ! "
-	    "opusenc perfect-timestamp=true ! "
-	    "rtpopuspay ! "
-	    "application/x-rtp,encoding-name=OPUS,media=audio,payload=127,ssrc=(uint)3484078953 ! "
-	    "rtpbin.send_rtp_sink_1 "
-	    "rtpbin. ! "
-	    "udpsink name=udpsink-audio port=5601 sync=false async=false "
 	    // Video
 	    "appsrc name=%s ! "
 	    "%s ! "                        //
-	    "video/x-h264,profile=main ! " //
 	    "queue ! "
 	    "rtph264pay name=rtppay config-interval=-1 aggregate-mode=zero-latency ! "
-	    "application/x-rtp,payload=96,ssrc=(uint)3484078952 ! "
+	    "application/x-rtp,payload=96 ! "
 #ifdef USE_WEBRTC
 #error No longer available
 	    "tee name=%s allow-not-linked=true",
@@ -1056,8 +1090,24 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 #else
 	    "rtpbin.send_rtp_sink_0 "
 	    "rtpbin. ! "
-	    "udpsink name=udpsink port=5600 sync=false async=false", // Host will be assigned later
-	    appsrc_name, encoder_str);
+	    "udpsink name=udpsink-video port=5000 " // Host will be assigned later
+	    "rtpbin.send_rtcp_src_0 ! udpsink name=video-rtcp-send port=5001 sync=false async=false "
+	    "udpsrc port=5005 ! rtpbin.recv_rtcp_sink_0 "
+	    // Audio
+	    "pulsesrc device=\"alsa_output.pci-0000_c6_00.1.hdmi-stereo-extra2.monitor\" ! "
+	    "audioconvert ! "
+	    "audioresample ! "
+	    "queue ! "
+	    "opusenc name=audio-enc audio-type=restricted-lowdelay perfect-timestamp=true frame-size=10 "
+	    "bitrate-type=cbr ! "
+	    "rtpopuspay ! "
+	    "application/x-rtp,encoding-name=OPUS,media=audio,payload=127 ! "
+	    "rtpbin.send_rtp_sink_1 "
+	    "rtpbin. ! "
+	    "udpsink name=udpsink-audio port=5002 " // Host will be assigned later
+	    "rtpbin.send_rtcp_src_1 ! udpsink name=audio-rtcp-send port=5003 sync=false async=false "
+	    "udpsrc port=5007 ! rtpbin.recv_rtcp_sink_1 ",
+	    video_appsrc_name, encoder_str);
 #endif
 
 	g_free(encoder_str);

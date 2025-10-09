@@ -36,7 +36,8 @@ ems_gstreamer_pipeline_stop(struct gstreamer_pipeline *gp);
 
 void
 ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
-                              const char *appsrc_name,
+                              const char *video_appsrc_name,
+                              const char *audio_appsrc_name,
                               struct ems_callbacks *callbacks_collection,
                               struct gstreamer_pipeline **out_gp);
 

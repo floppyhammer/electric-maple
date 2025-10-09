@@ -884,16 +884,18 @@ ems_compositor_create_system(ems_instance &emsi, struct xrt_system_compositor **
 	u_var_add_root(c, "Electric Maple Server compositor", 0);
 	u_var_add_sink_debug(c, &c->debug_sink, "Debug Sink");
 
-#define EMS_APPSRC_NAME "EMS_source"
+#define EMS_VIDEO_APPSRC_NAME "EMS_video_source"
+#define EMS_AUDIO_APPSRC_NAME "EMS_audio_source"
 
-	ems_gstreamer_pipeline_create(&c->xfctx, EMS_APPSRC_NAME, emsi.callbacks, &c->gstreamer_pipeline);
+	ems_gstreamer_pipeline_create(&c->xfctx, EMS_VIDEO_APPSRC_NAME, EMS_AUDIO_APPSRC_NAME, emsi.callbacks,
+	                              &c->gstreamer_pipeline);
 
 	ems_gstreamer_src_create_with_pipeline( //
 	    c->gstreamer_pipeline,              //
 	    READBACK_W,                         //
 	    READBACK_H,                         //
 	    XRT_FORMAT_R8G8B8X8,                //
-	    EMS_APPSRC_NAME,                    //
+	    EMS_VIDEO_APPSRC_NAME,              //
 	    &c->gstreamer_src,                  //
 	    &c->frame_sink);                    //
 
