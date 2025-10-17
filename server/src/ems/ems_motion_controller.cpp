@@ -273,11 +273,11 @@ static struct xrt_binding_output_pair simple_outputs_index[1] = {
 
 static struct xrt_binding_profile binding_profiles_index[1] = {
     {
-        .name = XRT_DEVICE_SIMPLE_CONTROLLER,
-        .inputs = simple_inputs_index,
-        .input_count = ARRAY_SIZE(simple_inputs_index),
-        .outputs = simple_outputs_index,
-        .output_count = ARRAY_SIZE(simple_outputs_index),
+        XRT_DEVICE_SIMPLE_CONTROLLER,
+        simple_inputs_index,
+        ARRAY_SIZE(simple_inputs_index),
+       simple_outputs_index,
+        ARRAY_SIZE(simple_outputs_index),
     },
 };
 
@@ -306,11 +306,11 @@ ems_motion_controller_create(ems_instance &emsi, enum xrt_device_name device_nam
 	switch (device_type) {
 	case XRT_DEVICE_TYPE_RIGHT_HAND_CONTROLLER:
 		hand_str = "Right";
-		default_pose = (xrt_pose){XRT_QUAT_IDENTITY, {0.2f, 1.4f, -0.4f}};
+		default_pose = xrt_pose{xrt_quat XRT_QUAT_IDENTITY, xrt_vec3{0.2f, 1.4f, -0.4f}};
 		break;
 	case XRT_DEVICE_TYPE_LEFT_HAND_CONTROLLER:
 		hand_str = "Left";
-		default_pose = (xrt_pose){XRT_QUAT_IDENTITY, {-0.2f, 1.4f, -0.4f}};
+		default_pose = xrt_pose{xrt_quat XRT_QUAT_IDENTITY, xrt_vec3{-0.2f, 1.4f, -0.4f}};
 		break;
 	default: U_LOG_E("Device type not supported!"); return nullptr;
 	}

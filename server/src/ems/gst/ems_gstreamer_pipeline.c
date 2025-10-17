@@ -16,7 +16,7 @@
 
 #include "ems_gstreamer_pipeline.h"
 
-#include <glib-unix.h>
+#include <glib.h>
 #include <gst/gst.h>
 #include <gst/gststructure.h>
 #include <gst/rtp/gstrtpbuffer.h>
@@ -462,13 +462,15 @@ rtppay_sink_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 		return GST_PAD_PROBE_OK;
 	}
 
-	g_autoptr(GMutexLocker) locker = g_mutex_locker_new(&egp->metadata_preservation_mutex);
+	g_mutex_lock(&egp->metadata_preservation_mutex);
 
 	// Copy struct_buf to egp->preserved_metadata
 	memcpy(egp->preserved_metadata, map_info.data, map_info.size);
 	egp->preserved_metadata_size = map_info.size;
 
 	gst_buffer_unmap(struct_buf, &map_info);
+
+	g_mutex_unlock(&egp->metadata_preservation_mutex);
 
 	return GST_PAD_PROBE_OK;
 }
@@ -525,12 +527,13 @@ rtppay_src_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 	// 	return GST_PAD_PROBE_OK;
 	// }
 
-	g_autoptr(GMutexLocker) locker = g_mutex_locker_new(&egp->metadata_preservation_mutex);
+	g_mutex_lock(&egp->metadata_preservation_mutex);
 
 	// Copy metadata into RTP header
 	if (!gst_rtp_buffer_add_extension_twobytes_header(&rtp_buffer, 0, RTP_TWOBYTES_HDR_EXT_ID,
 	                                                  egp->preserved_metadata, egp->preserved_metadata_size)) {
 		U_LOG_E("Failed to add extension data!");
+		g_mutex_unlock(&egp->metadata_preservation_mutex);
 		return GST_PAD_PROBE_OK;
 	}
 
@@ -541,6 +544,8 @@ rtppay_src_pad_probe(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
 
 	gst_rtp_buffer_unmap(&rtp_buffer);
 	// gst_buffer_unmap(struct_buf, &map_info);
+
+	g_mutex_unlock(&egp->metadata_preservation_mutex);
 
 	return GST_PAD_PROBE_OK;
 }
@@ -1094,7 +1099,13 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	    "rtpbin.send_rtcp_src_0 ! udpsink name=video-rtcp-send port=5001 sync=false async=false "
 	    "udpsrc port=5005 ! rtpbin.recv_rtcp_sink_0 "
 	    // Audio
+#ifdef __linux__
 	    "pulsesrc device=\"alsa_output.pci-0000_c6_00.1.hdmi-stereo-extra2.monitor\" ! "
+#elif defined(__WIN32__)
+		"wasapi2src loopback=true low-latency=true ! "
+#else
+		"audiotestsrc is-live=true ! "
+#endif
 	    "audioconvert ! "
 	    "audioresample ! "
 	    "queue ! "
@@ -1167,6 +1178,7 @@ ems_gstreamer_pipeline_get_current_time(struct gstreamer_pipeline *gp)
 void
 ems_gstreamer_pipeline_adjust_bitrate(struct gstreamer_pipeline *gp, int target_bitrate)
 {
-	g_autoptr(GstElement) encoder = gst_bin_get_by_name(GST_BIN(gp->pipeline), "enc");
+	GstElement* encoder = gst_bin_get_by_name(GST_BIN(gp->pipeline), "enc");
 	g_object_set(encoder, "bitrate", target_bitrate, NULL);
+	gst_object_unref(encoder);
 }

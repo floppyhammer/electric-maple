@@ -10,8 +10,6 @@ target_link_libraries(
         ems_build_defines
         aux_util
         ${GST_LIBRARIES}
-        ${GST_SDP_LIBRARIES}
-        ${GST_WEBRTC_LIBRARIES}
         ${GLIB_LIBRARIES}
         ${LIBSOUP_LIBRARIES}
         ${JSONGLIB_LIBRARIES}

@@ -3,6 +3,11 @@
 # SPDX-License-Identifier: BSL-1.0
 
 cmake_minimum_required(VERSION 3.10.2)
+
+if (WIN32)
+    set(CMAKE_TOOLCHAIN_FILE "C:/Users/tannh/Env/vcpkg/scripts/buildsystems/vcpkg.cmake")
+endif ()
+
 project(electric-maple VERSION 0.0.1)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -11,6 +16,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
+
+if (WIN32)
+    # Fix macro conflict in nanopb.
+    add_compile_definitions(PB_NO_STATIC_ASSERT)
+endif ()
 
 # Make sure we have pretty colours
 option(DISABLE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." OFF)
@@ -38,27 +48,67 @@ endif ()
 
 option(EMS_LIBSOUP2 "Use libsoup2.4 instead of libsoup3.0" OFF)
 
-# pkgconfig!
-find_package(PkgConfig REQUIRED)
+if (UNIX AND NOT ANDROID)
+    find_package(PkgConfig REQUIRED)
 
-# GLib packages we'll need
-pkg_check_modules(GLIB REQUIRED glib-2.0)
-pkg_check_modules(GST_SDP REQUIRED gstreamer-sdp-1.0)
-pkg_check_modules(GST_RTP REQUIRED gstreamer-rtp-1.0)
-pkg_check_modules(GST_WEBRTC REQUIRED gstreamer-webrtc-1.0)
-pkg_check_modules(GST REQUIRED gstreamer-plugins-base-1.0)
-pkg_check_modules(GST REQUIRED gstreamer-plugins-bad-1.0)
-pkg_check_modules(GST_VIDEO REQUIRED gstreamer-video-1.0)
-pkg_check_modules(GST_APP REQUIRED gstreamer-app-1.0)
+    pkg_check_modules(GLIB REQUIRED glib-2.0)
+    pkg_check_modules(GST REQUIRED
+            gstreamer-1.0
+            gstreamer-plugins-base-1.0
+            gstreamer-plugins-bad-1.0
+            gstnet-1.0
+            gstrtp-1.0
+            gstreamer-sdp-1.0
+            gstreamer-rtp-1.0
+            gstreamer-webrtc-1.0
+            gstreamer-app-1.0
+            gstreamer-video-1.0
+    )
 
-if (EMS_LIBSOUP2)
-    pkg_check_modules(LIBSOUP REQUIRED libsoup-2.4)
-else ()
-    pkg_check_modules(LIBSOUP REQUIRED libsoup-3.0)
+    if (USE_LIBSOUP2)
+        pkg_check_modules(LIBSOUP REQUIRED libsoup-2.4)
+    else ()
+        pkg_check_modules(LIBSOUP REQUIRED libsoup-3.0)
+    endif ()
+
+    pkg_check_modules(JSONGLIB REQUIRED json-glib-1.0)
+    pkg_check_modules(GIO REQUIRED gio-2.0)
+elseif (WIN32)
+    # To ensure dll linking, add "C:\Program Files\gstreamer\1.0\msvc_x86_64\bin" to your PATH
+    set(GST_ROOT "C:\\Program Files\\gstreamer\\1.0\\msvc_x86_64")
+    # For older versions of gstreamer
+    #    set(GST_ROOT "C:\\gstreamer\\1.0\\msvc_x86_64")
+
+    set(GST_LIB_ROOT "${GST_ROOT}\\lib")
+
+    set(GST_INCLUDE_DIRS "${GST_ROOT}\\include\\gstreamer-1.0")
+    set(GST_LIBRARIES
+            "${GST_LIB_ROOT}\\gstreamer-1.0.lib"
+            "${GST_LIB_ROOT}\\gstnet-1.0.lib"
+            "${GST_LIB_ROOT}\\gstrtp-1.0.lib"
+            "${GST_LIB_ROOT}\\gstvideo-1.0.lib"
+            "${GST_LIB_ROOT}\\gstsdp-1.0.lib"
+            "${GST_LIB_ROOT}\\gstwebrtc-1.0.lib"
+            "${GST_LIB_ROOT}\\gstapp-1.0.lib"
+    )
+
+    set(GLIB_INCLUDE_DIRS "${GST_ROOT}\\include\\glib-2.0" "${GST_LIB_ROOT}\\glib-2.0\\include")
+    set(GLIB_LIBRARIES "${GST_LIB_ROOT}\\gobject-2.0.lib" "${GST_LIB_ROOT}\\glib-2.0.lib")
+
+    set(JSONGLIB_INCLUDE_DIRS "${GST_ROOT}\\include\\json-glib-1.0")
+    set(JSONGLIB_LIBRARIES "${GST_LIB_ROOT}\\json-glib-1.0.lib")
+
+    if (USE_LIBSOUP2)
+        set(LIBSOUP_INCLUDE_DIRS "${GST_ROOT}\\include\\libsoup-2.4")
+        set(LIBSOUP_LIBRARIES "${GST_LIB_ROOT}\\soup-2.4.lib")
+    else ()
+        set(LIBSOUP_INCLUDE_DIRS "${GST_ROOT}\\include\\libsoup-3.0")
+        set(LIBSOUP_LIBRARIES "${GST_LIB_ROOT}\\soup-3.0.lib")
+    endif ()
+
+    set(GIO_INCLUDE_DIRS "${GST_ROOT}\\include\\gio-win32-2.0")
+    set(GIO_LIBRARIES "${GST_LIB_ROOT}\\gio-2.0.lib")
 endif ()
-
-pkg_check_modules(JSONGLIB REQUIRED json-glib-1.0)
-pkg_check_modules(GIO REQUIRED gio-2.0)
 
 # Default to PIC code
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -122,7 +172,7 @@ setForce(XRT_BUILD_DRIVER_REMOTE OFF)
 setForce(XRT_BUILD_DRIVER_RIFT_S OFF)
 setForce(XRT_BUILD_DRIVER_SURVIVE OFF)
 setForce(XRT_BUILD_DRIVER_ULV2 OFF)
-setForce(XRT_BUILD_DRIVER_VF ON)
+setForce(XRT_BUILD_DRIVER_VF OFF)
 setForce(XRT_BUILD_DRIVER_VIVE OFF)
 setForce(XRT_BUILD_DRIVER_WMR OFF)
 setForce(XRT_BUILD_DRIVER_SIMULAVR OFF)
@@ -144,6 +194,9 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 
 set(XRT_OXR_RUNTIME_SUFFIX electricmaple CACHE STRING "OpenXR client library suffix" FORCE)
 
+if (WIN32)
+    set(GST_FOUND OFF)
+endif ()
 add_subdirectory(../monado ${CMAKE_CURRENT_BINARY_DIR}/monado)
 
 add_subdirectory(../proto ${CMAKE_CURRENT_BINARY_DIR}/proto)

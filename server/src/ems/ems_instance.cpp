@@ -154,7 +154,7 @@ ems_instance_system_devices_init(struct ems_instance *emsi)
 
 	xrt_tracking_origin &origin = emsi->tracking_origin;
 	origin.type = XRT_TRACKING_TYPE_OTHER;
-	origin.initial_offset = (xrt_pose)XRT_POSE_IDENTITY;
+	origin.initial_offset = xrt_pose XRT_POSE_IDENTITY;
 	snprintf(origin.name, ARRAY_SIZE(origin.name), "Electric Maple Server Tracking Space");
 
 	struct ems_hmd *eh = ems_hmd_create(*emsi);

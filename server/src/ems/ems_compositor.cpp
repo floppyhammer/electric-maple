@@ -413,7 +413,7 @@ pack_blit_and_encode(struct ems_compositor *c,
 		info.dst.old_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 		info.dst.src_access_mask = VK_ACCESS_TRANSFER_READ_BIT;
 		info.dst.src_stage_mask = VK_PIPELINE_STAGE_TRANSFER_BIT;
-		info.dst.size = (xrt_size){READBACK_W, READBACK_H};
+		info.dst.size = xrt_size{READBACK_W, READBACK_H};
 		info.dst.fm_image.aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
 		info.dst.fm_image.base_array_layer = 0;
 		info.dst.fm_image.image = c->bounce.image;
@@ -439,7 +439,7 @@ pack_blit_and_encode(struct ems_compositor *c,
 		info.dst.fm_image.base_array_layer = 0;
 		info.dst.fm_image.image = wrap->image;
 
-		info.size = (xrt_size){READBACK_W, READBACK_H};
+		info.size = xrt_size{READBACK_W, READBACK_H};
 
 		vk_cmd_copy_image_locked(vk, cmd, &info);
 	}
@@ -455,11 +455,11 @@ pack_blit_and_encode(struct ems_compositor *c,
 			VkImage srcImage = sc->vkic.images[data->sub.image_index].handle;
 
 			VkImageSubresourceRange view_subresource_range = {
-			    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-			    .baseMipLevel = 0,
-			    .levelCount = 1,
-			    .baseArrayLayer = data->sub.array_index,
-			    .layerCount = 1,
+			    VK_IMAGE_ASPECT_COLOR_BIT,
+			    0,
+			    1,
+			    data->sub.array_index,
+			    1,
 			};
 
 			// Barrier to make the source image back what it was before.
@@ -477,11 +477,11 @@ pack_blit_and_encode(struct ems_compositor *c,
 		}
 
 		VkImageSubresourceRange first_color_level_subresource_range = {
-		    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-		    .baseMipLevel = 0,
-		    .levelCount = 1,
-		    .baseArrayLayer = 0,
-		    .layerCount = 1,
+		    VK_IMAGE_ASPECT_COLOR_BIT,
+		    0,
+		    1,
+		    0,
+		    1,
 		};
 
 		// Barrier transfer image to host so we can safely read back.

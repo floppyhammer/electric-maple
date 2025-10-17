@@ -9,12 +9,14 @@
 
 #pragma once
 
+#ifdef __linux__
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <stdio.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#endif
 
+#include <stdio.h>
 #include <atomic>
 #include <memory>
 #include <mutex>

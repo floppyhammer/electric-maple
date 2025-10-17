@@ -234,7 +234,7 @@ ems_hmd_create(ems_instance &emsi)
 
 	// Private data.
 #ifndef USE_PREDICTION
-	eh->pose = (struct xrt_pose){XRT_QUAT_IDENTITY, {0.0f, 1.6f, 0.0f}};
+	eh->pose = xrt_pose{xrt_quat XRT_QUAT_IDENTITY, xrt_vec3{0.0f, 1.6f, 0.0f}};
 #endif
 
 	// Print name.
@@ -256,16 +256,16 @@ ems_hmd_create(ems_instance &emsi)
 	//  Or maybe remove this because I think get_view_poses lets us set the FOV dynamically.
 
 	struct xrt_fov fov_left = {
-	    .angle_left = -0.316011f,
-	    .angle_right = 0.361546f,
-	    .angle_up = 0.225283f,
-	    .angle_down = -0.165940f,
+		-0.316011f,
+		0.361546f,
+		0.225283f,
+		-0.165940f,
 	};
 	struct xrt_fov fov_right = {
-	    .angle_left = -0.345102f,
-	    .angle_right = 0.345085f,
-	    .angle_up = 0.223300f,
-	    .angle_down = -0.175499f,
+		-0.345102f,
+		0.345085f,
+		0.223300f,
+		-0.175499f,
 	};
 
 	eh->base.hmd->distortion.fov[0] = fov_left;

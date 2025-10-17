@@ -12,22 +12,17 @@ target_link_libraries(
         em_proto
         aux_util
         ${GST_LIBRARIES}
-        ${GST_SDP_LIBRARIES}
-        ${GST_RTP_LIBRARIES}
-        ${GST_WEBRTC_LIBRARIES}
-        ${GST_VIDEO_LIBRARIES}
-        ${GST_APP_LIBRARIES}
         ${GLIB_LIBRARIES}
         ${LIBSOUP_LIBRARIES}
         ${JSONGLIB_LIBRARIES}
         ${GIO_LIBRARIES}
-        gstnet-1.0
 )
 
 target_include_directories(
         ems_gst
-        PRIVATE
+        PUBLIC
         ${GLIB_INCLUDE_DIRS}
+        PRIVATE
         ${GST_INCLUDE_DIRS}
         ${LIBSOUP_INCLUDE_DIRS}
         ${JSONGLIB_INCLUDE_DIRS}
