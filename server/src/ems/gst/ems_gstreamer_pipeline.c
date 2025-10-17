@@ -1101,7 +1101,7 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	    // Audio
 #ifdef __linux__
 	    "pulsesrc device=\"alsa_output.pci-0000_c6_00.1.hdmi-stereo-extra2.monitor\" ! "
-#elif defined(__WIN32__)
+#elif defined(_WIN32)
 		"wasapi2src loopback=true low-latency=true ! "
 #else
 		"audiotestsrc is-live=true ! "
