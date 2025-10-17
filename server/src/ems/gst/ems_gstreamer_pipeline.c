@@ -1095,7 +1095,7 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 #else
 	    "rtpbin.send_rtp_sink_0 "
 	    "rtpbin. ! "
-	    "udpsink name=udpsink-video port=5000 " // Host will be assigned later
+	    "udpsink name=udpsink-video port=5000 sync=false " // Host will be assigned later
 	    "rtpbin.send_rtcp_src_0 ! udpsink name=video-rtcp-send port=5001 sync=false async=false "
 	    "udpsrc port=5005 ! rtpbin.recv_rtcp_sink_0 "
 	    // Audio
@@ -1115,7 +1115,7 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	    "application/x-rtp,encoding-name=OPUS,media=audio,payload=127 ! "
 	    "rtpbin.send_rtp_sink_1 "
 	    "rtpbin. ! "
-	    "udpsink name=udpsink-audio port=5002 " // Host will be assigned later
+	    "udpsink name=udpsink-audio port=5002 sync=false " // Host will be assigned later
 	    "rtpbin.send_rtcp_src_1 ! udpsink name=audio-rtcp-send port=5003 sync=false async=false "
 	    "udpsrc port=5007 ! rtpbin.recv_rtcp_sink_1 ",
 	    video_appsrc_name, encoder_str);

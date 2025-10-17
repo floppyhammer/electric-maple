@@ -860,7 +860,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	    "ntp-sync=true "
 #endif
 	    // Video
-	    "udpsrc name=videoudpsrc port=5000 buffer-size=8000000 "
+	    "udpsrc name=videoudpsrc port=5000 buffer-size=4000000 "
 	    "caps=\"application/x-rtp,media=video,payload=96,clock-rate=90000,encoding-name=H264\" ! "
 	    "rtpbin.recv_rtp_sink_0 "
 	    "udpsrc port=5001 ! rtpbin.recv_rtcp_sink_0 "
@@ -880,7 +880,7 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	    "queue ! "
 	    "glsinkbin name=glsink " // Setting sync=false on sink here won't work, as the sink will be replaced later.
 	    // Audio
-	    "udpsrc name=audioudpsrc port=5002 buffer-size=8000000 "
+	    "udpsrc name=audioudpsrc port=5002 buffer-size=4000000 "
 	    "caps=\"application/x-rtp,media=audio,payload=127,clock-rate=48000,encoding-name=OPUS\" ! "
 	    "rtpbin.recv_rtp_sink_1 "
 	    "udpsrc port=5003 ! rtpbin.recv_rtcp_sink_1 "
