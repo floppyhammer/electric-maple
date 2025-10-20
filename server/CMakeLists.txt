@@ -52,12 +52,13 @@ if (UNIX AND NOT ANDROID)
     find_package(PkgConfig REQUIRED)
 
     pkg_check_modules(GLIB REQUIRED glib-2.0)
-    pkg_check_modules(GST REQUIRED
+
+    # We use EM_GST instead of GST here, in case it gets overwritten in monado/CMakeLists.txt.
+    pkg_check_modules(EM_GST REQUIRED
             gstreamer-1.0
             gstreamer-plugins-base-1.0
             gstreamer-plugins-bad-1.0
-            gstnet-1.0
-            gstrtp-1.0
+            gstreamer-net-1.0
             gstreamer-sdp-1.0
             gstreamer-rtp-1.0
             gstreamer-webrtc-1.0
@@ -82,7 +83,7 @@ elseif (WIN32)
     set(GST_LIB_ROOT "${GST_ROOT}\\lib")
 
     set(GST_INCLUDE_DIRS "${GST_ROOT}\\include\\gstreamer-1.0")
-    set(GST_LIBRARIES
+    set(EM_GST_LIBRARIES
             "${GST_LIB_ROOT}\\gstreamer-1.0.lib"
             "${GST_LIB_ROOT}\\gstnet-1.0.lib"
             "${GST_LIB_ROOT}\\gstrtp-1.0.lib"

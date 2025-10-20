@@ -11,7 +11,7 @@ target_link_libraries(
         ems_callbacks
         em_proto
         aux_util
-        ${GST_LIBRARIES}
+        ${EM_GST_LIBRARIES}
         ${GLIB_LIBRARIES}
         ${LIBSOUP_LIBRARIES}
         ${JSONGLIB_LIBRARIES}

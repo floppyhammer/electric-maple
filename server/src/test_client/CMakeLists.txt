@@ -9,7 +9,7 @@ target_link_libraries(
         PRIVATE
         ems_build_defines
         aux_util
-        ${GST_LIBRARIES}
+        ${EM_GST_LIBRARIES}
         ${GLIB_LIBRARIES}
         ${LIBSOUP_LIBRARIES}
         ${JSONGLIB_LIBRARIES}
