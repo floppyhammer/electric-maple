@@ -31,6 +31,12 @@
 #include <libsoup/soup-message.h>
 #include <libsoup/soup-session.h>
 
+// clang-format off
+#define ENET_IMPLEMENTATION
+#include "3rd/enet.h"
+// clang-format on
+#include "os/os_threading.h"
+
 #define DEFAULT_WEBSOCKET_URI "ws://" DEFAULT_SERVER_IP ":52356/ws"
 
 /*!
@@ -41,6 +47,7 @@ struct _EmConnection
 	GObject parent;
 	SoupSession *soup_session;
 	gchar *websocket_uri;
+	gchar *host_address;
 	/// Cancellable for websocket connection process
 	GCancellable *ws_cancel;
 	SoupWebsocketConnection *ws;
@@ -53,6 +60,11 @@ struct _EmConnection
 
 	/// Offset between the server and client system clock.
 	int64_t server_offset;
+
+	ENetHost *client;
+	ENetPeer *peer;
+	struct os_thread_helper enet_thread;
+	GAsyncQueue *packet_queue;
 };
 
 G_DEFINE_TYPE(EmConnection, em_connection, G_TYPE_OBJECT)
@@ -723,6 +735,71 @@ em_connection_get_status(EmConnection *em_conn)
 	return em_conn->status;
 }
 
+void
+handle_enet_event(ENetEvent *event)
+{
+	switch (event->type) {
+	case ENET_EVENT_TYPE_RECEIVE: {
+		ALOGI("ENet received a packet.");
+		enet_packet_destroy(event->packet);
+	} break;
+	case ENET_EVENT_TYPE_DISCONNECT: {
+		ALOGI("ENet disconnected.");
+	} break;
+	case ENET_EVENT_TYPE_NONE: {
+		ALOGI("ENet none event.");
+	} break;
+	case ENET_EVENT_TYPE_CONNECT: {
+		ALOGI("ENet connected.");
+	} break;
+	case ENET_EVENT_TYPE_DISCONNECT_TIMEOUT: {
+		ALOGI("ENet disconnect timeout.");
+	} break;
+	}
+}
+
+static void *
+enet_thread_func(void *ptr)
+{
+	EmConnection *conn = ptr;
+
+	ENetEvent event = {0};
+
+	while (conn->enet_thread.running) {
+		if (!conn->client) {
+			continue;
+		}
+
+		ENetPacket *packet;
+
+		while ((packet = g_async_queue_try_pop(conn->packet_queue)) != NULL) {
+			int channel_id = 0;
+			int ret = enet_peer_send(conn->peer, channel_id, packet);
+			if (ret) {
+				ALOGE("enet_peer_send error: %d", ret);
+				// Destroy the packet because ENet didn't accept it.
+				enet_packet_destroy(packet);
+			}
+		}
+
+		// Flush the host to ensure the packet is sent immediately
+		enet_host_flush(conn->client);
+
+		// Block for up to 10 milliseconds, or until an event occurs
+		if (enet_host_service(conn->client, &event, 10) > 0) {
+			// Handle the event
+			handle_enet_event(&event);
+
+			// Check for more events that might have arrived quickly
+			while (enet_host_service(conn->client, &event, 0) > 0) {
+				handle_enet_event(&event);
+			}
+		}
+	}
+
+	return NULL;
+}
+
 static void
 em_conn_connect_internal(EmConnection *em_conn, enum em_status status)
 {
@@ -756,6 +833,39 @@ em_conn_connect_internal(EmConnection *em_conn, enum em_status status)
 
 #endif
 	em_conn_update_status(em_conn, status);
+
+	// ENet
+	{
+		ENetHost *client = {0};
+		client = enet_host_create(NULL /* create a client host */, 1 /* only allow 1 outgoing connection */,
+		                          2 /* allow up 2 channels to be used, 0 and 1 */,
+		                          0 /* assume any amount of incoming bandwidth */,
+		                          0 /* assume any amount of outgoing bandwidth */);
+		if (client == NULL) {
+			ALOGE("An error occurred while trying to create an ENet client host.");
+			exit(EXIT_FAILURE);
+		}
+		em_conn->client = client;
+
+		ENetAddress address = {0};
+		ENetPeer *peer = {0};
+		enet_address_set_host(&address, DEFAULT_SERVER_IP);
+		address.port = 7777;
+
+		/* Initiate the connection, allocating the two channels 0 and 1. */
+		peer = enet_host_connect(client, &address, 2, 0);
+		if (peer == NULL) {
+			ALOGE("No available peers for initiating an ENet connection.");
+			exit(EXIT_FAILURE);
+		}
+		em_conn->peer = peer;
+
+		em_conn->packet_queue = g_async_queue_new_full((GDestroyNotify)enet_packet_destroy);
+
+		int ret = os_thread_helper_start(&em_conn->enet_thread, &enet_thread_func, em_conn);
+		(void)ret;
+		g_assert(ret == 0);
+	}
 }
 
 /* public (non-GObject) methods */
@@ -763,13 +873,33 @@ em_conn_connect_internal(EmConnection *em_conn, enum em_status status)
 EmConnection *
 em_connection_new(const gchar *websocket_uri)
 {
-	return EM_CONNECTION(g_object_new(EM_TYPE_CONNECTION, "websocket-uri", websocket_uri, NULL));
+	if (enet_initialize() != 0) {
+		printf("An error occurred while initializing ENet.\n");
+		abort();
+	}
+
+	ALOGI("New connection to: %s", websocket_uri);
+
+	EmConnection *conn = EM_CONNECTION(g_object_new(EM_TYPE_CONNECTION, "websocket-uri", websocket_uri, NULL));
+
+	g_assert(os_thread_helper_init(&conn->enet_thread) >= 0);
+
+	return conn;
 }
 
 EmConnection *
 em_connection_new_localhost()
 {
-	return EM_CONNECTION(g_object_new(EM_TYPE_CONNECTION, NULL));
+	if (enet_initialize() != 0) {
+		printf("An error occurred while initializing ENet.\n");
+		abort();
+	}
+
+	EmConnection *conn = EM_CONNECTION(g_object_new(EM_TYPE_CONNECTION, NULL));
+
+	g_assert(os_thread_helper_init(&conn->enet_thread) >= 0);
+
+	return conn;
 }
 
 void
@@ -785,6 +915,26 @@ em_connection_disconnect(EmConnection *em_conn)
 }
 
 bool
+em_connection_send_bytes_via_enet(EmConnection *em_conn, GBytes *bytes)
+{
+	gsize length = 0;
+	const gchar *msg_data = g_bytes_get_data(bytes, &length);
+
+	ENetPacketFlag flag = ENET_PACKET_FLAG_UNSEQUENCED;
+
+	ENetPacket *packet = enet_packet_create(msg_data, length, flag);
+	if (!packet) {
+		// Failed to create the packet (e.g., memory allocation failed)
+		return false;
+	}
+
+	// We cannot send it directly from here, as ENet is not thread safe.
+	g_async_queue_push(em_conn->packet_queue, packet);
+
+	return TRUE;
+}
+
+bool
 em_connection_send_bytes(EmConnection *em_conn, GBytes *bytes)
 {
 	if (em_conn->status != EM_STATUS_CONNECTED) {
@@ -796,9 +946,10 @@ em_connection_send_bytes(EmConnection *em_conn, GBytes *bytes)
 	gboolean success = gst_webrtc_data_channel_send_data_full(em_conn->datachannel, bytes, NULL);
 	return success == TRUE;
 #else
-	gsize length = 0;
-	const gchar *msg_data = g_bytes_get_data(bytes, &length);
-	soup_websocket_connection_send_binary(em_conn->ws, msg_data, length);
+	//	gsize length = 0;
+	//	const gchar *msg_data = g_bytes_get_data(bytes, &length);
+	//	soup_websocket_connection_send_binary(em_conn->ws, msg_data, length);
+	em_connection_send_bytes_via_enet(em_conn, bytes);
 	return TRUE;
 #endif
 }

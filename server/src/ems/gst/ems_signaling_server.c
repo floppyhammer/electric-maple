@@ -24,6 +24,13 @@
 
 #include "util/u_logging.h"
 
+// clang-format off
+#define ENET_IMPLEMENTATION
+#include "../3rd/enet.h"
+// clang-format on
+
+#include "os/os_threading.h"
+
 const static int EMS_DEFAULT_PORT = 52356;
 
 struct _EmsSignalingServer
@@ -33,6 +40,9 @@ struct _EmsSignalingServer
 	SoupServer *soup_server;
 
 	GSList *websocket_connections;
+
+	ENetHost *enet_host;
+	struct os_thread_helper enet_thread;
 };
 
 G_DEFINE_TYPE(EmsSignalingServer, ems_signaling_server, G_TYPE_OBJECT)
@@ -49,10 +59,88 @@ enum
 
 static guint signals[N_SIGNALS];
 
-EmsSignalingServer *
-ems_signaling_server_new()
+void
+handle_enet_event(const ENetEvent *event, EmsSignalingServer *server)
 {
-	return EMS_SIGNALING_SERVER(g_object_new(EMS_TYPE_SIGNALING_SERVER, NULL));
+	switch (event->type) {
+	case ENET_EVENT_TYPE_RECEIVE: {
+		g_info("ENet received a packet.");
+		GBytes *message = g_bytes_new_static(event->packet->data, event->packet->dataLength);
+		g_signal_emit(server, signals[SIGNAL_UP_MESSAGE], 0, message);
+		g_free(message);
+	} break;
+	case ENET_EVENT_TYPE_DISCONNECT: {
+		g_info("ENet disconnected.");
+	} break;
+	case ENET_EVENT_TYPE_NONE: {
+		g_info("ENet none event.");
+	} break;
+	case ENET_EVENT_TYPE_CONNECT: {
+		g_info("ENet connected.");
+	} break;
+	case ENET_EVENT_TYPE_DISCONNECT_TIMEOUT: {
+		g_info("ENet disconnect timeout.");
+	} break;
+	}
+}
+
+static void *
+enet_thread_func(void *ptr)
+{
+	EmsSignalingServer *server = ptr;
+
+	ENetEvent event = {0};
+
+	while (server->enet_thread.running) {
+		if (!server->enet_host) {
+			continue;
+		}
+
+		// Block for up to 10 milliseconds, or until an event occurs
+		if (enet_host_service(server->enet_host, &event, 10) > 0) {
+			// Handle the event
+			handle_enet_event(&event, server);
+
+			// Check for more events that might have arrived quickly
+			while (enet_host_service(server->enet_host, &event, 0) > 0) {
+				handle_enet_event(&event, server);
+			}
+		}
+	}
+
+	return NULL;
+}
+
+EmsSignalingServer *
+ems_signaling_server_new(void)
+{
+	if (enet_initialize() != 0) {
+		printf("An error occurred while initializing ENet.\n");
+		return NULL;
+	}
+
+	EmsSignalingServer *server = EMS_SIGNALING_SERVER(g_object_new(EMS_TYPE_SIGNALING_SERVER, NULL));
+
+	ENetAddress address = {0};
+
+	address.host = ENET_HOST_ANY; /* Bind the server to the default localhost.     */
+	address.port = 7777;          /* Bind the server to port 7777. */
+
+#define MAX_CLIENTS 32
+
+	server->enet_host = enet_host_create(&address, MAX_CLIENTS, 2, 0, 0);
+	if (server->enet_host == NULL) {
+		printf("An error occurred while trying to create an ENet server host.\n");
+		return server;
+	}
+
+	g_assert(os_thread_helper_init(&server->enet_thread) >= 0);
+
+	int ret = os_thread_helper_start(&server->enet_thread, &enet_thread_func, server);
+	(void)ret;
+	g_assert(ret == 0);
+
+	return server;
 }
 
 static void
@@ -102,7 +190,7 @@ ws_message_cb(SoupWebsocketConnection *connection, gint type, GBytes *message, g
 	switch (type) {
 	case SOUP_WEBSOCKET_DATA_BINARY: {
 #ifndef USE_WEBRTC
-		g_signal_emit(EMS_SIGNALING_SERVER(user_data), signals[SIGNAL_UP_MESSAGE], 0, message);
+		// g_signal_emit(EMS_SIGNALING_SERVER(user_data), signals[SIGNAL_UP_MESSAGE], 0, message);
 #endif
 	} break;
 	case SOUP_WEBSOCKET_DATA_TEXT: {

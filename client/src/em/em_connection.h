@@ -20,8 +20,8 @@
 #define USE_DECODEBIN3
 
 //#define DEFAULT_SERVER_IP "192.168.49.1" // Android P2P group owner address
-#define DEFAULT_SERVER_IP "10.11.9.31"
-//#define DEFAULT_SERVER_IP "192.168.31.41"
+//#define DEFAULT_SERVER_IP "10.11.9.31"
+#define DEFAULT_SERVER_IP "10.11.9.210"
 
 G_BEGIN_DECLS
 
