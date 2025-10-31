@@ -1090,12 +1090,10 @@ em_stream_client_set_egl_context(EmStreamClient *sc,
 		return;
 	}
 
-	const GstGLPlatform egl_platform = GST_GL_PLATFORM_EGL;
-	guintptr android_main_egl_context_handle = gst_gl_context_get_current_gl_context(egl_platform);
-	GstGLAPI gl_api = gst_gl_context_get_current_gl_api(egl_platform, NULL, NULL);
+	GstGLAPI gl_api = gst_gl_context_get_current_gl_api(GST_GL_PLATFORM_EGL, NULL, NULL);
 	sc->gst_gl_display = g_object_ref_sink(gst_gl_display_new());
 	sc->gst_gl_wrapped_context = g_object_ref_sink(
-	    gst_gl_context_new_wrapped(sc->gst_gl_display, android_main_egl_context_handle, egl_platform, gl_api));
+	    gst_gl_context_new_wrapped(sc->gst_gl_display, (guintptr)egl_context, GST_GL_PLATFORM_EGL, gl_api));
 }
 
 bool
