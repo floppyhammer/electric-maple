@@ -11,8 +11,14 @@
 
 #pragma once
 
-#include "xr_platform_deps.h"
+#if defined(ANDROID)
+#include <jni.h>
+#include <EGL/egl.h>
+#endif
 
+#include <GLES3/gl3.h>
+
+#include <openxr/openxr_platform.h>
 #include <vector>
 
 #ifdef __ANDROID__
