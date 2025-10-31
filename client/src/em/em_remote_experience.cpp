@@ -12,7 +12,6 @@
 #include "em_remote_experience.h"
 
 // clang-format off
-#include "em/render/xr_platform_deps.h"
 
 #include <linux/time.h>
 #include <openxr/openxr.h>
@@ -27,6 +26,8 @@
 #include <exception>
 #include <memory>
 #include <os/os_time.h>
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
 
 #include "electricmaple.pb.h"
 #include "em_app_log.h"

@@ -11,7 +11,6 @@
 #include "em_stream_client.h"
 
 // clang-format off
-#include "em/render/xr_platform_deps.h"
 #include "em_app_log.h"
 #include "em_connection.h"
 #include "em_sample.h"
@@ -40,6 +39,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+
+#include <GLES2/gl2ext.h>
 
 // Thresholds for reusing last DownMsg when we received too many frames without DownMsgs in a row.
 #define EM_NO_DOWN_MSG_FALLBACK_TIMEOUT_SECS 1

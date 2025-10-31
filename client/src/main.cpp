@@ -40,7 +40,6 @@
 #include "em/em_stream_client.h"
 #include "em/em_sample.h"
 #include "em/render/render.hpp"
-#include "em/render/xr_platform_deps.h"
 #include "os/os_time.h"
 #include "util/u_time.h"
 
