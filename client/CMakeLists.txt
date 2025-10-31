@@ -42,6 +42,10 @@ setforce(XRT_FEATURE_STEAMVR_PLUGIN OFF)
 setforce(XRT_FEATURE_TRACING OFF)
 setforce(XRT_FEATURE_SLAM OFF)
 
+# Not implemented / overridden in our compositor.
+# Currently makes apps that call it (Godot) crash when enabled
+setforce(XRT_FEATURE_OPENXR_DISPLAY_REFRESH_RATE OFF)
+
 setforce(XRT_FEATURE_CLIENT_DEBUG_GUI OFF)
 
 setforce(XRT_MODULE_MONADO_CLI OFF)
