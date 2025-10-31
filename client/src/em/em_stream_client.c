@@ -61,8 +61,6 @@ struct _EmStreamClient
 	GstElement *pipeline;
 	GstGLDisplay *gst_gl_display;
 
-	GstGLDisplay *display;
-
 	/// Wrapped version of the android_main/render context
 	GstGLContext *android_main_context;
 
@@ -257,7 +255,6 @@ em_stream_client_dispose(EmStreamClient *self)
 	gst_clear_object(&self->sample);
 	gst_clear_object(&self->pipeline);
 	gst_clear_object(&self->gst_gl_display);
-	gst_clear_object(&self->display);
 	gst_clear_object(&self->context);
 	gst_clear_object(&self->appsink);
 }
@@ -338,7 +335,7 @@ bus_sync_handler_cb(GstBus *bus, GstMessage *msg, EmStreamClient *sc)
 		if (g_str_equal(type, GST_GL_DISPLAY_CONTEXT_TYPE)) {
 			ALOGI("Got message: Need display context");
 			g_autoptr(GstContext) context = gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
-			gst_context_set_gl_display(context, sc->display);
+			gst_context_set_gl_display(context, sc->gst_gl_display);
 			gst_element_set_context(GST_ELEMENT(msg->src), context);
 		} else if (g_str_equal(type, "gst.gl.app_context")) {
 			ALOGI("Got message: Need app context");
