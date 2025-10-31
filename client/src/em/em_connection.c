@@ -813,15 +813,7 @@ em_conn_connect_internal(EmConnection *em_conn, enum em_status status)
 	soup_session_set_timeout(em_conn->soup_session, 5);
 
 	ALOGI("calling soup_session_websocket_connect_async. websocket_uri = %s", em_conn->websocket_uri);
-#if SOUP_MAJOR_VERSION == 2
-	soup_session_websocket_connect_async(em_conn->soup_session,                                     // session
-	                                     soup_message_new(SOUP_METHOD_GET, em_conn->websocket_uri), // message
-	                                     NULL,                                                      // origin
-	                                     NULL,                                                      // protocols
-	                                     em_conn->ws_cancel,                                        // cancellable
-	                                     (GAsyncReadyCallback)em_conn_websocket_connected_cb,       // callback
-	                                     em_conn);                                                  // user_data
-#else
+
 	soup_session_websocket_connect_async(em_conn->soup_session,                                     // session
 	                                     soup_message_new(SOUP_METHOD_GET, em_conn->websocket_uri), // message
 	                                     NULL,                                                      // origin
@@ -831,7 +823,7 @@ em_conn_connect_internal(EmConnection *em_conn, enum em_status status)
 	                                     (GAsyncReadyCallback)em_conn_websocket_connected_cb,       // callback
 	                                     em_conn);                                                  // user_data
 
-#endif
+
 	em_conn_update_status(em_conn, status);
 
 	// ENet
