@@ -760,6 +760,8 @@ ems_compositor_get_swapchain_create_properties(struct xrt_compositor *xc,
 		return xret;
 	}
 
+	U_LOG_I("%dx%d %s", info->width, info->height, vk_format_string(static_cast<VkFormat>(info->format)));
+
 	xsccp->extra_bits = (enum xrt_swapchain_usage_bits)(XRT_SWAPCHAIN_USAGE_TRANSFER_SRC | xsccp->extra_bits);
 
 	return XRT_SUCCESS;
