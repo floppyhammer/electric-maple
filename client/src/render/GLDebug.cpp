@@ -14,7 +14,7 @@
 #include <GLES3/gl32.h>
 #include <android/log.h>
 
-#include "../em_app_log.h"
+#include "em/em_app_log.h"
 
 namespace {
 

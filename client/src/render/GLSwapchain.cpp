@@ -16,7 +16,7 @@
 
 #include <cassert>
 
-#include "../em_app_log.h"
+#include "em/em_app_log.h"
 
 GLSwapchain::~GLSwapchain()
 {

@@ -15,7 +15,7 @@
 #include <stdexcept>
 
 #include "em/em_app_log.h"
-#include "em/render/GLError.h"
+#include "GLError.h"
 
 EglData::EglData()
 {

@@ -33,15 +33,15 @@
 #include <thread>
 #include <vector>
 
-#include "EglData.hpp"
+#include "render/EglData.hpp"
 #include "em/em_app_log.h"
 #include "em/em_connection.h"
 #include "em/em_egl.h"
 #include "em/em_remote_experience.h"
 #include "em/em_stream_client.h"
 #include "em/em_sample.h"
-#include "em/render/render.hpp"
-#include "em/render/xr_platform_deps.h"
+#include "render/render.hpp"
+#include "render/xr_platform_deps.h"
 #include "os/os_time.h"
 #include "util/u_time.h"
 

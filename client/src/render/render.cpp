@@ -20,7 +20,7 @@
 #include <cstdlib>
 #include <stdexcept>
 
-#include "../em_app_log.h"
+#include "em/em_app_log.h"
 #include "GLDebug.h"
 #include "GLError.h"
 
