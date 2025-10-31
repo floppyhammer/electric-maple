@@ -41,13 +41,6 @@
  *
  */
 
-/// Casting helper function
-static inline struct ems_motion_controller *
-ems_motion_controller(struct xrt_device *xdev)
-{
-	return (struct ems_motion_controller *)xdev;
-}
-
 xrt_pose
 convert_pose(_em_proto_Pose pose)
 {
@@ -66,7 +59,7 @@ convert_pose(_em_proto_Pose pose)
 static void
 controller_destroy(struct xrt_device *xdev)
 {
-	struct ems_motion_controller *emc = ems_motion_controller(xdev);
+	struct ems_motion_controller *emc = reinterpret_cast<struct ems_motion_controller *>(xdev);
 
 	// Remove the variable tracking.
 	u_var_remove_root(emc);
@@ -81,7 +74,7 @@ controller_destroy(struct xrt_device *xdev)
 static xrt_result_t
 controller_update_inputs(struct xrt_device *xdev)
 {
-	struct ems_motion_controller *emc = ems_motion_controller(xdev);
+	struct ems_motion_controller *emc = reinterpret_cast<struct ems_motion_controller *>(xdev);
 
 	uint64_t now = os_monotonic_get_ns();
 
@@ -119,7 +112,7 @@ controller_get_hand_tracking(struct xrt_device *xdev,
                              struct xrt_hand_joint_set *out_value,
                              int64_t *out_timestamp_ns)
 {
-	struct ems_motion_controller *emc = ems_motion_controller(xdev);
+	struct ems_motion_controller *emc = reinterpret_cast<struct ems_motion_controller *>(xdev);
 
 	if (name != XRT_INPUT_HT_UNOBSTRUCTED_LEFT && name != XRT_INPUT_HT_UNOBSTRUCTED_RIGHT) {
 		U_LOG_E("Unknown input name for hand tracker: 0x%0x", name);
@@ -154,7 +147,7 @@ controller_get_tracked_pose(struct xrt_device *xdev,
                             int64_t at_timestamp_ns,
                             struct xrt_space_relation *out_relation)
 {
-	struct ems_motion_controller *emc = ems_motion_controller(xdev);
+	struct ems_motion_controller *emc = reinterpret_cast<struct ems_motion_controller *>(xdev);
 
 	switch (name) {
 	case XRT_INPUT_WMR_GRIP_POSE: {
