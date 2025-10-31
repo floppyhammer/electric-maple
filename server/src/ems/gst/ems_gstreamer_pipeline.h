@@ -16,9 +16,8 @@
 #include "util/u_debug.h"
 #include "util/u_misc.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+G_BEGIN_DECLS
+
 struct gstreamer_pipeline;
 
 struct ems_callbacks;
@@ -47,6 +46,4 @@ ems_gstreamer_pipeline_get_current_time(struct gstreamer_pipeline *gp);
 void
 ems_gstreamer_pipeline_adjust_bitrate(struct gstreamer_pipeline *gp, int target_bitrate);
 
-#ifdef __cplusplus
-}
-#endif
+G_END_DECLS
