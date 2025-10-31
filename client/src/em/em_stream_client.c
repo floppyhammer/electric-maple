@@ -119,26 +119,6 @@ G_DEFINE_TYPE(EmStreamClient, em_stream_client, G_TYPE_OBJECT)
 
 // clang-format on
 
-/*
- * callbacks
- */
-
-static void
-on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc);
-
-static void
-on_drop_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc);
-
-static void *
-em_stream_client_thread_func(void *ptr);
-
-/*
- * Helper functions
- */
-
-static void
-em_stream_client_set_connection(EmStreamClient *sc, EmConnection *connection);
-
 /* GObject method implementations */
 
 static void
@@ -220,6 +200,7 @@ pose_to_openxr(const em_proto_Pose *p)
 static GstBusSyncReply
 bus_sync_handler_cb(GstBus *bus, GstMessage *msg, EmStreamClient *sc)
 {
+	(void)bus;
 	// LOG_MSG(msg);
 
 	/* Do not let GstGL retrieve the display handle on its own
@@ -738,10 +719,12 @@ new_jitterbuffer_callback(GstElement *rtpbin, GstElement *jitterbuffer, guint se
 }
 
 static void
-on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
+on_need_pipeline_cb(EmConnection *em_conn, gpointer user_data)
 {
-	g_assert_nonnull(sc);
 	g_assert_nonnull(em_conn);
+
+	EmStreamClient *sc = EM_STREAM_CLIENT(user_data);
+
 	GError *error = NULL;
 
 #ifdef USE_WEBRTC
@@ -986,6 +969,18 @@ em_stream_client_set_egl_context(EmStreamClient *sc, EmEglContext *egl_context)
 	    sc->gst_gl_display, (guintptr)em_egl_context_get_context(egl_context), GST_GL_PLATFORM_EGL, gl_api));
 }
 
+static void
+em_stream_client_set_connection(EmStreamClient *sc, EmConnection *connection)
+{
+	g_clear_object(&sc->connection);
+	if (connection != NULL) {
+		sc->connection = g_object_ref(connection);
+		g_signal_connect(sc->connection, "on-need-pipeline", G_CALLBACK(on_need_pipeline_cb), sc);
+		g_signal_connect(sc->connection, "on-drop-pipeline", G_CALLBACK(on_drop_pipeline_cb), sc);
+		ALOGI("%s: EmConnection assigned", __FUNCTION__);
+	}
+}
+
 void
 em_stream_client_spawn_thread(EmStreamClient *sc, EmConnection *connection)
 {
@@ -1215,9 +1210,11 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 
 	GstVideoInfo info;
 	gst_video_info_from_caps(&info, caps);
-	gint width = GST_VIDEO_INFO_WIDTH(&info);
-	gint height = GST_VIDEO_INFO_HEIGHT(&info);
-	//	ALOGI("%s: frame %d (w) x %d (h)", __FUNCTION__, width, height);
+#if 0
+	 gint width = GST_VIDEO_INFO_WIDTH(&info);
+	 gint height = GST_VIDEO_INFO_HEIGHT(&info);
+	 ALOGD("%s: frame %d (w) x %d (h)", __FUNCTION__, width, height);
+#endif
 
 	// TODO: Handle resize?
 #if 0
@@ -1278,18 +1275,6 @@ em_stream_client_release_sample(EmStreamClient *sc, struct em_sample *ems)
 /*
  * Helper functions
  */
-
-static void
-em_stream_client_set_connection(EmStreamClient *sc, EmConnection *connection)
-{
-	g_clear_object(&sc->connection);
-	if (connection != NULL) {
-		sc->connection = g_object_ref(connection);
-		g_signal_connect(sc->connection, "on-need-pipeline", G_CALLBACK(on_need_pipeline_cb), sc);
-		g_signal_connect(sc->connection, "on-drop-pipeline", G_CALLBACK(on_drop_pipeline_cb), sc);
-		ALOGI("%s: EmConnection assigned", __FUNCTION__);
-	}
-}
 
 void
 em_stream_client_adjust_jitterbuffer(EmStreamClient *sc)
