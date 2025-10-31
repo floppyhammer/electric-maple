@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: BSL-1.0
 
-package com.plutovr.electricmaple.standalone_client
+package com.plutovr.electricmaple.client
 
 import org.freedesktop.gstreamer.GStreamer
 

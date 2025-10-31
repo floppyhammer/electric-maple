@@ -12,7 +12,7 @@ plugins {
 android {
     compileSdk 36
 
-    namespace 'com.plutovr.electricmaple.standalone_client'
+    namespace 'com.plutovr.electricmaple.client'
     ndkVersion project.ndkVersion
 
     compileOptions {
@@ -34,7 +34,7 @@ android {
 //                install "nanopb"
 //            }
 //        }
-        applicationId "com.plutovr.electricmaple.standalone_client"
+        applicationId "com.plutovr.electricmaple.client"
         minSdkVersion 26
         targetSdkVersion 36
         versionCode 1
