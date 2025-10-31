@@ -35,18 +35,6 @@ struct EglData
 	EglData &
 	operator=(EglData &&) = delete;
 
-	bool
-	isReady() const noexcept
-	{
-		return display != EGL_NO_DISPLAY && context != EGL_NO_CONTEXT && surface != EGL_NO_SURFACE;
-	}
-
-	void
-	makeCurrent() const;
-
-	void
-	makeNotCurrent() const;
-
 	EGLDisplay display = EGL_NO_DISPLAY;
 	EGLContext context = EGL_NO_CONTEXT;
 	EGLSurface surface = EGL_NO_SURFACE;

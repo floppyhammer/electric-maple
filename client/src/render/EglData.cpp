@@ -121,20 +121,3 @@ EglData::~EglData()
 		context = EGL_NO_CONTEXT;
 	}
 }
-
-void
-EglData::makeCurrent() const
-{
-	if (eglMakeCurrent(display, surface, surface, context) == EGL_FALSE) {
-		ALOGE("Failed to make EGL context current");
-		CHECK_EGL_ERROR();
-		throw std::runtime_error("Could not make EGL context current");
-	}
-	ALOGI("EGL: Made context current");
-}
-
-void
-EglData::makeNotCurrent() const
-{
-	eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-}
