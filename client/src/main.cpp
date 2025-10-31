@@ -541,8 +541,6 @@ android_main(struct android_app *app)
 	// End of normal OpenXR app startup
 	//
 
-	EmEglMutexIface *egl_mutex = em_egl_mutex_create(initialEglData->display, initialEglData->context);
-
 	//
 	// Start of remote-rendering-specific code
 	//
@@ -553,7 +551,7 @@ android_main(struct android_app *app)
 
 	// Set up gst logger
 	gst_debug_set_default_threshold(GST_LEVEL_WARNING);
-//	gst_debug_set_threshold_for_name("rtpjitterbuffer", GST_LEVEL_LOG);
+	//	gst_debug_set_threshold_for_name("rtpjitterbuffer", GST_LEVEL_LOG);
 	//			 gst_debug_set_threshold_for_name("webrtcbindatachannel", GST_LEVEL_TRACE);
 
 	// Set up our own objects
@@ -562,7 +560,8 @@ android_main(struct android_app *app)
 
 	ALOGI("%s: telling stream client about EGL", __FUNCTION__);
 	// Retaining ownership
-	em_stream_client_set_egl_context(stream_client, egl_mutex, initialEglData->surface);
+	em_stream_client_set_egl_context(stream_client, initialEglData->display, initialEglData->context,
+	                                 initialEglData->surface);
 
 	ALOGI("%s: creating connection object", __FUNCTION__);
 	_state.connection = g_object_ref_sink(em_connection_new_localhost());
@@ -606,8 +605,6 @@ android_main(struct android_app *app)
 	// g_clear_object(&stream_client);
 
 	em_remote_experience_destroy(&remote_experience);
-
-	em_egl_mutex_destroy(&egl_mutex);
 
 	//
 	// End RR cleanup

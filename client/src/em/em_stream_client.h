@@ -60,26 +60,16 @@ em_stream_client_destroy(EmStreamClient **ptr_sc);
  * TODO not sure what the surface is actually used for...
  */
 void
-em_stream_client_set_egl_context(EmStreamClient *sc, EmEglMutexIface *egl_mutex, EGLSurface pbuffer_surface);
+em_stream_client_set_egl_context(EmStreamClient *sc,
+                                 EGLDisplay egl_display,
+                                 EGLContext egl_context,
+                                 EGLSurface egl_surface);
 
 /*!
- * Lock the mutex for the "main" EGL context supplied via @ref em_stream_client_set_egl_context and set it as current,
- * using the pbuffer surface supplied to that same function.
- *
- * Works just like @ref em_stream_client_egl_begin except it uses the surface you already told us about.
- *
- * @return true if successful - you will need to call @ref em_stream_client_egl_end when done using EGL/GL/GLES to
- * restore previous context/surfaces and unlock.
+ * Make the internal EGL context current
  */
 bool
-em_stream_client_egl_begin_pbuffer(EmStreamClient *sc);
-
-/*!
- * Restore previous EGL context and surfaces, and unlock the mutex for the "main" EGL context supplied via @ref
- * em_stream_client_set_egl_context
- */
-void
-em_stream_client_egl_end(EmStreamClient *sc);
+em_stream_client_egl_make_current(EmStreamClient *sc);
 
 /*!
  * Start the GMainLoop embedded in this object in a new thread

@@ -12,7 +12,6 @@
 
 // clang-format off
 #include "render/xr_platform_deps.h"
-#include "em/em_egl.h"
 #include "em_app_log.h"
 #include "em_connection.h"
 #include "em_sample.h"
@@ -77,12 +76,9 @@ struct _EmStreamClient
 	struct
 	{
 		EGLDisplay display;
-		EGLContext android_main_context;
-		// 16x16 pbuffer surface
+		EGLContext context;
 		EGLSurface surface;
 	} egl;
-
-	EmEglMutexIface *egl_mutex;
 
 	struct os_thread_helper play_thread;
 
@@ -1080,22 +1076,19 @@ em_stream_client_destroy(EmStreamClient **ptr_sc)
 }
 
 void
-em_stream_client_set_egl_context(EmStreamClient *sc, EmEglMutexIface *egl_mutex, EGLSurface pbuffer_surface)
+em_stream_client_set_egl_context(EmStreamClient *sc,
+                                 EGLDisplay egl_display,
+                                 EGLContext egl_context,
+                                 EGLSurface egl_surface)
 {
-	// Free old mutex interface if any
-	em_stream_client_free_egl_mutex(sc);
+	sc->egl.display = egl_display;
+	sc->egl.context = egl_context;
+	sc->egl.surface = egl_surface;
 
-	sc->egl_mutex = egl_mutex;
-
-	if (!em_egl_mutex_begin(sc->egl_mutex, EGL_NO_SURFACE, EGL_NO_SURFACE)) {
-		ALOGV("em_stream_client_set_egl_context: Failed to make egl context current");
+	if (!em_stream_client_egl_make_current(sc)) {
+		ALOGE("%s: Failed make egl context current", __FUNCTION__);
 		return;
 	}
-	ALOGI("Wrapping egl context");
-
-	sc->egl.display = egl_mutex->display;
-	sc->egl.android_main_context = egl_mutex->context;
-	sc->egl.surface = pbuffer_surface;
 
 	const GstGLPlatform egl_platform = GST_GL_PLATFORM_EGL;
 	guintptr android_main_egl_context_handle = gst_gl_context_get_current_gl_context(egl_platform);
@@ -1103,21 +1096,16 @@ em_stream_client_set_egl_context(EmStreamClient *sc, EmEglMutexIface *egl_mutex,
 	sc->gst_gl_display = g_object_ref_sink(gst_gl_display_new());
 	sc->gst_gl_wrapped_context = g_object_ref_sink(
 	    gst_gl_context_new_wrapped(sc->gst_gl_display, android_main_egl_context_handle, egl_platform, gl_api));
-
-	ALOGV("eglMakeCurrent un-make-current");
-	em_egl_mutex_end(sc->egl_mutex);
 }
 
 bool
-em_stream_client_egl_begin_pbuffer(EmStreamClient *sc)
+em_stream_client_egl_make_current(EmStreamClient *sc)
 {
-	return em_egl_mutex_begin(sc->egl_mutex, sc->egl.surface, sc->egl.surface);
-}
-
-void
-em_stream_client_egl_end(EmStreamClient *sc)
-{
-	em_egl_mutex_end(sc->egl_mutex);
+	if (eglMakeCurrent(sc->egl.display, sc->egl.surface, sc->egl.surface, sc->egl.context) == EGL_FALSE) {
+		ALOGE("%s: Failed make egl context current", __FUNCTION__);
+		return false;
+	}
+	return true;
 }
 
 void
@@ -1369,6 +1357,7 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 	if (sc->gst_gl_gstreamer_context == NULL) {
 		ALOGI("%s: Retrieving the GStreamer EGL context", __FUNCTION__);
 		/* Get GStreamer's gl context. */
+		// TODO: check if this is not the same context we actually did set on the pipeline
 		gst_gl_query_local_gl_context(sc->appsink, GST_PAD_SINK, &sc->gst_gl_gstreamer_context);
 
 		/* Check if we have 2D or OES textures */
@@ -1426,9 +1415,7 @@ em_stream_client_set_connection(EmStreamClient *sc, EmConnection *connection)
 
 static void
 em_stream_client_free_egl_mutex(EmStreamClient *sc)
-{
-	sc->egl_mutex = NULL;
-}
+{}
 
 void
 em_stream_client_adjust_jitterbuffer(EmStreamClient *sc)
