@@ -455,11 +455,7 @@ pack_blit_and_encode(struct ems_compositor *c,
 			VkImage srcImage = sc->vkic.images[data->sub.image_index].handle;
 
 			VkImageSubresourceRange view_subresource_range = {
-			    VK_IMAGE_ASPECT_COLOR_BIT,
-			    0,
-			    1,
-			    data->sub.array_index,
-			    1,
+			    VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, data->sub.array_index, 1,
 			};
 
 			// Barrier to make the source image back what it was before.
@@ -477,11 +473,7 @@ pack_blit_and_encode(struct ems_compositor *c,
 		}
 
 		VkImageSubresourceRange first_color_level_subresource_range = {
-		    VK_IMAGE_ASPECT_COLOR_BIT,
-		    0,
-		    1,
-		    0,
-		    1,
+		    VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1,
 		};
 
 		// Barrier transfer image to host so we can safely read back.
@@ -898,8 +890,7 @@ ems_compositor_create_system(ems_instance &emsi, struct xrt_system_compositor **
 	    READBACK_H,                         //
 	    XRT_FORMAT_R8G8B8X8,                //
 	    EMS_VIDEO_APPSRC_NAME,              //
-	    &c->gstreamer_src,                  //
-	    &c->frame_sink);                    //
+	    &c->gstreamer_src);                 //
 
 	// Bounce image for scaling.
 	{

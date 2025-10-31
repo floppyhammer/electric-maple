@@ -128,8 +128,6 @@ struct ems_compositor
 	struct gstreamer_pipeline *gstreamer_pipeline;
 
 	struct ems_gstreamer_src *gstreamer_src;
-	// This is the base of gstreamer_sink, so they're basically the same pointer
-	struct xrt_frame_sink *frame_sink;
 
 	uint64_t offset_ns;
 };

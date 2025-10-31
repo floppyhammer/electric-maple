@@ -30,8 +30,7 @@ ems_gstreamer_src_create_with_pipeline(struct gstreamer_pipeline *gp,
                                        uint32_t height,
                                        enum xrt_format format,
                                        const char *appsrc_name,
-                                       struct ems_gstreamer_src **out_gs,
-                                       struct xrt_frame_sink **out_xfs);
+                                       struct ems_gstreamer_src **out_gs);
 
 #ifdef __cplusplus
 }

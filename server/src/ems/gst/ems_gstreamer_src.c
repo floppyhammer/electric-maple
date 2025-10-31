@@ -197,8 +197,7 @@ ems_gstreamer_src_create_with_pipeline(struct gstreamer_pipeline *gp,
                                        uint32_t height,
                                        enum xrt_format format,
                                        const char *appsrc_name,
-                                       struct ems_gstreamer_src **out_gs,
-                                       struct xrt_frame_sink **out_xfs)
+                                       struct ems_gstreamer_src **out_gs)
 {
 	const char *format_str = NULL;
 	switch (format) {
@@ -255,5 +254,4 @@ ems_gstreamer_src_create_with_pipeline(struct gstreamer_pipeline *gp,
 	xrt_frame_context_add(gp->xfctx, &gs->node);
 
 	*out_gs = gs;
-	*out_xfs = &gs->base;
 }
