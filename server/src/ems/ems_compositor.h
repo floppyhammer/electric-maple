@@ -83,9 +83,6 @@ struct ems_compositor
 {
 	struct comp_base base;
 
-	// This thing should outlive us
-	struct ems_instance *instance;
-
 	//! The device we are displaying to.
 	struct xrt_device *xdev;
 
