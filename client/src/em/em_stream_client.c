@@ -60,8 +60,6 @@ struct _EmStreamClient
 	EmConnection *connection;
 	GstElement *pipeline;
 	GstGLDisplay *gst_gl_display;
-	GstGLContext *gst_gl_context;
-	GstGLContext *gst_gl_other_context;
 
 	GstGLDisplay *display;
 
@@ -259,8 +257,6 @@ em_stream_client_dispose(EmStreamClient *self)
 	gst_clear_object(&self->sample);
 	gst_clear_object(&self->pipeline);
 	gst_clear_object(&self->gst_gl_display);
-	gst_clear_object(&self->gst_gl_context);
-	gst_clear_object(&self->gst_gl_other_context);
 	gst_clear_object(&self->display);
 	gst_clear_object(&self->context);
 	gst_clear_object(&self->appsink);
