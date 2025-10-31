@@ -353,7 +353,7 @@ em_conn_data_channel_message_string_cb(GstWebRTCDataChannel *datachannel, gchar 
 }
 
 static void
-emconn_data_channel_message_data_cb(GstWebRTCDataChannel *datachannel, GBytes *bytes, EmConnection *emconn)
+emconn_data_channel_message_data_cb(GstWebRTCDataChannel *datachannel, GBytes *bytes, EmConnection *self)
 {
 	uint64_t client_now = os_monotonic_get_ns();
 
@@ -370,12 +370,9 @@ emconn_data_channel_message_data_cb(GstWebRTCDataChannel *datachannel, GBytes *b
 
 	ALOGD("Server offset %.2fms", time_ns_to_ms_f(server_offset));
 
-	if (emconn->server_offset == 0) {
-		// Initial offset
-		emconn->server_offset = server_offset;
-	} else if (labs(server_offset) < labs(emconn->server_offset)) {
-		// If we get a smaller offset, use it (compensate transmission latency)
-		emconn->server_offset = server_offset;
+	if (self->server_offset == 0 ||                          // Initial offset
+	    (labs(server_offset) < labs(self->server_offset))) { // If we get a smaller offset, use it
+		self->server_offset = server_offset;
 	}
 }
 
