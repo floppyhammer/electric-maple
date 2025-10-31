@@ -55,6 +55,8 @@ struct em_sc_sample
 
 struct _EmStreamClient
 {
+	GObject parent;
+
 	GMainLoop *loop;
 	EmConnection *connection;
 	GstElement *pipeline;
@@ -102,35 +104,7 @@ struct _EmStreamClient
 	guint timeout_src_id_dot_data;
 };
 
-#if 0
-G_DEFINE_TYPE(EmStreamClient, em_stream_client, G_TYPE_OBJECT);
-
-enum
-{
-    // action signals
-    // SIGNAL_CONNECT,
-    // SIGNAL_DISCONNECT,
-    // SIGNAL_SET_PIPELINE,
-    // signals
-    // SIGNAL_WEBSOCKET_CONNECTED,
-    // SIGNAL_WEBSOCKET_FAILED,
-    // SIGNAL_CONNECTED,
-    // SIGNAL_STATUS_CHANGE,
-    // SIGNAL_ON_NEED_PIPELINE,
-    // SIGNAL_ON_DROP_PIPELINE,
-    // SIGNAL_DISCONNECTED,
-    N_SIGNALS
-};
-
-static guint signals[N_SIGNALS];
-
-typedef enum
-{
-    PROP_CONNECTION = 1,
-    // PROP_STATUS,
-    N_PROPERTIES
-} EmStreamClientProperty;
-#endif
+G_DEFINE_TYPE(EmStreamClient, em_stream_client, G_TYPE_OBJECT)
 
 #define RTP_TWOBYTES_HDR_EXT_ID 1 // Must be in the [1,15] range
 
@@ -167,47 +141,16 @@ em_stream_client_set_connection(EmStreamClient *sc, EmConnection *connection);
 
 /* GObject method implementations */
 
-#if 0
-
 static void
-em_stream_client_set_property(GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
+em_stream_client_init(EmStreamClient *self)
 {
-    switch ((EmStreamClientProperty)property_id) {
-
-    case PROP_CONNECTION:
-        em_stream_client_set_connection(EM_STREAM_CLIENT(object), EM_CONNECTION(g_value_get_object(value)));
-        break;
-
-    default: G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec); break;
-    }
-}
-
-static void
-em_stream_client_get_property(GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
-{
-
-    switch ((EmStreamClientProperty)property_id) {
-    case PROP_CONNECTION: g_value_set_object(value, EM_STREAM_CLIENT(object)->connection); break;
-
-    default: G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec); break;
-    }
-}
-
-#endif
-
-static void
-em_stream_client_init(EmStreamClient *sc)
-{
-	ALOGI("%s: creating stuff", __FUNCTION__);
-
 	guint major, minor, micro, nano;
 	gst_version(&major, &minor, &micro, &nano);
 	ALOGI("GStreamer version %d %d %d %d", major, minor, micro, nano);
 
-	memset(sc, 0, sizeof(EmStreamClient));
-	sc->loop = g_main_loop_new(NULL, FALSE);
-	g_assert(os_thread_helper_init(&sc->play_thread) >= 0);
-	g_mutex_init(&sc->sample_mutex);
+	self->loop = g_main_loop_new(NULL, FALSE);
+	g_assert(os_thread_helper_init(&self->play_thread) >= 0);
+	g_mutex_init(&self->sample_mutex);
 
 	const gchar *tags[] = {NULL};
 	const GstMetaInfo *info = gst_meta_register_custom("down-message", tags, NULL, NULL, NULL);
@@ -215,25 +158,21 @@ em_stream_client_init(EmStreamClient *sc)
 		ALOGE("Failed to register custom meta 'down-message'.");
 	}
 
-	g_mutex_init(&sc->skipped_frames_mutex);
-	sc->skipped_frames = 0;
+	g_mutex_init(&self->skipped_frames_mutex);
+	self->skipped_frames = 0;
 
-	g_mutex_init(&sc->metadata_preservation_mutex);
-	sc->preserved_metadata_struct_buf = NULL;
+	g_mutex_init(&self->metadata_preservation_mutex);
+	self->preserved_metadata_struct_buf = NULL;
 
-	sc->latency_collection = g_array_new(FALSE, FALSE, sizeof(gint64));
-	sc->latency_calculation_window = time_s_to_ns(3);
-	sc->latency_last_time_query = os_monotonic_get_ns();
-
-	ALOGI("%s: done creating stuff", __FUNCTION__);
+	self->latency_collection = g_array_new(FALSE, FALSE, sizeof(gint64));
+	self->latency_calculation_window = time_s_to_ns(3);
+	self->latency_last_time_query = os_monotonic_get_ns();
 }
 
 static void
-em_stream_client_dispose(EmStreamClient *self)
+em_stream_client_finalize(GObject *gobject)
 {
-	// May be called multiple times during destruction.
-	// Stop things and clear ref counted things here.
-	// EmStreamClient *self = EM_STREAM_CLIENT(object);
+	EmStreamClient *self = EM_STREAM_CLIENT(gobject);
 	em_stream_client_stop(self);
 	g_clear_object(&self->loop);
 	g_clear_object(&self->connection);
@@ -242,45 +181,17 @@ em_stream_client_dispose(EmStreamClient *self)
 	gst_clear_object(&self->gst_gl_display);
 	gst_clear_object(&self->gst_gl_gstreamer_context);
 	gst_clear_object(&self->appsink);
-}
-
-static void
-em_stream_client_finalize(EmStreamClient *self)
-{
-	// only called once, after dispose
-	// EmStreamClient *self = EM_STREAM_CLIENT(object);
 	g_clear_object(&self->egl_context);
 	os_thread_helper_destroy(&self->play_thread);
+	G_OBJECT_CLASS(em_stream_client_parent_class)->finalize(gobject);
 }
 
-#if 0
 static void
 em_stream_client_class_init(EmStreamClientClass *klass)
 {
-    ALOGE("%s: Begin", __FUNCTION__);
-
-    GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
-
-    gobject_class->dispose = em_stream_client_dispose;
-    gobject_class->finalize = em_stream_client_finalize;
-
-    // gobject_class->set_property = em_stream_client_set_property;
-    // gobject_class->get_property = em_stream_client_get_property;
-
-    /**
-     * EmStreamClient:connection:
-     *
-     * The websocket URI for the signaling server
-     */
-    // g_object_class_install_property(
-    //     gobject_class, PROP_CONNECTION,
-    //     g_param_spec_object("connection", "Connection", "EmConnection object for XR streaming",
-    //     EM_TYPE_CONNECTION,
-    //                         G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
-    ALOGE("%s: End", __FUNCTION__);
+	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+	gobject_class->finalize = em_stream_client_finalize;
 }
-
-#endif
 
 static inline XrQuaternionf
 quat_to_openxr(const em_proto_Quaternion *q)
@@ -1051,36 +962,12 @@ em_stream_client_thread_func(void *ptr)
 EmStreamClient *
 em_stream_client_new()
 {
-#if 0
-    ALOGI("%s: before g_object_new", __FUNCTION__);
-    gpointer self_untyped = g_object_new(EM_TYPE_STREAM_CLIENT, NULL);
-    if (self_untyped == NULL) {
-        ALOGE("%s: g_object_new failed to allocate", __FUNCTION__);
-        return NULL;
-    }
-    EmStreamClient *self = EM_STREAM_CLIENT(self_untyped);
-
-    ALOGI("%s: after g_object_new", __FUNCTION__);
-#endif
-	EmStreamClient *self = calloc(1, sizeof(EmStreamClient));
-	em_stream_client_init(self);
+	EmStreamClient *self = EM_STREAM_CLIENT(g_object_new(EM_TYPE_STREAM_CLIENT, NULL));
+	if (self == NULL) {
+		ALOGE("%s: g_object_new failed to allocate", __FUNCTION__);
+		return NULL;
+	}
 	return self;
-}
-
-void
-em_stream_client_destroy(EmStreamClient **ptr_sc)
-{
-	if (ptr_sc == NULL) {
-		return;
-	}
-	EmStreamClient *sc = *ptr_sc;
-	if (sc == NULL) {
-		return;
-	}
-	em_stream_client_dispose(sc);
-	em_stream_client_finalize(sc);
-	free(sc);
-	*ptr_sc = NULL;
 }
 
 void

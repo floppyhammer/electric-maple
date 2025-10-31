@@ -17,17 +17,13 @@
 #include "em_connection.h"
 #include "em/render/em_egl_context.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+G_BEGIN_DECLS
 
 struct em_sample;
 
-// #define EM_TYPE_STREAM_CLIENT em_stream_client_get_type()
+#define EM_TYPE_STREAM_CLIENT em_stream_client_get_type()
 
-// G_DECLARE_FINAL_TYPE(EmStreamClient, em_stream_client, EM, STREAM_CLIENT, GObject)
-
-typedef struct _EmStreamClient EmStreamClient;
+G_DECLARE_FINAL_TYPE(EmStreamClient, em_stream_client, EM, STREAM_CLIENT, GObject)
 
 /*!
  * Create a stream client object, providing the connection object
@@ -36,14 +32,6 @@ typedef struct _EmStreamClient EmStreamClient;
  */
 EmStreamClient *
 em_stream_client_new();
-
-/*!
- * Clear a pointer and free the associate stream client, if any.
- *
- * Handles null checking for you.
- */
-void
-em_stream_client_destroy(EmStreamClient **ptr_sc);
 
 /*!
  * Initialize the EGL context, display and surface.
@@ -93,6 +81,4 @@ em_stream_client_release_sample(EmStreamClient *sc, struct em_sample *ems);
 void
 em_stream_client_adjust_jitterbuffer(EmStreamClient *sc);
 
-#ifdef __cplusplus
-} // extern "C"
-#endif
+G_END_DECLS

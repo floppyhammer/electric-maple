@@ -292,8 +292,7 @@ em_remote_experience_dispose(EmRemoteExperience *exp)
 		em_connection_disconnect(exp->connection);
 	}
 
-	// stream client is not gobject (yet?)
-	em_stream_client_destroy(&exp->stream_client);
+	g_clear_object(&exp->stream_client);
 	g_clear_object(&exp->connection);
 	exp->swapchainBuffers.reset();
 
