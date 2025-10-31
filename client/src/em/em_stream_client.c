@@ -318,17 +318,33 @@ bus_sync_handler_cb(GstBus *bus, GstMessage *msg, EmStreamClient *sc)
 		const gchar *type;
 		gst_message_parse_context_type(msg, &type);
 		if (g_str_equal(type, GST_GL_DISPLAY_CONTEXT_TYPE)) {
-			ALOGI("Got message: Need display context");
+			ALOGI("Got message: Need context %s from %s", type, gst_element_get_name(msg->src));
 			g_autoptr(GstContext) context = gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
 			gst_context_set_gl_display(context, sc->gst_gl_display);
 			gst_element_set_context(GST_ELEMENT(msg->src), context);
 		} else if (g_str_equal(type, "gst.gl.app_context")) {
-			ALOGI("Got message: Need app context");
+			ALOGI("Got message: Need context %s from %s", type, gst_element_get_name(msg->src));
 			g_autoptr(GstContext) app_context = gst_context_new("gst.gl.app_context", TRUE);
 			GstStructure *s = gst_context_writable_structure(app_context);
 			gst_structure_set(s, "context", GST_TYPE_GL_CONTEXT, sc->gst_gl_wrapped_context, NULL);
 			gst_element_set_context(GST_ELEMENT(msg->src), app_context);
+			EGLContext egl_context = (EGLContext)gst_gl_context_get_gl_context(sc->gst_gl_wrapped_context);
+			ALOGD("Got EGLContext from Gst: %p", (void *)egl_context);
 		}
+	} else if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_HAVE_CONTEXT) {
+		GstContext *context_had;
+		gst_message_parse_have_context(msg, &context_had);
+
+		const GstStructure *s = gst_context_get_structure(context_had);
+
+		GstGLContext *gst_gl_context_had;
+		gst_structure_get(s, "context", &gst_gl_context_had, NULL);
+
+		EGLContext gl_context_had = (EGLContext)gst_gl_context_get_gl_context(gst_gl_context_had);
+
+		ALOGI("GStreamer has context at %p", (void *)context_had);
+		ALOGI("GStreamer has Gst GL context at %p", (void *)gst_gl_context_had);
+		ALOGI("GStreamer has GL EGLContext at %p", (void *)gl_context_had);
 	}
 
 	return GST_BUS_PASS;
