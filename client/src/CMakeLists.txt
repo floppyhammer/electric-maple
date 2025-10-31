@@ -12,22 +12,22 @@ add_library(
 target_include_directories(native_app_glue PUBLIC ${ANDROID_NDK}/sources/android/native_app_glue)
 
 # now build app's shared lib
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 
-add_library(electricmaple_standalone_client SHARED main.cpp)
+add_library(electric_maple_client SHARED main.cpp)
 
 target_include_directories(
-        electricmaple_standalone_client PRIVATE "${PROJECT_SOURCE_DIR}/../monado/external/include"
+        electric_maple_client PRIVATE "${PROJECT_SOURCE_DIR}/../monado/external/include"
         ${GLIB_INCLUDE_DIRS} ${GST_INCLUDE_DIRS}
 )
 
 # add lib dependencies
 target_link_libraries(
-        electricmaple_standalone_client
+        electric_maple_client
         PRIVATE
         em_proto
         aux_util
-        electricmaple_client
+        electric_maple
         gstreamer_android
         native_app_glue
         OpenXR::openxr_loader
@@ -40,7 +40,7 @@ target_link_libraries(
 
 # Export ANativeActivity_onCreate()
 set_property(
-        TARGET electricmaple_standalone_client
+        TARGET electric_maple_client
         APPEND_STRING
         PROPERTY LINK_FLAGS " -u ANativeActivity_onCreate"
 )

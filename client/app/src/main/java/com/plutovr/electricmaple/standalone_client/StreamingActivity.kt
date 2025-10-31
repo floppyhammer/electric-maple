@@ -14,13 +14,14 @@ import android.view.WindowManager
 
 class StreamingActivity : NativeActivity() {
     override fun onCreate(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {
-        super.onCreate(savedInstanceState, persistentState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        System.loadLibrary("electricmaple_client")
-        Log.i("ElectricMaple", "StreamingActivity: loaded electricmaple_client")
-        System.loadLibrary("electricmaple_standalone_client")
-        Log.i("ElectricMaple", "StreamingActivity: loaded")
+        System.loadLibrary("electric_maple")
+        Log.i("ElectricMaple", "StreamingActivity: loaded electric_maple")
+        System.loadLibrary("electric_maple_client")
+        Log.i("ElectricMaple", "StreamingActivity: loaded electric_maple_client")
+
+        super.onCreate(savedInstanceState, persistentState)
     }
 
     companion object {
