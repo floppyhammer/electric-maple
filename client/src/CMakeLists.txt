@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: BSL-1.0
 
-add_subdirectory(em)
-
 # build native_app_glue as a static lib
 add_library(
         native_app_glue STATIC
@@ -14,11 +12,34 @@ target_include_directories(native_app_glue PUBLIC ${ANDROID_NDK}/sources/android
 # now build app's shared lib
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 
-add_library(electric_maple_client SHARED main.cpp)
+add_library(
+        electric_maple_client SHARED
+        main.cpp
+        em/em_connection.c
+        em/em_remote_experience.cpp
+        em/em_stream_client.c
+        em/render/gl_debug.cpp
+        em/render/gl_error.cpp
+        em/render/gl_swapchain.cpp
+        em/render/render.cpp
+        em/render/em_egl_context.c
+)
 
 target_include_directories(
-        electric_maple_client PRIVATE "${PROJECT_SOURCE_DIR}/../monado/external/include"
-        ${GLIB_INCLUDE_DIRS} ${GST_INCLUDE_DIRS}
+        electric_maple_client
+        PRIVATE
+        .
+        ../../common/
+        ${GLIB_INCLUDE_DIRS}
+        ${GST_INCLUDE_DIRS}
+        ${GIO_INCLUDE_DIRS}
+        ${LIBSOUP_INCLUDE_DIRS}
+        ${JSONGLIB_INCLUDE_DIRS}
+)
+
+target_compile_definitions(
+        electric_maple_client PUBLIC XR_USE_PLATFORM_ANDROID XR_USE_GRAPHICS_API_OPENGL_ES
+        XR_USE_TIMESPEC
 )
 
 # add lib dependencies
@@ -27,11 +48,9 @@ target_link_libraries(
         PRIVATE
         em_proto
         aux_util
-        electric_maple
         gstreamer_android
         native_app_glue
         OpenXR::openxr_loader
-        Vulkan::Vulkan
         EGL::EGL
         OpenGLES::OpenGLESv3
         ${ANDROID_LIBRARY}

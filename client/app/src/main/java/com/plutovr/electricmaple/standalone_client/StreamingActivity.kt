@@ -16,8 +16,6 @@ class StreamingActivity : NativeActivity() {
     override fun onCreate(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        System.loadLibrary("electric_maple")
-        Log.i("ElectricMaple", "StreamingActivity: loaded electric_maple")
         System.loadLibrary("electric_maple_client")
         Log.i("ElectricMaple", "StreamingActivity: loaded electric_maple_client")
 

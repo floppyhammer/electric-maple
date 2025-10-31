@@ -9,7 +9,7 @@
  * @ingroup em_utils
  */
 
-#include "GLError.h"
+#include "gl_error.h"
 
 #include <EGL/egl.h>
 #include <GLES3/gl3.h>

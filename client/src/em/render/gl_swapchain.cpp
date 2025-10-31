@@ -9,7 +9,7 @@
  * @ingroup em_utils
  */
 
-#include "GLSwapchain.h"
+#include "gl_swapchain.h"
 
 #include <GLES3/gl3.h>
 #include <openxr/openxr.h>

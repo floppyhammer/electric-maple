@@ -21,8 +21,8 @@
 #include <stdexcept>
 
 #include "em/em_app_log.h"
-#include "GLDebug.h"
-#include "GLError.h"
+#include "gl_debug.h"
+#include "gl_error.h"
 
 // Vertex shader source code
 static constexpr const GLchar *vertexShaderSource = R"(#version 300 es

@@ -9,7 +9,7 @@
  * @ingroup em_utils
  */
 
-#include "GLDebug.h"
+#include "gl_debug.h"
 
 #include <GLES3/gl32.h>
 #include <android/log.h>

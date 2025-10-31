@@ -34,7 +34,7 @@
 #include "em_stream_client.h"
 #include "em_sample.h"
 #include "pb_encode.h"
-#include "em/render/GLSwapchain.h"
+#include "em/render/gl_swapchain.h"
 #include "em/render/render.hpp"
 // clang-format on
 

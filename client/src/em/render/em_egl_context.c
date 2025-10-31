@@ -12,7 +12,7 @@
 
 #include "em_egl_context.h"
 #include "em/em_app_log.h"
-#include "GLError.h"
+#include "gl_error.h"
 
 #define MAX_CONFIGS 1024
 
