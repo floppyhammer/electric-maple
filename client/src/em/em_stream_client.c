@@ -62,10 +62,9 @@ struct _EmStreamClient
 	GstGLDisplay *gst_gl_display;
 
 	/// Wrapped version of the android_main/render context
-	GstGLContext *android_main_context;
-
+	GstGLContext *gst_gl_wrapped_context;
 	/// GStreamer-created EGL context for its own use
-	GstGLContext *context;
+	GstGLContext *gst_gl_gstreamer_context;
 
 	GstElement *appsink;
 
@@ -255,7 +254,7 @@ em_stream_client_dispose(EmStreamClient *self)
 	gst_clear_object(&self->sample);
 	gst_clear_object(&self->pipeline);
 	gst_clear_object(&self->gst_gl_display);
-	gst_clear_object(&self->context);
+	gst_clear_object(&self->gst_gl_gstreamer_context);
 	gst_clear_object(&self->appsink);
 }
 
@@ -341,7 +340,7 @@ bus_sync_handler_cb(GstBus *bus, GstMessage *msg, EmStreamClient *sc)
 			ALOGI("Got message: Need app context");
 			g_autoptr(GstContext) app_context = gst_context_new("gst.gl.app_context", TRUE);
 			GstStructure *s = gst_context_writable_structure(app_context);
-			gst_structure_set(s, "context", GST_TYPE_GL_CONTEXT, sc->android_main_context, NULL);
+			gst_structure_set(s, "context", GST_TYPE_GL_CONTEXT, sc->gst_gl_wrapped_context, NULL);
 			gst_element_set_context(GST_ELEMENT(msg->src), app_context);
 		}
 	}
@@ -1108,7 +1107,7 @@ em_stream_client_set_egl_context(EmStreamClient *sc,
 	guintptr android_main_egl_context_handle = gst_gl_context_get_current_gl_context(egl_platform);
 	GstGLAPI gl_api = gst_gl_context_get_current_gl_api(egl_platform, NULL, NULL);
 	sc->gst_gl_display = g_object_ref_sink(gst_gl_display_new());
-	sc->android_main_context = g_object_ref_sink(
+	sc->gst_gl_wrapped_context = g_object_ref_sink(
 	    gst_gl_context_new_wrapped(sc->gst_gl_display, android_main_egl_context_handle, egl_platform, gl_api));
 
 	ALOGV("eglMakeCurrent un-make-current");
@@ -1157,7 +1156,7 @@ em_stream_client_stop(EmStreamClient *sc)
 	}
 	gst_clear_object(&sc->pipeline);
 	gst_clear_object(&sc->appsink);
-	gst_clear_object(&sc->context);
+	gst_clear_object(&sc->gst_gl_gstreamer_context);
 
 	sc->pipeline_is_running = false;
 }
@@ -1379,10 +1378,10 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 	gst_video_frame_map(&frame, &info, buffer, flags);
 	ret->base.frame_texture_id = *(GLuint *)frame.data[0];
 
-	if (sc->context == NULL) {
+	if (sc->gst_gl_gstreamer_context == NULL) {
 		ALOGI("%s: Retrieving the GStreamer EGL context", __FUNCTION__);
 		/* Get GStreamer's gl context. */
-		gst_gl_query_local_gl_context(sc->appsink, GST_PAD_SINK, &sc->context);
+		gst_gl_query_local_gl_context(sc->appsink, GST_PAD_SINK, &sc->gst_gl_gstreamer_context);
 
 		/* Check if we have 2D or OES textures */
 		GstStructure *s = gst_caps_get_structure(caps, 0);
@@ -1401,8 +1400,8 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 	GstGLSyncMeta *sync_meta = gst_buffer_get_gl_sync_meta(buffer);
 	if (sync_meta) {
 		/* MOSHI: the set_sync() seems to be needed for resizing */
-		gst_gl_sync_meta_set_sync_point(sync_meta, sc->context);
-		gst_gl_sync_meta_wait(sync_meta, sc->context);
+		gst_gl_sync_meta_set_sync_point(sync_meta, sc->gst_gl_gstreamer_context);
+		gst_gl_sync_meta_wait(sync_meta, sc->gst_gl_gstreamer_context);
 	}
 
 	gst_video_frame_unmap(&frame);
