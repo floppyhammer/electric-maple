@@ -12,7 +12,7 @@
 #include "em_remote_experience.h"
 
 // clang-format off
-#include "render/xr_platform_deps.h"
+#include "em/render/xr_platform_deps.h"
 
 #include <linux/time.h>
 #include <openxr/openxr.h>
@@ -34,14 +34,15 @@
 #include "em_stream_client.h"
 #include "em_sample.h"
 #include "pb_encode.h"
-#include "render/GLSwapchain.h"
-#include "render/render.hpp"
+#include "em/render/GLSwapchain.h"
+#include "em/render/render.hpp"
 // clang-format on
 
 struct _EmRemoteExperience
 {
 	EmConnection *connection;
 	EmStreamClient *stream_client;
+	EmEglContext *egl_context;
 	std::unique_ptr<Renderer> renderer;
 	struct em_sample *prev_sample;
 
@@ -304,6 +305,8 @@ em_remote_experience_dispose(EmRemoteExperience *exp)
 		exp->renderer->reset();
 		exp->renderer = nullptr;
 	}
+
+	g_clear_object(&exp->egl_context);
 }
 
 static void
@@ -328,6 +331,7 @@ em_remote_experience_finalize(EmRemoteExperience *exp)
 EmRemoteExperience *
 em_remote_experience_new(EmConnection *connection,
                          EmStreamClient *stream_client,
+                         EmEglContext *egl_context,
                          XrInstance instance,
                          XrSession session,
                          const XrExtent2Di *eye_extents)
@@ -336,6 +340,7 @@ em_remote_experience_new(EmConnection *connection,
 	self->connection = g_object_ref_sink(connection);
 	// self->stream_client = g_object_ref_sink(stream_client);
 	self->stream_client = stream_client;
+	self->egl_context = g_object_ref(egl_context);
 	self->eye_extents = *eye_extents;
 	self->xr_not_owned.instance = instance;
 	self->xr_not_owned.session = session;
@@ -355,7 +360,7 @@ em_remote_experience_new(EmConnection *connection,
 	}
 
 	// Quest requires the EGL context to be current when calling xrCreateSwapchain
-	if (!em_stream_client_egl_make_current(stream_client)) {
+	if (!em_egl_context_make_current(self->egl_context)) {
 		ALOGE("Failed to make EGL context current.");
 	}
 
@@ -518,7 +523,7 @@ em_remote_experience_poll_and_render_frame(EmRemoteExperience *exp, InputState &
 	// Render
 
 	// Set EGL context
-	if (!em_stream_client_egl_make_current(exp->stream_client)) {
+	if (!em_egl_context_make_current(exp->egl_context)) {
 		ALOGE("FRED: mainloop_one: Failed make egl context current");
 		return EM_POLL_RENDER_RESULT_ERROR_EGL;
 	}
@@ -716,12 +721,12 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 		//		    "BENCHMARK {\"frame\": %ld, \"server_render_ms\": %.1f, server_encode_transmit_ms\":
 		//%.1f, "
 		//		    "\"client_decode_ms\": %.1f, \"client_wait_ms\": %.1f, \"client_render_ms\": %.1f,
-		//total_ms\": "
+		// total_ms\": "
 		//		    "%.1f}",
 		//		    sample->frame_sequence_id, time_ns_to_ms_f(server_render_duration),
 		//		    time_ns_to_ms_f(server_encode_transmit_duration),
-		//time_ns_to_ms_f(client_decode_duration), 		    time_ns_to_ms_f(client_wait_duration),
-		//time_ns_to_ms_f(client_render_duration), 		    time_ns_to_ms_f(total_duration));
+		// time_ns_to_ms_f(client_decode_duration), 		    time_ns_to_ms_f(client_wait_duration),
+		// time_ns_to_ms_f(client_render_duration), 		    time_ns_to_ms_f(total_duration));
 	}
 
 	// Send frame report

@@ -33,15 +33,14 @@
 #include <thread>
 #include <vector>
 
-#include "render/EglData.hpp"
+#include "em/render/em_egl_context.h"
 #include "em/em_app_log.h"
 #include "em/em_connection.h"
-#include "em/em_egl.h"
 #include "em/em_remote_experience.h"
 #include "em/em_stream_client.h"
 #include "em/em_sample.h"
-#include "render/render.hpp"
-#include "render/xr_platform_deps.h"
+#include "em/render/render.hpp"
+#include "em/render/xr_platform_deps.h"
 #include "os/os_time.h"
 #include "util/u_time.h"
 
@@ -410,7 +409,11 @@ android_main(struct android_app *app)
 	(*app->activity->vm).AttachCurrentThread(&env, NULL);
 	app->onAppCmd = onAppCmd;
 
-	auto initialEglData = std::make_unique<EglData>();
+	EmEglContext *egl_context = em_egl_context_new();
+	if (!egl_context) {
+		ALOGE("Failed to initialize EGL context");
+		return;
+	}
 
 	//
 	// Normal OpenXR app startup
@@ -516,12 +519,7 @@ android_main(struct android_app *app)
 	XrGraphicsRequirementsOpenGLESKHR graphicsRequirements = {.type = XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_ES_KHR};
 	xrGetOpenGLESGraphicsRequirementsKHR(_state.instance, _state.system, &graphicsRequirements);
 
-	XrGraphicsBindingOpenGLESAndroidKHR graphicsBinding = {
-	    .type = XR_TYPE_GRAPHICS_BINDING_OPENGL_ES_ANDROID_KHR,
-	    .display = initialEglData->display,
-	    .config = initialEglData->config,
-	    .context = initialEglData->context,
-	};
+	XrGraphicsBindingOpenGLESAndroidKHR graphicsBinding = em_egl_context_get_graphics_binding(egl_context);
 
 	XrSessionCreateInfo sessionInfo = {
 	    .type = XR_TYPE_SESSION_CREATE_INFO, .next = &graphicsBinding, .systemId = _state.system};
@@ -560,8 +558,7 @@ android_main(struct android_app *app)
 
 	ALOGI("%s: telling stream client about EGL", __FUNCTION__);
 	// Retaining ownership
-	em_stream_client_set_egl_context(stream_client, initialEglData->display, initialEglData->context,
-	                                 initialEglData->surface);
+	em_stream_client_set_egl_context(stream_client, egl_context);
 
 	ALOGI("%s: creating connection object", __FUNCTION__);
 	_state.connection = g_object_ref_sink(em_connection_new_localhost());
@@ -575,8 +572,8 @@ android_main(struct android_app *app)
 	em_stream_client_spawn_thread(stream_client, _state.connection);
 
 	XrExtent2Di eye_extents{static_cast<int32_t>(_state.width), static_cast<int32_t>(_state.height)};
-	EmRemoteExperience *remote_experience =
-	    em_remote_experience_new(_state.connection, stream_client, _state.instance, _state.session, &eye_extents);
+	EmRemoteExperience *remote_experience = em_remote_experience_new(_state.connection, stream_client, egl_context,
+	                                                                 _state.instance, _state.session, &eye_extents);
 	if (!remote_experience) {
 		ALOGE("%s: Failed during remote experience init.", __FUNCTION__);
 		return;
@@ -610,7 +607,7 @@ android_main(struct android_app *app)
 	// End RR cleanup
 	//
 
-	initialEglData.reset();
+	g_object_unref(egl_context);
 
 	(*app->activity->vm).DetachCurrentThread();
 }

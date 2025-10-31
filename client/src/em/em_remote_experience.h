@@ -105,6 +105,7 @@ em_poll_render_result_to_string(EmPollRenderResult res)
 EmRemoteExperience *
 em_remote_experience_new(EmConnection *connection,
                          EmStreamClient *stream_client,
+                         EmEglContext *egl_context,
                          XrInstance instance,
                          XrSession session,
                          const XrExtent2Di *eye_extents);

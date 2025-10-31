@@ -15,14 +15,13 @@
 #include <stdbool.h>
 
 #include "em_connection.h"
+#include "em/render/em_egl_context.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 struct em_sample;
-
-typedef struct EmEglMutexIface EmEglMutexIface;
 
 // #define EM_TYPE_STREAM_CLIENT em_stream_client_get_type()
 
@@ -47,29 +46,15 @@ void
 em_stream_client_destroy(EmStreamClient **ptr_sc);
 
 /*!
- * Initialize the EGL context and surface.
+ * Initialize the EGL context, display and surface.
  *
- * Must be called from a thread where it is safe to make the provided context active.
- * After calling this method, **do not** manually make this context active again: instead use
- * @ref em_stream_client_egl_begin and @ref em_stream_client_egl_end
+ * Passes the EmEglContext to the EmStreamClient
  *
- * @param sc self
- * @param egl_mutex An implementation of the EGL mutex interface, which carries an EGLDisplay and EGLContext
- * @param adopt_mutex_interface True if the stream client takes ownership of the EGL mutex interface.
- * @param pbuffer_surface An EGL pbuffer surface created for the @p context
- * TODO not sure what the surface is actually used for...
+ * @param sc EmStreamClient
+ * @param egl_context Pointer to an EmEglContext object, which carries an EGLContext, EGLDisplay and EGLSurface
  */
 void
-em_stream_client_set_egl_context(EmStreamClient *sc,
-                                 EGLDisplay egl_display,
-                                 EGLContext egl_context,
-                                 EGLSurface egl_surface);
-
-/*!
- * Make the internal EGL context current
- */
-bool
-em_stream_client_egl_make_current(EmStreamClient *sc);
+em_stream_client_set_egl_context(EmStreamClient *sc, EmEglContext *egl_context);
 
 /*!
  * Start the GMainLoop embedded in this object in a new thread

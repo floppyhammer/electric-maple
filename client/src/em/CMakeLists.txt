@@ -7,10 +7,11 @@ add_library(
         em_connection.c
         em_remote_experience.cpp
         em_stream_client.c
-        ../render/GLDebug.cpp
-        ../render/GLError.cpp
-        ../render/GLSwapchain.cpp
-        ../render/render.cpp
+        render/GLDebug.cpp
+        render/GLError.cpp
+        render/GLSwapchain.cpp
+        render/render.cpp
+        render/em_egl_context.c
 )
 target_link_libraries(
         electricmaple_client

@@ -11,7 +11,7 @@
 #include "em_stream_client.h"
 
 // clang-format off
-#include "render/xr_platform_deps.h"
+#include "em/render/xr_platform_deps.h"
 #include "em_app_log.h"
 #include "em_connection.h"
 #include "em_sample.h"
@@ -73,12 +73,7 @@ struct _EmStreamClient
 	int width;
 	int height;
 
-	struct
-	{
-		EGLDisplay display;
-		EGLContext context;
-		EGLSurface surface;
-	} egl;
+	EmEglContext *egl_context;
 
 	struct os_thread_helper play_thread;
 
@@ -170,9 +165,6 @@ em_stream_client_thread_func(void *ptr);
 static void
 em_stream_client_set_connection(EmStreamClient *sc, EmConnection *connection);
 
-static void
-em_stream_client_free_egl_mutex(EmStreamClient *sc);
-
 /* GObject method implementations */
 
 #if 0
@@ -257,8 +249,8 @@ em_stream_client_finalize(EmStreamClient *self)
 {
 	// only called once, after dispose
 	// EmStreamClient *self = EM_STREAM_CLIENT(object);
+	g_clear_object(&self->egl_context);
 	os_thread_helper_destroy(&self->play_thread);
-	em_stream_client_free_egl_mutex(self);
 }
 
 #if 0
@@ -1076,34 +1068,19 @@ em_stream_client_destroy(EmStreamClient **ptr_sc)
 }
 
 void
-em_stream_client_set_egl_context(EmStreamClient *sc,
-                                 EGLDisplay egl_display,
-                                 EGLContext egl_context,
-                                 EGLSurface egl_surface)
+em_stream_client_set_egl_context(EmStreamClient *sc, EmEglContext *egl_context)
 {
-	sc->egl.display = egl_display;
-	sc->egl.context = egl_context;
-	sc->egl.surface = egl_surface;
+	sc->egl_context = g_object_ref(egl_context);
 
-	if (!em_stream_client_egl_make_current(sc)) {
+	if (!em_egl_context_make_current(sc->egl_context)) {
 		ALOGE("%s: Failed make egl context current", __FUNCTION__);
 		return;
 	}
 
 	GstGLAPI gl_api = gst_gl_context_get_current_gl_api(GST_GL_PLATFORM_EGL, NULL, NULL);
 	sc->gst_gl_display = g_object_ref_sink(gst_gl_display_new());
-	sc->gst_gl_wrapped_context = g_object_ref_sink(
-	    gst_gl_context_new_wrapped(sc->gst_gl_display, (guintptr)egl_context, GST_GL_PLATFORM_EGL, gl_api));
-}
-
-bool
-em_stream_client_egl_make_current(EmStreamClient *sc)
-{
-	if (eglMakeCurrent(sc->egl.display, sc->egl.surface, sc->egl.surface, sc->egl.context) == EGL_FALSE) {
-		ALOGE("%s: Failed make egl context current", __FUNCTION__);
-		return false;
-	}
-	return true;
+	sc->gst_gl_wrapped_context = g_object_ref_sink(gst_gl_context_new_wrapped(
+	    sc->gst_gl_display, (guintptr)em_egl_context_get_context(egl_context), GST_GL_PLATFORM_EGL, gl_api));
 }
 
 void
@@ -1410,10 +1387,6 @@ em_stream_client_set_connection(EmStreamClient *sc, EmConnection *connection)
 		ALOGI("%s: EmConnection assigned", __FUNCTION__);
 	}
 }
-
-static void
-em_stream_client_free_egl_mutex(EmStreamClient *sc)
-{}
 
 void
 em_stream_client_adjust_jitterbuffer(EmStreamClient *sc)
