@@ -613,9 +613,7 @@ em_conn_on_ws_message_cb(SoupWebsocketConnection *connection, gint type, GBytes 
 	JsonParser *parser = json_parser_new();
 	GError *error = NULL;
 
-	// TODO convert gsize to gssize after range check
-
-	if (json_parser_load_from_data(parser, msg_data, length, &error)) {
+	if (json_parser_load_from_data(parser, msg_data, (gssize)length, &error)) {
 		JsonObject *msg = json_node_get_object(json_parser_get_root(parser));
 		const gchar *msg_type;
 
