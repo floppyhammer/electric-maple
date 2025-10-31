@@ -386,9 +386,6 @@ em_connection_get_server_clock_offset(EmConnection *emconn)
 }
 
 static void
-em_conn_connect_internal(EmConnection *em_conn, enum em_status status);
-
-static void
 em_conn_webrtc_deep_notify_callback(GstObject *self, GstObject *prop_object, GParamSpec *prop, EmConnection *em_conn)
 {
 	GstWebRTCPeerConnectionState state;
@@ -800,8 +797,8 @@ enet_thread_func(void *ptr)
 	return NULL;
 }
 
-static void
-em_conn_connect_internal(EmConnection *em_conn, enum em_status status)
+void
+em_connection_connect(EmConnection *em_conn)
 {
 	em_connection_disconnect(em_conn);
 	if (!em_conn->ws_cancel) {
@@ -823,8 +820,7 @@ em_conn_connect_internal(EmConnection *em_conn, enum em_status status)
 	                                     (GAsyncReadyCallback)em_conn_websocket_connected_cb,       // callback
 	                                     em_conn);                                                  // user_data
 
-
-	em_conn_update_status(em_conn, status);
+	em_conn_update_status(em_conn, EM_STATUS_CONNECTING);
 
 	// ENet
 	{
@@ -892,12 +888,6 @@ em_connection_new_localhost()
 	g_assert(os_thread_helper_init(&conn->enet_thread) >= 0);
 
 	return conn;
-}
-
-void
-em_connection_connect(EmConnection *em_conn)
-{
-	em_conn_connect_internal(em_conn, EM_STATUS_CONNECTING);
 }
 
 void
