@@ -163,13 +163,17 @@ ems_hmd_handle_data(enum ems_callbacks_event event, const em_UpMessageSuper *mes
 		return;
 	}
 
-	struct xrt_pose pose = {};
-	pose.position = to_xrt_vec3(message->tracking.P_localSpace_viewSpace.position);
+	if (!message->tracking.has_head_pose) {
+		return;
+	}
 
-	pose.orientation.w = message->tracking.P_localSpace_viewSpace.orientation.w;
-	pose.orientation.x = message->tracking.P_localSpace_viewSpace.orientation.x;
-	pose.orientation.y = message->tracking.P_localSpace_viewSpace.orientation.y;
-	pose.orientation.z = message->tracking.P_localSpace_viewSpace.orientation.z;
+	struct xrt_pose pose = {};
+	pose.position = to_xrt_vec3(message->tracking.head_pose.position);
+
+	pose.orientation.w = message->tracking.head_pose.orientation.w;
+	pose.orientation.x = message->tracking.head_pose.orientation.x;
+	pose.orientation.y = message->tracking.head_pose.orientation.y;
+	pose.orientation.z = message->tracking.head_pose.orientation.z;
 
 	// TODO handle timestamp, etc
 
@@ -186,13 +190,13 @@ ems_hmd_handle_data(enum ems_callbacks_event event, const em_UpMessageSuper *mes
 	rel.relation_flags = (enum xrt_space_relation_flags)(
 	    XRT_SPACE_RELATION_POSITION_VALID_BIT | XRT_SPACE_RELATION_POSITION_TRACKED_BIT |
 	    XRT_SPACE_RELATION_ORIENTATION_VALID_BIT | XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT);
-	if (message->tracking.has_V_localSpace_viewSpace_linear) {
-		rel.linear_velocity = to_xrt_vec3(message->tracking.V_localSpace_viewSpace_linear);
+	if (message->tracking.has_head_linear_velocity) {
+		rel.linear_velocity = to_xrt_vec3(message->tracking.head_linear_velocity);
 		rel.relation_flags =
 		    (enum xrt_space_relation_flags)(rel.relation_flags | XRT_SPACE_RELATION_LINEAR_VELOCITY_VALID_BIT);
 	}
-	if (message->tracking.has_V_localSpace_viewSpace_angular) {
-		rel.angular_velocity = to_xrt_vec3(message->tracking.V_localSpace_viewSpace_angular);
+	if (message->tracking.has_head_angular_velocity) {
+		rel.angular_velocity = to_xrt_vec3(message->tracking.head_angular_velocity);
 		rel.relation_flags =
 		    (enum xrt_space_relation_flags)(rel.relation_flags | XRT_SPACE_RELATION_ANGULAR_VELOCITY_VALID_BIT);
 	}
@@ -258,16 +262,16 @@ ems_hmd_create(ems_instance &emsi)
 	//  Or maybe remove this because I think get_view_poses lets us set the FOV dynamically.
 
 	struct xrt_fov fov_left = {
-		-0.316011f,
-		0.361546f,
-		0.225283f,
-		-0.165940f,
+	    -0.316011f,
+	    0.361546f,
+	    0.225283f,
+	    -0.165940f,
 	};
 	struct xrt_fov fov_right = {
-		-0.345102f,
-		0.345085f,
-		0.223300f,
-		-0.175499f,
+	    -0.345102f,
+	    0.345085f,
+	    0.223300f,
+	    -0.175499f,
 	};
 
 	eh->base.hmd->distortion.fov[0] = fov_left;

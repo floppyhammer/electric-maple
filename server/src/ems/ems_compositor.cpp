@@ -516,10 +516,9 @@ pack_blit_and_encode(struct ems_compositor *c,
 	msg.frame_data.frame_push_time = system_clock;
 	msg.frame_data.frame_push_clock_time = pipeline_clock;
 	msg.frame_data.server_system_clock_pipeline_clock_offset = system_clock - pipeline_clock;
-	msg.frame_data.has_P_localSpace_view0 = true;
-	msg.frame_data.P_localSpace_view0 = to_proto(lvd->pose);
-	msg.frame_data.has_P_localSpace_view1 = true;
-	msg.frame_data.P_localSpace_view1 = to_proto(rvd->pose);
+	msg.frame_data.view_poses_count = 2;
+	msg.frame_data.view_poses[0] = to_proto(lvd->pose);
+	msg.frame_data.view_poses[1] = to_proto(rvd->pose);
 
 	wrap = NULL; // important to keep this line after setting "msg.frame_sequence_id" above.
 

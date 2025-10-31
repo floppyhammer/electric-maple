@@ -1132,7 +1132,7 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 		msg = sc->last_down_msg;
 	}
 
-	if (msg.has_frame_data && msg.frame_data.has_P_localSpace_view0 && msg.frame_data.has_P_localSpace_view1) {
+	if (msg.has_frame_data && msg.frame_data.view_poses_count == 2) {
 		//		ALOGI("Got DownMessage: Frame #%ld V0 (%.2f %.2f %.2f) V1 (%.2f %.2f %.2f)
 		// render_begin_time %ld", 		      msg.frame_data.frame_sequence_id,
 		// msg.frame_data.P_localSpace_view0.position.x,
@@ -1178,8 +1178,8 @@ em_stream_client_try_pull_sample(EmStreamClient *sc, struct timespec *out_decode
 		}
 
 		ret->base.have_poses = true;
-		ret->base.poses[0] = pose_to_openxr(&msg.frame_data.P_localSpace_view0);
-		ret->base.poses[1] = pose_to_openxr(&msg.frame_data.P_localSpace_view1);
+		ret->base.poses[0] = pose_to_openxr(&msg.frame_data.view_poses[0]);
+		ret->base.poses[1] = pose_to_openxr(&msg.frame_data.view_poses[1]);
 
 		ret->base.frame_sequence_id = msg.frame_data.frame_sequence_id;
 

@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: BSL-1.0
 
 syntax = "proto3";
+import "nanopb.proto";
+
 package em.proto;
 
 message Quaternion {
@@ -40,28 +42,27 @@ enum TrackedStatus {
 }
 
 message TrackingMessage {
-	Pose P_localSpace_viewSpace = 1;
-    Vec3 V_localSpace_viewSpace_linear = 14; // linear velocity
-    Vec3 V_localSpace_viewSpace_angular = 15; // angular velocity
+	Pose head_pose = 1;
+	Vec3 head_linear_velocity = 2;
+	Vec3 head_angular_velocity = 3;
 
-	Pose P_viewSpace_view0 = 2; // Left view
-	Pose P_viewSpace_view1 = 3; // Right view
+	repeated Pose view_poses = 4 [ (nanopb).max_count = 2 ];
 
-	Pose controller_grip_left = 4;
-	Pose controller_aim_left = 5;
+	Pose controller_grip_left = 5;
+	Pose controller_aim_left = 6;
 
-	Pose controller_grip_right = 6;
-	Pose controller_aim_right = 7;
+	Pose controller_grip_right = 7;
+	Pose controller_aim_right = 8;
 
-	int64 timestamp = 8;
-	int64 sequence_idx = 9;
+	int64 timestamp = 9;
+	int64 sequence_idx = 10;
 
-	repeated HandJointLocation hand_joint_locations_left = 10;
-    repeated HandJointLocation hand_joint_locations_right = 11;
+	repeated HandJointLocation hand_joint_locations_left = 11;
+    repeated HandJointLocation hand_joint_locations_right = 12;
 
     // GRAB is different from GRIP
-	float controller_grab_value_left = 12;
-    float controller_grab_value_right = 13;
+	float controller_grab_value_left = 13;
+    float controller_grab_value_right = 14;
 }
 
 message InputThumbstick {
@@ -111,19 +112,18 @@ message UpFrameMessage {
 }
 
 message UpMessage {
-	int64 up_message_id = 1;
+	int64 id = 1;
 	TrackingMessage tracking = 2;
 	UpFrameMessage frame = 3;
 }
 
 message DownFrameDataMessage {
 	int64 frame_sequence_id = 1;
-	Pose P_localSpace_view0 = 2; // Left view
-	Pose P_localSpace_view1 = 3; // Right view
-	int64 render_begin_time = 4; // nanoseconds, when compositor begins rendering
-	int64 frame_push_time = 5; // nanoseconds, when frame is pushed to appsrc
-    int64 frame_push_clock_time = 6; // nanoseconds, in pipeline clock time
-    int64 server_system_clock_pipeline_clock_offset = 7;
+	repeated Pose view_poses = 2 [ (nanopb).max_count = 2 ];
+	int64 render_begin_time = 3; // nanoseconds, when compositor begins rendering
+	int64 frame_push_time = 4; // nanoseconds, when frame is pushed to appsrc
+    int64 frame_push_clock_time = 5; // nanoseconds, in pipeline clock time
+    int64 server_system_clock_pipeline_clock_offset = 6;
 	// TODO fovs here
 }
 

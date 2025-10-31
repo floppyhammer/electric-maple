@@ -50,12 +50,14 @@ typedef struct _em_proto_HandJointLocation {
 } em_proto_HandJointLocation;
 
 typedef struct _em_proto_TrackingMessage {
-    bool has_P_localSpace_viewSpace;
-    em_proto_Pose P_localSpace_viewSpace;
-    bool has_P_viewSpace_view0;
-    em_proto_Pose P_viewSpace_view0; /* Left view */
-    bool has_P_viewSpace_view1;
-    em_proto_Pose P_viewSpace_view1; /* Right view */
+    bool has_head_pose;
+    em_proto_Pose head_pose;
+    bool has_head_linear_velocity;
+    em_proto_Vec3 head_linear_velocity;
+    bool has_head_angular_velocity;
+    em_proto_Vec3 head_angular_velocity;
+    pb_size_t view_poses_count;
+    em_proto_Pose view_poses[2];
     bool has_controller_grip_left;
     em_proto_Pose controller_grip_left;
     bool has_controller_aim_left;
@@ -71,10 +73,6 @@ typedef struct _em_proto_TrackingMessage {
     /* GRAB is different from GRIP */
     float controller_grab_value_left;
     float controller_grab_value_right;
-    bool has_V_localSpace_viewSpace_linear;
-    em_proto_Vec3 V_localSpace_viewSpace_linear; /* linear velocity */
-    bool has_V_localSpace_viewSpace_angular;
-    em_proto_Vec3 V_localSpace_viewSpace_angular; /* angular velocity */
 } em_proto_TrackingMessage;
 
 typedef struct _em_proto_InputThumbstick {
@@ -135,7 +133,7 @@ typedef struct _em_proto_UpFrameMessage {
 } em_proto_UpFrameMessage;
 
 typedef struct _em_proto_UpMessage {
-    int64_t up_message_id;
+    int64_t id;
     bool has_tracking;
     em_proto_TrackingMessage tracking;
     bool has_frame;
@@ -144,10 +142,8 @@ typedef struct _em_proto_UpMessage {
 
 typedef struct _em_proto_DownFrameDataMessage {
     int64_t frame_sequence_id;
-    bool has_P_localSpace_view0;
-    em_proto_Pose P_localSpace_view0; /* Left view */
-    bool has_P_localSpace_view1;
-    em_proto_Pose P_localSpace_view1; /* Right view */
+    pb_size_t view_poses_count;
+    em_proto_Pose view_poses[2];
     int64_t render_begin_time; /* nanoseconds, when compositor begins rendering */
     int64_t frame_push_time; /* nanoseconds, when frame is pushed to appsrc */
     int64_t frame_push_clock_time; /* nanoseconds, in pipeline clock time */
@@ -192,7 +188,7 @@ extern "C" {
 #define em_proto_Vec2_init_default               {0, 0}
 #define em_proto_Pose_init_default               {false, em_proto_Vec3_init_default, false, em_proto_Quaternion_init_default}
 #define em_proto_HandJointLocation_init_default  {0, false, em_proto_Pose_init_default, 0}
-#define em_proto_TrackingMessage_init_default    {false, em_proto_Pose_init_default, false, em_proto_Pose_init_default, false, em_proto_Pose_init_default, false, em_proto_Pose_init_default, false, em_proto_Pose_init_default, false, em_proto_Pose_init_default, false, em_proto_Pose_init_default, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, 0, 0, false, em_proto_Vec3_init_default, false, em_proto_Vec3_init_default}
+#define em_proto_TrackingMessage_init_default    {false, em_proto_Pose_init_default, false, em_proto_Vec3_init_default, false, em_proto_Vec3_init_default, 0, {em_proto_Pose_init_default, em_proto_Pose_init_default}, false, em_proto_Pose_init_default, false, em_proto_Pose_init_default, false, em_proto_Pose_init_default, false, em_proto_Pose_init_default, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, 0, 0}
 #define em_proto_InputThumbstick_init_default    {false, em_proto_Vec2_init_default, 0, 0}
 #define em_proto_InputValueTouch_init_default    {0, 0}
 #define em_proto_InputClickTouch_init_default    {0, 0}
@@ -201,14 +197,14 @@ extern "C" {
 #define em_proto_TouchControllerRight_init_default {false, em_proto_InputClickTouch_init_default, false, em_proto_InputClickTouch_init_default, false, em_proto_InputClickTouch_init_default, false, em_proto_TouchControllerCommon_init_default}
 #define em_proto_UpFrameMessage_init_default     {0, 0, 0, 0, 0}
 #define em_proto_UpMessage_init_default          {0, false, em_proto_TrackingMessage_init_default, false, em_proto_UpFrameMessage_init_default}
-#define em_proto_DownFrameDataMessage_init_default {0, false, em_proto_Pose_init_default, false, em_proto_Pose_init_default, 0, 0, 0, 0}
+#define em_proto_DownFrameDataMessage_init_default {0, 0, {em_proto_Pose_init_default, em_proto_Pose_init_default}, 0, 0, 0, 0}
 #define em_proto_DownMessage_init_default        {false, em_proto_DownFrameDataMessage_init_default}
 #define em_proto_Quaternion_init_zero            {0, 0, 0, 0}
 #define em_proto_Vec3_init_zero                  {0, 0, 0}
 #define em_proto_Vec2_init_zero                  {0, 0}
 #define em_proto_Pose_init_zero                  {false, em_proto_Vec3_init_zero, false, em_proto_Quaternion_init_zero}
 #define em_proto_HandJointLocation_init_zero     {0, false, em_proto_Pose_init_zero, 0}
-#define em_proto_TrackingMessage_init_zero       {false, em_proto_Pose_init_zero, false, em_proto_Pose_init_zero, false, em_proto_Pose_init_zero, false, em_proto_Pose_init_zero, false, em_proto_Pose_init_zero, false, em_proto_Pose_init_zero, false, em_proto_Pose_init_zero, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, 0, 0, false, em_proto_Vec3_init_zero, false, em_proto_Vec3_init_zero}
+#define em_proto_TrackingMessage_init_zero       {false, em_proto_Pose_init_zero, false, em_proto_Vec3_init_zero, false, em_proto_Vec3_init_zero, 0, {em_proto_Pose_init_zero, em_proto_Pose_init_zero}, false, em_proto_Pose_init_zero, false, em_proto_Pose_init_zero, false, em_proto_Pose_init_zero, false, em_proto_Pose_init_zero, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, 0, 0}
 #define em_proto_InputThumbstick_init_zero       {false, em_proto_Vec2_init_zero, 0, 0}
 #define em_proto_InputValueTouch_init_zero       {0, 0}
 #define em_proto_InputClickTouch_init_zero       {0, 0}
@@ -217,7 +213,7 @@ extern "C" {
 #define em_proto_TouchControllerRight_init_zero  {false, em_proto_InputClickTouch_init_zero, false, em_proto_InputClickTouch_init_zero, false, em_proto_InputClickTouch_init_zero, false, em_proto_TouchControllerCommon_init_zero}
 #define em_proto_UpFrameMessage_init_zero        {0, 0, 0, 0, 0}
 #define em_proto_UpMessage_init_zero             {0, false, em_proto_TrackingMessage_init_zero, false, em_proto_UpFrameMessage_init_zero}
-#define em_proto_DownFrameDataMessage_init_zero  {0, false, em_proto_Pose_init_zero, false, em_proto_Pose_init_zero, 0, 0, 0, 0}
+#define em_proto_DownFrameDataMessage_init_zero  {0, 0, {em_proto_Pose_init_zero, em_proto_Pose_init_zero}, 0, 0, 0, 0}
 #define em_proto_DownMessage_init_zero           {false, em_proto_DownFrameDataMessage_init_zero}
 
 /* Field tags (for use in manual encoding/decoding) */
@@ -235,21 +231,20 @@ extern "C" {
 #define em_proto_HandJointLocation_index_tag     1
 #define em_proto_HandJointLocation_pose_tag      2
 #define em_proto_HandJointLocation_radius_tag    3
-#define em_proto_TrackingMessage_P_localSpace_viewSpace_tag 1
-#define em_proto_TrackingMessage_P_viewSpace_view0_tag 2
-#define em_proto_TrackingMessage_P_viewSpace_view1_tag 3
-#define em_proto_TrackingMessage_controller_grip_left_tag 4
-#define em_proto_TrackingMessage_controller_aim_left_tag 5
-#define em_proto_TrackingMessage_controller_grip_right_tag 6
-#define em_proto_TrackingMessage_controller_aim_right_tag 7
-#define em_proto_TrackingMessage_timestamp_tag   8
-#define em_proto_TrackingMessage_sequence_idx_tag 9
-#define em_proto_TrackingMessage_hand_joint_locations_left_tag 10
-#define em_proto_TrackingMessage_hand_joint_locations_right_tag 11
-#define em_proto_TrackingMessage_controller_grab_value_left_tag 12
-#define em_proto_TrackingMessage_controller_grab_value_right_tag 13
-#define em_proto_TrackingMessage_V_localSpace_viewSpace_linear_tag 14
-#define em_proto_TrackingMessage_V_localSpace_viewSpace_angular_tag 15
+#define em_proto_TrackingMessage_head_pose_tag   1
+#define em_proto_TrackingMessage_head_linear_velocity_tag 2
+#define em_proto_TrackingMessage_head_angular_velocity_tag 3
+#define em_proto_TrackingMessage_view_poses_tag  4
+#define em_proto_TrackingMessage_controller_grip_left_tag 5
+#define em_proto_TrackingMessage_controller_aim_left_tag 6
+#define em_proto_TrackingMessage_controller_grip_right_tag 7
+#define em_proto_TrackingMessage_controller_aim_right_tag 8
+#define em_proto_TrackingMessage_timestamp_tag   9
+#define em_proto_TrackingMessage_sequence_idx_tag 10
+#define em_proto_TrackingMessage_hand_joint_locations_left_tag 11
+#define em_proto_TrackingMessage_hand_joint_locations_right_tag 12
+#define em_proto_TrackingMessage_controller_grab_value_left_tag 13
+#define em_proto_TrackingMessage_controller_grab_value_right_tag 14
 #define em_proto_InputThumbstick_xy_tag          1
 #define em_proto_InputThumbstick_click_tag       2
 #define em_proto_InputThumbstick_touch_tag       3
@@ -274,16 +269,15 @@ extern "C" {
 #define em_proto_UpFrameMessage_begin_frame_time_tag 3
 #define em_proto_UpFrameMessage_display_time_tag 4
 #define em_proto_UpFrameMessage_average_latency_tag 5
-#define em_proto_UpMessage_up_message_id_tag     1
+#define em_proto_UpMessage_id_tag                1
 #define em_proto_UpMessage_tracking_tag          2
 #define em_proto_UpMessage_frame_tag             3
 #define em_proto_DownFrameDataMessage_frame_sequence_id_tag 1
-#define em_proto_DownFrameDataMessage_P_localSpace_view0_tag 2
-#define em_proto_DownFrameDataMessage_P_localSpace_view1_tag 3
-#define em_proto_DownFrameDataMessage_render_begin_time_tag 4
-#define em_proto_DownFrameDataMessage_frame_push_time_tag 5
-#define em_proto_DownFrameDataMessage_frame_push_clock_time_tag 6
-#define em_proto_DownFrameDataMessage_server_system_clock_pipeline_clock_offset_tag 7
+#define em_proto_DownFrameDataMessage_view_poses_tag 2
+#define em_proto_DownFrameDataMessage_render_begin_time_tag 3
+#define em_proto_DownFrameDataMessage_frame_push_time_tag 4
+#define em_proto_DownFrameDataMessage_frame_push_clock_time_tag 5
+#define em_proto_DownFrameDataMessage_server_system_clock_pipeline_clock_offset_tag 6
 #define em_proto_DownMessage_frame_data_tag      1
 
 /* Struct field encoding specification for nanopb */
@@ -325,34 +319,32 @@ X(a, STATIC,   SINGULAR, FLOAT,    radius,            3)
 #define em_proto_HandJointLocation_pose_MSGTYPE em_proto_Pose
 
 #define em_proto_TrackingMessage_FIELDLIST(X, a) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  P_localSpace_viewSpace,   1) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  P_viewSpace_view0,   2) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  P_viewSpace_view1,   3) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  controller_grip_left,   4) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  controller_aim_left,   5) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  controller_grip_right,   6) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  controller_aim_right,   7) \
-X(a, STATIC,   SINGULAR, INT64,    timestamp,         8) \
-X(a, STATIC,   SINGULAR, INT64,    sequence_idx,      9) \
-X(a, CALLBACK, REPEATED, MESSAGE,  hand_joint_locations_left,  10) \
-X(a, CALLBACK, REPEATED, MESSAGE,  hand_joint_locations_right,  11) \
-X(a, STATIC,   SINGULAR, FLOAT,    controller_grab_value_left,  12) \
-X(a, STATIC,   SINGULAR, FLOAT,    controller_grab_value_right,  13) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  V_localSpace_viewSpace_linear,  14) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  V_localSpace_viewSpace_angular,  15)
+X(a, STATIC,   OPTIONAL, MESSAGE,  head_pose,         1) \
+X(a, STATIC,   OPTIONAL, MESSAGE,  head_linear_velocity,   2) \
+X(a, STATIC,   OPTIONAL, MESSAGE,  head_angular_velocity,   3) \
+X(a, STATIC,   REPEATED, MESSAGE,  view_poses,        4) \
+X(a, STATIC,   OPTIONAL, MESSAGE,  controller_grip_left,   5) \
+X(a, STATIC,   OPTIONAL, MESSAGE,  controller_aim_left,   6) \
+X(a, STATIC,   OPTIONAL, MESSAGE,  controller_grip_right,   7) \
+X(a, STATIC,   OPTIONAL, MESSAGE,  controller_aim_right,   8) \
+X(a, STATIC,   SINGULAR, INT64,    timestamp,         9) \
+X(a, STATIC,   SINGULAR, INT64,    sequence_idx,     10) \
+X(a, CALLBACK, REPEATED, MESSAGE,  hand_joint_locations_left,  11) \
+X(a, CALLBACK, REPEATED, MESSAGE,  hand_joint_locations_right,  12) \
+X(a, STATIC,   SINGULAR, FLOAT,    controller_grab_value_left,  13) \
+X(a, STATIC,   SINGULAR, FLOAT,    controller_grab_value_right,  14)
 #define em_proto_TrackingMessage_CALLBACK pb_default_field_callback
 #define em_proto_TrackingMessage_DEFAULT NULL
-#define em_proto_TrackingMessage_P_localSpace_viewSpace_MSGTYPE em_proto_Pose
-#define em_proto_TrackingMessage_P_viewSpace_view0_MSGTYPE em_proto_Pose
-#define em_proto_TrackingMessage_P_viewSpace_view1_MSGTYPE em_proto_Pose
+#define em_proto_TrackingMessage_head_pose_MSGTYPE em_proto_Pose
+#define em_proto_TrackingMessage_head_linear_velocity_MSGTYPE em_proto_Vec3
+#define em_proto_TrackingMessage_head_angular_velocity_MSGTYPE em_proto_Vec3
+#define em_proto_TrackingMessage_view_poses_MSGTYPE em_proto_Pose
 #define em_proto_TrackingMessage_controller_grip_left_MSGTYPE em_proto_Pose
 #define em_proto_TrackingMessage_controller_aim_left_MSGTYPE em_proto_Pose
 #define em_proto_TrackingMessage_controller_grip_right_MSGTYPE em_proto_Pose
 #define em_proto_TrackingMessage_controller_aim_right_MSGTYPE em_proto_Pose
 #define em_proto_TrackingMessage_hand_joint_locations_left_MSGTYPE em_proto_HandJointLocation
 #define em_proto_TrackingMessage_hand_joint_locations_right_MSGTYPE em_proto_HandJointLocation
-#define em_proto_TrackingMessage_V_localSpace_viewSpace_linear_MSGTYPE em_proto_Vec3
-#define em_proto_TrackingMessage_V_localSpace_viewSpace_angular_MSGTYPE em_proto_Vec3
 
 #define em_proto_InputThumbstick_FIELDLIST(X, a) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  xy,                1) \
@@ -419,7 +411,7 @@ X(a, STATIC,   SINGULAR, INT64,    average_latency,   5)
 #define em_proto_UpFrameMessage_DEFAULT NULL
 
 #define em_proto_UpMessage_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, INT64,    up_message_id,     1) \
+X(a, STATIC,   SINGULAR, INT64,    id,                1) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  tracking,          2) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  frame,             3)
 #define em_proto_UpMessage_CALLBACK NULL
@@ -429,16 +421,14 @@ X(a, STATIC,   OPTIONAL, MESSAGE,  frame,             3)
 
 #define em_proto_DownFrameDataMessage_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, INT64,    frame_sequence_id,   1) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  P_localSpace_view0,   2) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  P_localSpace_view1,   3) \
-X(a, STATIC,   SINGULAR, INT64,    render_begin_time,   4) \
-X(a, STATIC,   SINGULAR, INT64,    frame_push_time,   5) \
-X(a, STATIC,   SINGULAR, INT64,    frame_push_clock_time,   6) \
-X(a, STATIC,   SINGULAR, INT64,    server_system_clock_pipeline_clock_offset,   7)
+X(a, STATIC,   REPEATED, MESSAGE,  view_poses,        2) \
+X(a, STATIC,   SINGULAR, INT64,    render_begin_time,   3) \
+X(a, STATIC,   SINGULAR, INT64,    frame_push_time,   4) \
+X(a, STATIC,   SINGULAR, INT64,    frame_push_clock_time,   5) \
+X(a, STATIC,   SINGULAR, INT64,    server_system_clock_pipeline_clock_offset,   6)
 #define em_proto_DownFrameDataMessage_CALLBACK NULL
 #define em_proto_DownFrameDataMessage_DEFAULT NULL
-#define em_proto_DownFrameDataMessage_P_localSpace_view0_MSGTYPE em_proto_Pose
-#define em_proto_DownFrameDataMessage_P_localSpace_view1_MSGTYPE em_proto_Pose
+#define em_proto_DownFrameDataMessage_view_poses_MSGTYPE em_proto_Pose
 
 #define em_proto_DownMessage_FIELDLIST(X, a) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  frame_data,        1)

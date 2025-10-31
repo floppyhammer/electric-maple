@@ -78,7 +78,7 @@ bool
 em_remote_experience_emit_upmessage(EmRemoteExperience *exp, em_proto_UpMessage *upMessage)
 {
 	int64_t message_id = exp->nextUpMessage++;
-	upMessage->up_message_id = message_id;
+	upMessage->id = message_id;
 
 	// Serialize data
 	uint8_t buffer[kUpBufferSize];
@@ -159,8 +159,8 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 
 		XrPosef hmdLocalPose = hmdLocalLocation.pose;
 
-		tracking.has_P_localSpace_viewSpace = true;
-		tracking.P_localSpace_viewSpace = convert_pose(hmdLocalPose);
+		tracking.has_head_pose = true;
+		tracking.head_pose = convert_pose(hmdLocalPose);
 
 		//        ALOGD("HMD orientation: %f, %f, %f, %f",
 		//              hmdLocalPose.orientation.w,
