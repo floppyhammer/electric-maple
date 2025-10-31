@@ -35,10 +35,10 @@ add_library(drv_ems STATIC ems_hmd.cpp ems_motion_controller.cpp)
 
 target_link_libraries(drv_ems PRIVATE xrt-interfaces aux_util em_proto ems_callbacks)
 
-add_executable(ems_streaming_server ems_instance.cpp ems_server_internal.h ems_server_main.cpp)
+add_executable(electric_maple_server ems_instance.cpp ems_server_internal.h ems_server_main.cpp)
 
 target_link_libraries(
-        ems_streaming_server
+        electric_maple_server
         PRIVATE
         aux_util
         aux_util_debug_gui
@@ -50,6 +50,6 @@ target_link_libraries(
         ems_callbacks
 )
 
-target_link_libraries(ems_streaming_server PRIVATE st_gui aux_ogl)
+target_link_libraries(electric_maple_server PRIVATE st_gui aux_ogl)
 
-install(TARGETS ems_streaming_server RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS electric_maple_server RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

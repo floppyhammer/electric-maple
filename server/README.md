@@ -84,7 +84,7 @@ Due to the early stage of the project, you must start this up in this particular
 Assuming you followed the build steps above, you can start the server with:
 
 ```sh
-build/src/ems/ems_streaming_server
+build/src/ems/electric_maple_server
 ```
 
 To run an OpenXR app, use the build-tree OpenXR runtime manifest at
