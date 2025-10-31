@@ -562,7 +562,7 @@ android_main(struct android_app *app)
 
 	ALOGI("%s: telling stream client about EGL", __FUNCTION__);
 	// Retaining ownership
-	em_stream_client_set_egl_context(stream_client, egl_mutex, false, initialEglData->surface);
+	em_stream_client_set_egl_context(stream_client, egl_mutex, initialEglData->surface);
 
 	ALOGI("%s: creating connection object", __FUNCTION__);
 	_state.connection = g_object_ref_sink(em_connection_new_localhost());

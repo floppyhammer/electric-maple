@@ -69,7 +69,6 @@ struct _EmStreamClient
 	GstElement *appsink;
 
 	GLenum frame_texture_target;
-	GLenum texture_target;
 	GLuint texture_id;
 
 	int width;
@@ -83,7 +82,6 @@ struct _EmStreamClient
 		EGLSurface surface;
 	} egl;
 
-	bool own_egl_mutex;
 	EmEglMutexIface *egl_mutex;
 
 	struct os_thread_helper play_thread;
@@ -1082,15 +1080,11 @@ em_stream_client_destroy(EmStreamClient **ptr_sc)
 }
 
 void
-em_stream_client_set_egl_context(EmStreamClient *sc,
-                                 EmEglMutexIface *egl_mutex,
-                                 bool adopt_mutex_interface,
-                                 EGLSurface pbuffer_surface)
+em_stream_client_set_egl_context(EmStreamClient *sc, EmEglMutexIface *egl_mutex, EGLSurface pbuffer_surface)
 {
 	// Free old mutex interface if any
 	em_stream_client_free_egl_mutex(sc);
 
-	sc->own_egl_mutex = adopt_mutex_interface;
 	sc->egl_mutex = egl_mutex;
 
 	if (!em_egl_mutex_begin(sc->egl_mutex, EGL_NO_SURFACE, EGL_NO_SURFACE)) {
@@ -1112,12 +1106,6 @@ em_stream_client_set_egl_context(EmStreamClient *sc,
 
 	ALOGV("eglMakeCurrent un-make-current");
 	em_egl_mutex_end(sc->egl_mutex);
-}
-
-bool
-em_stream_client_egl_begin(EmStreamClient *sc, EGLSurface draw, EGLSurface read)
-{
-	return em_egl_mutex_begin(sc->egl_mutex, draw, read);
 }
 
 bool
@@ -1439,9 +1427,6 @@ em_stream_client_set_connection(EmStreamClient *sc, EmConnection *connection)
 static void
 em_stream_client_free_egl_mutex(EmStreamClient *sc)
 {
-	if (sc->own_egl_mutex) {
-		em_egl_mutex_destroy(&sc->egl_mutex);
-	}
 	sc->egl_mutex = NULL;
 }
 

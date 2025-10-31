@@ -60,20 +60,7 @@ em_stream_client_destroy(EmStreamClient **ptr_sc);
  * TODO not sure what the surface is actually used for...
  */
 void
-em_stream_client_set_egl_context(EmStreamClient *sc,
-                                 EmEglMutexIface *egl_mutex,
-                                 bool adopt_mutex_interface,
-                                 EGLSurface pbuffer_surface);
-
-/*!
- * Lock the mutex for the "main" EGL context supplied via @ref em_stream_client_set_egl_context and set it as current,
- * with your choice of EGL surfaces.
- *
- * @return true if successful - you will need to call @ref em_stream_client_egl_end when done using EGL/GL/GLES to
- * restore previous context/surfaces and unlock.
- */
-bool
-em_stream_client_egl_begin(EmStreamClient *sc, EGLSurface draw, EGLSurface read);
+em_stream_client_set_egl_context(EmStreamClient *sc, EmEglMutexIface *egl_mutex, EGLSurface pbuffer_surface);
 
 /*!
  * Lock the mutex for the "main" EGL context supplied via @ref em_stream_client_set_egl_context and set it as current,
