@@ -76,6 +76,8 @@ struct ems_gstreamer_pipeline
 	guint preserved_metadata_size;
 
 	int64_t client_average_latency;
+
+	GMainLoop *main_loop;
 };
 
 static gboolean
@@ -810,12 +812,11 @@ destroy(struct xrt_frame_node *node)
 	free(gp);
 }
 
-GMainLoop *main_loop;
-
 void *
-loop_thread(void *data)
+loop_thread(void *user_data)
 {
-	g_main_loop_run(main_loop);
+	struct ems_gstreamer_pipeline *self = (struct ems_gstreamer_pipeline *)user_data;
+	g_main_loop_run(self->main_loop);
 	return NULL;
 }
 
@@ -845,7 +846,7 @@ ems_gstreamer_pipeline_play(struct gstreamer_pipeline *gp)
 	U_LOG_I("Starting pipeline");
 	struct ems_gstreamer_pipeline *egp = (struct ems_gstreamer_pipeline *)gp;
 
-	main_loop = g_main_loop_new(NULL, FALSE);
+	egp->main_loop = g_main_loop_new(NULL, FALSE);
 
 	const GstStateChangeReturn ret = gst_element_set_state(egp->base.pipeline, GST_STATE_PLAYING);
 	g_assert(ret != GST_STATE_CHANGE_FAILURE);
@@ -853,7 +854,7 @@ ems_gstreamer_pipeline_play(struct gstreamer_pipeline *gp)
 	g_signal_connect(signaling_server, "ws-client-connected", G_CALLBACK(webrtc_client_connected_cb), egp);
 
 	pthread_t thread;
-	pthread_create(&thread, NULL, loop_thread, NULL);
+	pthread_create(&thread, NULL, loop_thread, egp);
 }
 
 void
@@ -1084,7 +1085,7 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	    "rtpbin name=rtpbin "
 	    // Video
 	    "appsrc name=%s ! "
-	    "%s ! "                        //
+	    "%s ! " //
 	    "queue ! "
 	    "rtph264pay name=rtppay config-interval=-1 aggregate-mode=zero-latency ! "
 	    "application/x-rtp,payload=96 ! "
@@ -1098,13 +1099,13 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	    "udpsink name=udpsink-video port=5000 sync=false " // Host will be assigned later
 	    "rtpbin.send_rtcp_src_0 ! udpsink name=video-rtcp-send port=5001 sync=false async=false "
 	    "udpsrc port=5005 ! rtpbin.recv_rtcp_sink_0 "
-	    // Audio
+	// Audio
 #ifdef __linux__
 	    "pulsesrc device=\"alsa_output.pci-0000_c6_00.1.hdmi-stereo-extra2.monitor\" ! "
 #elif defined(_WIN32)
-		"wasapi2src loopback=true low-latency=true ! "
+	    "wasapi2src loopback=true low-latency=true ! "
 #else
-		"audiotestsrc is-live=true ! "
+	    "audiotestsrc is-live=true ! "
 #endif
 	    "audioconvert ! "
 	    "audioresample ! "
@@ -1178,7 +1179,7 @@ ems_gstreamer_pipeline_get_current_time(struct gstreamer_pipeline *gp)
 void
 ems_gstreamer_pipeline_adjust_bitrate(struct gstreamer_pipeline *gp, int target_bitrate)
 {
-	GstElement* encoder = gst_bin_get_by_name(GST_BIN(gp->pipeline), "enc");
+	GstElement *encoder = gst_bin_get_by_name(GST_BIN(gp->pipeline), "enc");
 	g_object_set(encoder, "bitrate", target_bitrate, NULL);
 	gst_object_unref(encoder);
 }
