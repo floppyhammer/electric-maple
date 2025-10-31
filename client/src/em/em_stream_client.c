@@ -839,12 +839,6 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 	g_assert_nonnull(em_conn);
 	GError *error = NULL;
 
-	// We'll need an active egl context below before setting up gstgl (as explained previously)
-	if (!em_stream_client_egl_begin_pbuffer(sc)) {
-		ALOGE("%s: Failed to make EGL context current, cannot create pipeline!", __FUNCTION__);
-		return;
-	}
-
 #ifdef USE_WEBRTC
 	// clang-format off
     gchar *pipeline_string = g_strdup_printf(
@@ -920,9 +914,6 @@ on_need_pipeline_cb(EmConnection *em_conn, EmStreamClient *sc)
 		gst_object_unref(rtpbin);
 	}
 #endif
-
-	// Un-current the EGL context
-	em_stream_client_egl_end(sc);
 
 	// We convert the string SINK_CAPS above into a GstCaps that elements below can understand.
 	// the "video/x-raw(" GST_CAPS_FEATURE_MEMORY_GL_MEMORY ")," part of the caps is read :
