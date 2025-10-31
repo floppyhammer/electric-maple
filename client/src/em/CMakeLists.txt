@@ -23,7 +23,6 @@ target_link_libraries(
         xrt-interfaces
         aux-includes
         gstreamer_android
-        em_egl
 )
 target_compile_definitions(
         electric_maple PUBLIC XR_USE_PLATFORM_ANDROID XR_USE_GRAPHICS_API_OPENGL_ES
