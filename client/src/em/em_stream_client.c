@@ -15,7 +15,7 @@
 #include "em/em_egl.h"
 #include "em_app_log.h"
 #include "em_connection.h"
-#include "gst_common.h"
+#include "em_sample.h"
 #include "os/os_threading.h"
 // clang-format on
 

@@ -32,7 +32,7 @@
 #include "em_app_log.h"
 #include "em_connection.h"
 #include "em_stream_client.h"
-#include "gst_common.h"
+#include "em_sample.h"
 #include "pb_encode.h"
 #include "render/GLSwapchain.h"
 #include "render/render.hpp"
