@@ -5,5 +5,5 @@ SPDX-License-Identifier: BSL-1.0
 -->
 
 <resources>
-    <string name="app_name">EMC</string>
+    <string name="app_name">Electric-Maple Client</string>
 </resources>
