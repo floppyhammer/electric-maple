@@ -102,10 +102,9 @@ ems_hmd_get_tracked_pose(struct xrt_device *xdev,
 #ifdef USE_PREDICTION
 	if (eh->received->updated) {
 		xrt_space_relation rel;
-		uint64_t timestamp;
-		std::lock_guard<std::mutex> lock(eh->received->mutex);
+		std::lock_guard lock(eh->received->mutex);
 		rel = eh->received->rel;
-		timestamp = eh->received->timestamp;
+		uint64_t timestamp = eh->received->timestamp;
 		eh->received->rel.relation_flags = XRT_SPACE_RELATION_BITMASK_NONE;
 		eh->received->updated = false;
 		if (0 == (rel.relation_flags & XRT_SPACE_RELATION_ANGULAR_VELOCITY_VALID_BIT)) {
@@ -188,17 +187,19 @@ ems_hmd_handle_data(enum ems_callbacks_event event, const em_UpMessageSuper *mes
 	rel.pose = pose;
 	math_quat_normalize(&rel.pose.orientation);
 	rel.relation_flags = (enum xrt_space_relation_flags)(
-	    XRT_SPACE_RELATION_POSITION_VALID_BIT | XRT_SPACE_RELATION_POSITION_TRACKED_BIT |
-	    XRT_SPACE_RELATION_ORIENTATION_VALID_BIT | XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT);
+		XRT_SPACE_RELATION_POSITION_VALID_BIT | XRT_SPACE_RELATION_POSITION_TRACKED_BIT |
+		XRT_SPACE_RELATION_ORIENTATION_VALID_BIT | XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT);
 	if (message->tracking.has_head_linear_velocity) {
 		rel.linear_velocity = to_xrt_vec3(message->tracking.head_linear_velocity);
 		rel.relation_flags =
-		    (enum xrt_space_relation_flags)(rel.relation_flags | XRT_SPACE_RELATION_LINEAR_VELOCITY_VALID_BIT);
+			(enum xrt_space_relation_flags)(
+				rel.relation_flags | XRT_SPACE_RELATION_LINEAR_VELOCITY_VALID_BIT);
 	}
 	if (message->tracking.has_head_angular_velocity) {
 		rel.angular_velocity = to_xrt_vec3(message->tracking.head_angular_velocity);
 		rel.relation_flags =
-		    (enum xrt_space_relation_flags)(rel.relation_flags | XRT_SPACE_RELATION_ANGULAR_VELOCITY_VALID_BIT);
+			(enum xrt_space_relation_flags)(
+				rel.relation_flags | XRT_SPACE_RELATION_ANGULAR_VELOCITY_VALID_BIT);
 	}
 	{
 		std::lock_guard<std::mutex> lock(eh->received->mutex);
@@ -215,14 +216,14 @@ ems_hmd_create(ems_instance &emsi)
 	// We only want the HMD parts and one input.
 	// Also disable Monado's built-in tracking algorithms.
 	enum u_device_alloc_flags flags =
-	    (enum u_device_alloc_flags)(U_DEVICE_ALLOC_HMD | U_DEVICE_ALLOC_TRACKING_NONE);
+		(enum u_device_alloc_flags)(U_DEVICE_ALLOC_HMD | U_DEVICE_ALLOC_TRACKING_NONE);
 
 	struct ems_hmd *eh = U_DEVICE_ALLOCATE(struct ems_hmd, flags, 1, 0);
 
 	eh->received = std::make_unique<ems_hmd_recvbuf>();
 
 #ifdef USE_PREDICTION
-	m_relation_history_create(&eh->pose_history);
+	m_relation_history_create(&eh->pose_history, nullptr);
 #endif
 
 	// Functions.
@@ -262,16 +263,16 @@ ems_hmd_create(ems_instance &emsi)
 	//  Or maybe remove this because I think get_view_poses lets us set the FOV dynamically.
 
 	struct xrt_fov fov_left = {
-	    -0.316011f,
-	    0.361546f,
-	    0.225283f,
-	    -0.165940f,
+		-0.316011f,
+		0.361546f,
+		0.225283f,
+		-0.165940f,
 	};
 	struct xrt_fov fov_right = {
-	    -0.345102f,
-	    0.345085f,
-	    0.223300f,
-	    -0.175499f,
+		-0.345102f,
+		0.345085f,
+		0.223300f,
+		-0.175499f,
 	};
 
 	eh->base.hmd->distortion.fov[0] = fov_left;
@@ -306,11 +307,11 @@ ems_hmd_create(ems_instance &emsi)
 
 #ifdef USE_PREDICTION
 	// Just put an initial identity value in the tracker
-	struct xrt_space_relation identity = XRT_SPACE_RELATION_ZERO;
-	identity.relation_flags = (enum xrt_space_relation_flags)(
-	    XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT | XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |
-	    XRT_SPACE_RELATION_POSITION_VALID_BIT | XRT_SPACE_RELATION_POSITION_TRACKED_BIT);
-	identity.pose = (struct xrt_pose){XRT_QUAT_IDENTITY, {0.0f, 1.6f, 0.0f}};
+	xrt_space_relation identity = XRT_SPACE_RELATION_ZERO;
+	identity.relation_flags = (xrt_space_relation_flags)(
+		XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT | XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |
+		XRT_SPACE_RELATION_POSITION_VALID_BIT | XRT_SPACE_RELATION_POSITION_TRACKED_BIT);
+	identity.pose = xrt_pose{xrt_quat XRT_QUAT_IDENTITY, xrt_vec3{0.0f, 1.6f, 0.0f}};
 	uint64_t now = os_monotonic_get_ns();
 	m_relation_history_push(eh->pose_history, &identity, now);
 #endif

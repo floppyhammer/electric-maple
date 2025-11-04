@@ -995,6 +995,7 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 		    "queue ! "
 		    "x264enc name=enc tune=zerolatency sliced-threads=true speed-preset=ultrafast bframes=0 bitrate=%d "
 		    "key-int-max=120 ! "
+		    // "amfh264enc name=enc preset=speed rate-control=cbr bitrate=%d ! "
 		    "video/x-h264,profile=baseline",
 		    args->bitrate);
 	} else if (args->encoder_type == EMS_ENCODER_TYPE_NVH264) {
@@ -1086,7 +1087,6 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 	    // Video
 	    "appsrc name=%s ! "
 	    "%s ! " //
-	    "queue ! "
 	    "rtph264pay name=rtppay config-interval=-1 aggregate-mode=zero-latency ! "
 	    "application/x-rtp,payload=96 ! "
 #ifdef USE_WEBRTC
@@ -1109,7 +1109,6 @@ ems_gstreamer_pipeline_create(struct xrt_frame_context *xfctx,
 #endif
 	    "audioconvert ! "
 	    "audioresample ! "
-	    "queue ! "
 	    "opusenc name=audio-enc audio-type=restricted-lowdelay perfect-timestamp=true frame-size=10 "
 	    "bitrate-type=cbr ! "
 	    "rtpopuspay ! "

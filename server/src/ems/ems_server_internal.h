@@ -31,6 +31,8 @@
 #include "xrt/xrt_system.h"
 #include "xrt/xrt_tracking.h"
 
+#define USE_PREDICTION
+
 struct ems_callbacks;
 struct ems_instance;
 struct ems_hmd;
