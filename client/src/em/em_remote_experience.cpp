@@ -120,10 +120,10 @@ ProtoMessage_encode_hand_joint_locations(pb_ostream_t *ostream, const pb_field_t
 	return true;
 }
 
-_em_proto_Pose
+em_proto_Pose
 convert_pose(XrPosef pose)
 {
-	_em_proto_Pose new_pose{};
+	em_proto_Pose new_pose{};
 
 	new_pose.has_position = true;
 	new_pose.position = {pose.position.x, pose.position.y, pose.position.z};
@@ -137,6 +137,17 @@ convert_pose(XrPosef pose)
 	return new_pose;
 }
 
+em_proto_Vec3
+convert_vec3(XrVector3f vec)
+{
+	em_proto_Vec3 new_vec{};
+	new_vec.x = vec.x;
+	new_vec.y = vec.y;
+	new_vec.z = vec.z;
+
+	return new_vec;
+}
+
 /// Send pose data back to server.
 static void
 em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDisplayTime, InputState &inputState)
@@ -147,9 +158,11 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 
 	{
 		// Get HMD location.
+		XrSpaceVelocity velocity = {XR_TYPE_SPACE_VELOCITY};
+
 		XrSpaceLocation hmdLocalLocation = {};
 		hmdLocalLocation.type = XR_TYPE_SPACE_LOCATION;
-		hmdLocalLocation.next = nullptr;
+		hmdLocalLocation.next = &velocity;
 		result = xrLocateSpace(exp->xr_owned.viewSpace, exp->xr_owned.worldSpace, predictedDisplayTime,
 		                       &hmdLocalLocation);
 		if (result != XR_SUCCESS) {
@@ -161,6 +174,18 @@ em_remote_experience_report_pose(EmRemoteExperience *exp, XrTime predictedDispla
 
 		tracking.has_head_pose = true;
 		tracking.head_pose = convert_pose(hmdLocalPose);
+
+		if (velocity.velocityFlags & XR_SPACE_VELOCITY_LINEAR_VALID_BIT) {
+			ALOGE("XR_SPACE_VELOCITY_LINEAR_VALID_BIT");
+			tracking.has_head_linear_velocity = true;
+			tracking.head_linear_velocity = convert_vec3(velocity.linearVelocity);
+		}
+
+		if (velocity.velocityFlags & XR_SPACE_VELOCITY_ANGULAR_VALID_BIT) {
+			ALOGE("XR_SPACE_VELOCITY_ANGULAR_VALID_BIT");
+			tracking.has_head_angular_velocity = true;
+			tracking.head_angular_velocity = convert_vec3(velocity.angularVelocity);
+		}
 
 		//        ALOGD("HMD orientation: %f, %f, %f, %f",
 		//              hmdLocalPose.orientation.w,
@@ -717,15 +742,15 @@ em_remote_experience_inner_poll_and_render_frame(EmRemoteExperience *exp,
 		uint64_t client_render_duration = client_now - sample->client_render_begin_time;
 		uint64_t total_duration = client_now - sample->server_render_begin_time;
 
-				ALOGD(
-				    "BENCHMARK {\"frame\": %ld, \"server_render_ms\": %.1f, "
-                    "server_encode_transmit_ms\":%.1f, "
-				    "\"client_decode_ms\": %.1f, \"client_wait_ms\": %.1f, "
-                    "\"client_render_ms\": %.1f,total_ms\": %.1f}",
-				    sample->frame_sequence_id, time_ns_to_ms_f(server_render_duration),
-				    time_ns_to_ms_f(server_encode_transmit_duration),
-		 time_ns_to_ms_f(client_decode_duration), 		    time_ns_to_ms_f(client_wait_duration),
-		 time_ns_to_ms_f(client_render_duration), 		    time_ns_to_ms_f(total_duration));
+		ALOGD(
+		    "BENCHMARK {\"frame\": %ld, \"server_render_ms\": %.1f, "
+		    "server_encode_transmit_ms\":%.1f, "
+		    "\"client_decode_ms\": %.1f, \"client_wait_ms\": %.1f, "
+		    "\"client_render_ms\": %.1f,total_ms\": %.1f}",
+		    sample->frame_sequence_id, time_ns_to_ms_f(server_render_duration),
+		    time_ns_to_ms_f(server_encode_transmit_duration), time_ns_to_ms_f(client_decode_duration),
+		    time_ns_to_ms_f(client_wait_duration), time_ns_to_ms_f(client_render_duration),
+		    time_ns_to_ms_f(total_duration));
 	}
 
 	// Send frame report
