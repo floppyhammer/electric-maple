@@ -50,7 +50,8 @@ gst_fmt_from_xf_format(enum xrt_format format_in)
 	case XRT_FORMAT_R8G8B8X8: return GST_VIDEO_FORMAT_RGBx;
 	case XRT_FORMAT_YUYV422: return GST_VIDEO_FORMAT_YUY2;
 	case XRT_FORMAT_L8: return GST_VIDEO_FORMAT_GRAY8;
-	default: assert(false); return GST_VIDEO_FORMAT_UNKNOWN;
+	default: assert(false);
+		return GST_VIDEO_FORMAT_UNKNOWN;
 	}
 }
 
@@ -79,11 +80,11 @@ ems_gstreamer_src_push_frame(struct ems_gstreamer_src *gs, struct xrt_frame *xf,
 	GstFlowReturn ret;
 
 	U_LOG_T(
-	    "Called"
-	    "\n\tformat: %s"
-	    "\n\twidth: %u"
-	    "\n\theight: %u",
-	    u_format_str(xf->format), xf->width, xf->height);
+		"Called"
+		"\n\tformat: %s"
+		"\n\twidth: %u"
+		"\n\theight: %u",
+		u_format_str(xf->format), xf->width, xf->height);
 
 	/* We need to take a reference on the frame to keep it alive. */
 	struct xrt_frame *taken = NULL;
@@ -91,13 +92,13 @@ ems_gstreamer_src_push_frame(struct ems_gstreamer_src *gs, struct xrt_frame *xf,
 
 	/* Wrap the frame that we now hold a reference to. */
 	buffer = gst_buffer_new_wrapped_full( //
-	    0,                                // GstMemoryFlags flags
-	    (gpointer)xf->data,               // gpointer data
-	    taken->size,                      // gsize maxsize
-	    0,                                // gsize offset
-	    taken->size,                      // gsize size
-	    taken,                            // gpointer user_data
-	    wrapped_buffer_destroy);          // GDestroyNotify notify
+		0, // GstMemoryFlags flags
+		(gpointer)xf->data, // gpointer data
+		taken->size, // gsize maxsize
+		0, // gsize offset
+		taken->size, // gsize size
+		taken, // gpointer user_data
+		wrapped_buffer_destroy); // GDestroyNotify notify
 
 	int stride = xf->stride;
 
@@ -193,20 +194,26 @@ destroy(struct xrt_frame_node *node)
 
 void
 ems_gstreamer_src_create_with_pipeline(struct gstreamer_pipeline *gp,
-                                       uint32_t width,
-                                       uint32_t height,
+                                       const struct xrt_size *extent,
+                                       uint32_t refresh_rate_hz,
                                        enum xrt_format format,
                                        const char *appsrc_name,
                                        struct ems_gstreamer_src **out_gs)
 {
 	const char *format_str = NULL;
 	switch (format) {
-	case XRT_FORMAT_R8G8B8: format_str = "RGB"; break;
-	case XRT_FORMAT_R8G8B8A8: format_str = "RGBA"; break;
-	case XRT_FORMAT_R8G8B8X8: format_str = "RGBx"; break;
-	case XRT_FORMAT_YUYV422: format_str = "YUY2"; break;
-	case XRT_FORMAT_L8: format_str = "GRAY8"; break;
-	default: assert(false); break;
+	case XRT_FORMAT_R8G8B8: format_str = "RGB";
+		break;
+	case XRT_FORMAT_R8G8B8A8: format_str = "RGBA";
+		break;
+	case XRT_FORMAT_R8G8B8X8: format_str = "RGBx";
+		break;
+	case XRT_FORMAT_YUYV422: format_str = "YUY2";
+		break;
+	case XRT_FORMAT_L8: format_str = "GRAY8";
+		break;
+	default: assert(false);
+		break;
 	}
 
 	const gchar *tags[] = {NULL};
@@ -223,16 +230,12 @@ ems_gstreamer_src_create_with_pipeline(struct gstreamer_pipeline *gp,
 	gs->appsrc = gst_bin_get_by_name(GST_BIN(gp->pipeline), appsrc_name);
 
 	GstCaps *caps = gst_caps_new_simple( //
-	    "video/x-raw",                   //
-	    "format", G_TYPE_STRING,
-	    format_str, //
-	    "width", G_TYPE_INT,
-	    width, //
-	    "height", G_TYPE_INT,
-	    height, //
-	    "framerate", GST_TYPE_FRACTION, 0,
-	    1, //
-	    NULL);
+		"video/x-raw", //
+		"format", G_TYPE_STRING, format_str, //
+		"width", G_TYPE_INT, extent->w, //
+		"height", G_TYPE_INT, extent->h, //
+		"framerate", GST_TYPE_FRACTION, refresh_rate_hz, 1, //
+		NULL);
 
 	g_object_set(G_OBJECT(gs->appsrc), //
 	             "caps",

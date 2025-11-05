@@ -11,6 +11,7 @@
  * @ingroup ipc
  */
 
+#include "gst/ems_pipeline_args.h"
 #include "server/ipc_server_interface.h"
 #include "util/u_logging.h"
 #include "util/u_metrics.h"
@@ -27,6 +28,11 @@ U_TRACE_TARGET_SETUP(U_TRACE_WHICH_SERVICE)
 int
 main(int argc, char *argv[])
 {
+	if (!ems_arguments_parse(argc, argv)) {
+		U_LOG_E("Could not parse command line arguments.");
+		return -1;
+	}
+
 #ifdef XRT_OS_WINDOWS
 	u_win_try_privilege_or_priority_from_args(U_LOGGING_INFO, argc, argv);
 #endif

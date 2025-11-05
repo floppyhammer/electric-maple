@@ -5,6 +5,14 @@
 
 add_subdirectory(include)
 
+add_library(ems_config STATIC ems_config.c)
+target_link_libraries(
+        ems_config
+        PUBLIC xrt-interfaces
+        PRIVATE aux_util ${JSONGLIB_LIBRARIES}
+)
+target_include_directories(ems_config PUBLIC . ${GLIB_INCLUDE_DIRS} ${JSONGLIB_INCLUDE_DIRS})
+
 add_library(ems_callbacks STATIC ems_callbacks.cpp)
 target_link_libraries(
         ems_callbacks
@@ -34,7 +42,15 @@ target_include_directories(comp_ems PUBLIC . ${GST_INCLUDE_DIRS})
 
 add_library(drv_ems STATIC ems_hmd.cpp ems_motion_controller.cpp)
 
-target_link_libraries(drv_ems PRIVATE xrt-interfaces aux_util em_proto ems_callbacks)
+target_link_libraries(
+        drv_ems
+        PRIVATE
+        xrt-interfaces
+        aux_util
+        em_proto
+        ems_callbacks
+        ems_config
+)
 
 add_executable(electric_maple_server ems_instance.cpp ems_server_main.cpp)
 

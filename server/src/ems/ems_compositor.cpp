@@ -38,14 +38,7 @@
 #include "vk/vk_cmd_pool.h"
 #include "vk/vk_image_readback_to_xf_pool.h"
 
-#define APP_VIEW_W (1280)
-#define APP_VIEW_H (800)
-
-#define READBACK_DIV_FACTOR (1)
-
-#define READBACK_W2 (APP_VIEW_W / READBACK_DIV_FACTOR)
-#define READBACK_W (READBACK_W2 * 2)
-#define READBACK_H (APP_VIEW_H / READBACK_DIV_FACTOR)
+#include "ems_config.h"
 
 DEBUG_GET_ONCE_LOG_OPTION(log, "XRT_COMPOSITOR_LOG", U_LOGGING_INFO)
 
@@ -288,16 +281,18 @@ compositor_init_sys_info(struct ems_compositor *c, struct xrt_device *xdev)
 
 	// clang-format off
 
+	const struct ems_device_config *config = ems_config_get();
+
 	// These seem to control the
-	sys_info->views[0].recommended.width_pixels  = APP_VIEW_W;
-	sys_info->views[0].recommended.height_pixels = APP_VIEW_H;
+	sys_info->views[0].recommended.width_pixels  = config->resolution_native_per_eye_pixels.w;
+	sys_info->views[0].recommended.height_pixels = config->resolution_native_per_eye_pixels.h;
 	sys_info->views[0].recommended.sample_count  = 1;
 	sys_info->views[0].max.width_pixels          = 2048;
 	sys_info->views[0].max.height_pixels         = 2048;
 	sys_info->views[0].max.sample_count          = 1;
 
-	sys_info->views[1].recommended.width_pixels  = APP_VIEW_W;
-	sys_info->views[1].recommended.height_pixels = APP_VIEW_H;
+	sys_info->views[1].recommended.width_pixels  = config->resolution_native_per_eye_pixels.w;
+	sys_info->views[1].recommended.height_pixels = config->resolution_native_per_eye_pixels.h;
 	sys_info->views[1].recommended.sample_count  = 1;
 	sys_info->views[1].max.width_pixels          = 2048;
 	sys_info->views[1].max.height_pixels         = 2048;
@@ -383,6 +378,8 @@ pack_blit_and_encode(struct ems_compositor *c,
 		return;
 	}
 
+	const struct ems_device_config *config = ems_config_get();
+
 	// Blit two views side-by-side onto c->bounce.image (does scaling).
 	{
 		struct vk_cmd_blit_images_side_by_side_info info = {};
@@ -416,7 +413,7 @@ pack_blit_and_encode(struct ems_compositor *c,
 		info.dst.old_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 		info.dst.src_access_mask = VK_ACCESS_TRANSFER_READ_BIT;
 		info.dst.src_stage_mask = VK_PIPELINE_STAGE_TRANSFER_BIT;
-		info.dst.size = xrt_size{READBACK_W, READBACK_H};
+		info.dst.size = config->resolution_stream_stereo_pixels;
 		info.dst.fm_image.aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
 		info.dst.fm_image.base_array_layer = 0;
 		info.dst.fm_image.image = c->bounce.image;
@@ -442,7 +439,7 @@ pack_blit_and_encode(struct ems_compositor *c,
 		info.dst.fm_image.base_array_layer = 0;
 		info.dst.fm_image.image = wrap->image;
 
-		info.size = xrt_size{READBACK_W, READBACK_H};
+		info.size = config->resolution_stream_stereo_pixels;
 
 		vk_cmd_copy_image_locked(vk, cmd, &info);
 	}
@@ -868,9 +865,11 @@ ems_compositor_create_system(ems_instance &emsi, struct xrt_system_compositor **
 		return XRT_ERROR_VULKAN;
 	}
 
+	const struct ems_device_config *config = ems_config_get();
+
 	VkExtent2D readback_extent = {};
-	readback_extent.height = READBACK_H;
-	readback_extent.width = READBACK_W;
+	readback_extent.width = (uint32_t)config->resolution_stream_stereo_pixels.w;
+	readback_extent.height = (uint32_t)config->resolution_stream_stereo_pixels.h;
 
 	vk_image_readback_to_xf_pool_create( //
 		&c->base.vk, // vk_bundle
@@ -890,8 +889,8 @@ ems_compositor_create_system(ems_instance &emsi, struct xrt_system_compositor **
 
 	ems_gstreamer_src_create_with_pipeline( //
 		c->gstreamer_pipeline, //
-		READBACK_W, //
-		READBACK_H, //
+		&config->resolution_stream_stereo_pixels, //
+		config->refresh_rate_hz, //
 		XRT_FORMAT_R8G8B8X8, //
 		EMS_VIDEO_APPSRC_NAME, //
 		&c->gstreamer_src); //
@@ -905,12 +904,11 @@ ems_compositor_create_system(ems_instance &emsi, struct xrt_system_compositor **
 		VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
 #endif
 		VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-		VkExtent2D extent = {READBACK_W, READBACK_H};
 		VkResult ret;
 
 		ret = vk_create_image_simple( //
 			&c->base.vk, // vk_bundle
-			extent, // extent
+			readback_extent, // extent
 			format, // format
 			usage, // usage
 			&c->bounce.device_memory, // out_mem

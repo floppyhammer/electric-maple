@@ -16,7 +16,7 @@
 
 #include "electricmaple.pb.h"
 
-#define USE_PREDICTION
+// #define USE_PREDICTION
 
 struct ems_callbacks;
 struct ems_instance;

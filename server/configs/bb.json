@@ -1,0 +1,26 @@
+{
+    "refresh_rate_hz": 60,
+    "resolution_native_per_eye_pixels": {
+        "width": 1920,
+        "height": 1080
+    },
+    "resolution_stream_stereo_pixels": {
+        "comment": "At full resolution [2 * native width, native height]. Using 25% of the native pixels for the stream due to the readback / encoding bottleneck.",
+        "width": 3840,
+        "height": 1080
+    },
+    "fov_radians": [
+        {
+            "angle_left": -0.316011,
+            "angle_right": 0.361546,
+            "angle_up": 0.225283,
+            "angle_down": -0.165940
+        },
+        {
+            "angle_left": -0.345102,
+            "angle_right": 0.345085,
+            "angle_up": 0.223300,
+            "angle_down": -0.175499
+        }
+    ]
+}

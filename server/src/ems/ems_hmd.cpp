@@ -44,6 +44,10 @@
 #include "include/ems_common.h"
 #include "math/m_relation_history.h"
 
+#include <cstdint>
+
+#include "ems_config.h"
+
 /*
  *
  * Structs and defines.
@@ -259,31 +263,18 @@ ems_hmd_create(ems_instance &emsi)
 	eh->base.hmd->blend_modes[idx++] = XRT_BLEND_MODE_OPAQUE;
 	eh->base.hmd->blend_mode_count = idx;
 
+	const struct ems_device_config *config = ems_config_get();
+
 	// TODO: Find out the framerate that the remote device runs at
-	eh->base.hmd->screens[0].nominal_frame_interval_ns = time_s_to_ns(1.0f / 60.0f);
+	eh->base.hmd->screens[0].nominal_frame_interval_ns = time_s_to_ns(1.0f / (float)config->refresh_rate_hz);
 
-	// TODO: Find out the remote device's actual FOV.
-	//  Or maybe remove this because I think get_view_poses lets us set the FOV dynamically.
+	// TODO: Find out the remote device's actual FOV. Or maybe remove this because I think get_view_poses lets us
+	// set the FOV dynamically.
 
-	xrt_fov fov_left = {
-		-0.316011f,
-		0.361546f,
-		0.225283f,
-		-0.165940f,
-	};
-	xrt_fov fov_right = {
-		-0.345102f,
-		0.345085f,
-		0.223300f,
-		-0.175499f,
-	};
+	memcpy(eh->base.hmd->distortion.fov, config->fov_radians, sizeof(xrt_fov) * 2);
 
-	eh->base.hmd->distortion.fov[0] = fov_left;
-	eh->base.hmd->distortion.fov[1] = fov_right;
-
-	// TODO: Ditto, figure out the device's actual resolution
-	const int panel_w = 1280;
-	const int panel_h = 800;
+	const int panel_w = config->resolution_native_per_eye_pixels.w;
+	const int panel_h = config->resolution_native_per_eye_pixels.h;
 
 	// Single "screen" (always the case)
 	eh->base.hmd->screens[0].w_pixels = panel_w * 2;

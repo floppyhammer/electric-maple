@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: BSL-1.0
 
-add_library(ems_gst STATIC ems_gstreamer_pipeline.c ems_signaling_server.c ems_gstreamer_src.c)
+add_library(ems_gst STATIC ems_gstreamer_pipeline.c ems_signaling_server.c ems_gstreamer_src.c ems_pipeline_args.c
+        ems_pipeline_args.h)
 
 target_link_libraries(
         ems_gst

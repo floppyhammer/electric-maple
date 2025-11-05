@@ -16,6 +16,7 @@
 
 #ifdef __cplusplus
 extern "C" {
+
 #endif
 
 struct ems_gstreamer_src;
@@ -26,8 +27,8 @@ ems_gstreamer_src_push_frame(struct ems_gstreamer_src *gs, struct xrt_frame *xf,
 
 void
 ems_gstreamer_src_create_with_pipeline(struct gstreamer_pipeline *gp,
-                                       uint32_t width,
-                                       uint32_t height,
+                                       const struct xrt_size *extent,
+                                       uint32_t refresh_rate_hz,
                                        enum xrt_format format,
                                        const char *appsrc_name,
                                        struct ems_gstreamer_src **out_gs);
