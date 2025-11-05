@@ -17,6 +17,7 @@ target_include_directories(ems_callbacks PUBLIC . ${GLIB_INCLUDE_DIRS})
 add_subdirectory(gst)
 
 add_library(comp_ems STATIC ems_compositor.cpp ems_compositor.h)
+
 target_link_libraries(
         comp_ems
         PUBLIC xrt-interfaces
@@ -35,7 +36,7 @@ add_library(drv_ems STATIC ems_hmd.cpp ems_motion_controller.cpp)
 
 target_link_libraries(drv_ems PRIVATE xrt-interfaces aux_util em_proto ems_callbacks)
 
-add_executable(electric_maple_server ems_instance.cpp ems_server_internal.h ems_server_main.cpp)
+add_executable(electric_maple_server ems_instance.cpp ems_server_main.cpp)
 
 target_link_libraries(
         electric_maple_server

@@ -17,18 +17,16 @@
 
 #pragma once
 
-#include "ems_server_internal.h"
 #include "gst/ems_gstreamer_pipeline.h"
-#include "gst/ems_gstreamer_src.h"
 #include "os/os_time.h"
 #include "util/comp_base.h"
 #include "util/u_logging.h"
 #include "util/u_pacing.h"
 #include "util/u_sink.h"
-#include "util/u_threading.h"
-#include "util/u_var.h"
 #include "xrt/xrt_gfx_vk.h"
-#include "xrt/xrt_instance.h"
+#include "xrt/xrt_compositor.h"
+
+struct ems_instance;
 
 #ifdef __cplusplus
 extern "C" {
@@ -145,8 +143,8 @@ struct ems_compositor
  * @private @memberof ems_compositor
  * @ingroup comp_ems
  */
-static inline struct ems_compositor *
-ems_compositor(struct xrt_compositor *xc)
+static ems_compositor *
+ems_compositor(xrt_compositor *xc)
 {
 	return (struct ems_compositor *)xc;
 }

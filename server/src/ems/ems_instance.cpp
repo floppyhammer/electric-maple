@@ -9,11 +9,12 @@
  * @author Jakob Bornecrantz <jakob@collabora.com>
  */
 
+#include "ems_instance.h"
+
 #include <assert.h>
 
 #include "../compositor/main/comp_main_interface.h"
-#include "ems_callbacks.h"
-#include "ems_server_internal.h"
+
 #include "util/u_builders.h"
 #include "util/u_misc.h"
 #include "util/u_system.h"
@@ -22,15 +23,21 @@
 #include "xrt/xrt_instance.h"
 #include "xrt/xrt_system.h"
 
+#include "ems_callbacks.h"
+// #include "ems_compositor.h" Cannot include here, don't know here.
+#include "ems_hmd.h"
+#include "ems_motion_controller.h"
+
 namespace {
-inline struct ems_instance *
-from_xinst(struct xrt_instance *xinst)
+
+ems_instance *
+from_xinst(xrt_instance *xinst)
 {
 	return container_of(xinst, struct ems_instance, xinst_base);
 }
 
-inline struct ems_instance *
-from_xsysd(struct xrt_system_devices *xsysd)
+ems_instance *
+from_xsysd(xrt_system_devices *xsysd)
 {
 	return container_of(xsysd, struct ems_instance, xsysd_base);
 }
@@ -158,14 +165,14 @@ ems_instance_system_devices_init(struct ems_instance *emsi)
 	snprintf(origin.name, ARRAY_SIZE(origin.name), "Electric Maple Server Tracking Space");
 
 	struct ems_hmd *eh = ems_hmd_create(*emsi);
-	struct ems_motion_controller *emcl = ems_motion_controller_create( //
-	    *emsi,                                                         //
-	    XRT_DEVICE_SIMPLE_CONTROLLER,                                  //
-	    XRT_DEVICE_TYPE_LEFT_HAND_CONTROLLER);                         //
-	struct ems_motion_controller *emcr = ems_motion_controller_create( //
-	    *emsi,                                                         //
-	    XRT_DEVICE_SIMPLE_CONTROLLER,                                  //
-	    XRT_DEVICE_TYPE_RIGHT_HAND_CONTROLLER);                        //
+	struct ems_motion_controller *emcl = ems_motion_controller_create(
+		*emsi,
+		XRT_DEVICE_SIMPLE_CONTROLLER,
+		XRT_DEVICE_TYPE_LEFT_HAND_CONTROLLER);
+	struct ems_motion_controller *emcr = ems_motion_controller_create(
+		*emsi,
+		XRT_DEVICE_SIMPLE_CONTROLLER,
+		XRT_DEVICE_TYPE_RIGHT_HAND_CONTROLLER);
 
 	emsi->head = eh;
 	emsi->left = emcl;
@@ -187,16 +194,16 @@ ems_instance_system_devices_init(struct ems_instance *emsi)
 	emsi->xsysd_base.static_roles.hand_tracking.unobstructed.right = right;
 
 	u_builder_create_space_overseer_legacy( //
-	    &emsi->usys->broadcast,             // broadcast
-	    head,                               // head
-	    left,                               // left
-	    right,                              // right
-	    nullptr,
-	    emsi->xsysd_base.xdevs,      // xdevs
-	    emsi->xsysd_base.xdev_count, // xdev_count
-	    false,                       // root_is_unbounded
-	    true,                        // per_app_local_spaces
-	    &emsi->xso);                 // out_xso
+		&emsi->usys->broadcast, // broadcast
+		head, // head
+		left, // left
+		right, // right
+		nullptr,
+		emsi->xsysd_base.xdevs, // xdevs
+		emsi->xsysd_base.xdev_count, // xdev_count
+		false, // root_is_unbounded
+		true, // per_app_local_spaces
+		&emsi->xso); // out_xso
 }
 
 void

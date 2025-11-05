@@ -17,9 +17,13 @@
 #include <cstdio>
 #include <thread>
 
+#include "ems_motion_controller.h"
+
 #include "electricmaple.pb.h"
 #include "ems_callbacks.h"
-#include "ems_server_internal.h"
+#include "ems_instance.h"
+#include "util/u_time.h"
+#include "os/os_threading.h"
 #include "include/ems_common.h"
 #include "math/m_api.h"
 #include "math/m_mathinclude.h"
@@ -27,11 +31,8 @@
 #include "os/os_time.h"
 #include "pb_decode.h"
 #include "util/u_device.h"
-#include "util/u_distortion_mesh.h"
-#include "util/u_hand_simulation.h"
 #include "util/u_logging.h"
 #include "util/u_misc.h"
-#include "util/u_time.h"
 #include "util/u_var.h"
 #include "xrt/xrt_device.h"
 

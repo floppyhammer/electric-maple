@@ -21,7 +21,9 @@
 #include <stdio.h>
 
 #include "electricmaple.pb.h"
+#include "ems_instance.h"
 #include "gst/ems_gstreamer.h"
+#include "gst/ems_gstreamer_src.h"
 #include "multi/comp_multi_interface.h"
 #include "os/os_time.h"
 #include "util/comp_vulkan.h"
@@ -30,6 +32,7 @@
 #include "util/u_misc.h"
 #include "util/u_time.h"
 #include "util/u_trace_marker.h"
+#include "util/u_var.h"
 #include "util/u_verify.h"
 #include "vk/vk_cmd.h"
 #include "vk/vk_cmd_pool.h"
@@ -65,39 +68,39 @@ get_vk(struct ems_compositor *c)
  */
 
 static const char *instance_extensions_common[] = {
-    VK_KHR_EXTERNAL_FENCE_CAPABILITIES_EXTENSION_NAME,      //
-    VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME,     //
-    VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME,  //
-    VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME, //
+	VK_KHR_EXTERNAL_FENCE_CAPABILITIES_EXTENSION_NAME, //
+	VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME, //
+	VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME, //
+	VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME, //
 };
 
 static const char *required_device_extensions[] = {
-    VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,      //
-    VK_KHR_EXTERNAL_FENCE_EXTENSION_NAME,            //
-    VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME,           //
-    VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME,        //
-    VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME, //
+	VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME, //
+	VK_KHR_EXTERNAL_FENCE_EXTENSION_NAME, //
+	VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME, //
+	VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME, //
+	VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME, //
 
-// Platform version of "external_memory"
+	// Platform version of "external_memory"
 #if defined(XRT_GRAPHICS_BUFFER_HANDLE_IS_FD)
-    VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
+	VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
 
 #elif defined(XRT_GRAPHICS_BUFFER_HANDLE_IS_AHARDWAREBUFFER)
-    VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME,
+	VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME,
 
 #elif defined(XRT_GRAPHICS_BUFFER_HANDLE_IS_WIN32_HANDLE)
-    VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,
+	VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,
 
 #else
 #error "Need port!"
 #endif
 
-// Platform version of "external_fence" and "external_semaphore"
+	// Platform version of "external_fence" and "external_semaphore"
 #if defined(XRT_GRAPHICS_SYNC_HANDLE_IS_FD) // Optional
 
 #elif defined(XRT_GRAPHICS_SYNC_HANDLE_IS_WIN32_HANDLE)
-    VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME, //
-    VK_KHR_EXTERNAL_FENCE_WIN32_EXTENSION_NAME,     //
+	VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME, //
+	VK_KHR_EXTERNAL_FENCE_WIN32_EXTENSION_NAME, //
 
 #else
 #error "Need port!"
@@ -105,13 +108,13 @@ static const char *required_device_extensions[] = {
 };
 
 static const char *optional_device_extensions[] = {
-    VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME, //
-    VK_EXT_GLOBAL_PRIORITY_EXTENSION_NAME,   //
+	VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME, //
+	VK_EXT_GLOBAL_PRIORITY_EXTENSION_NAME, //
 
-// Platform version of "external_fence" and "external_semaphore"
+	// Platform version of "external_fence" and "external_semaphore"
 #if defined(XRT_GRAPHICS_SYNC_HANDLE_IS_FD)      // Optional
-    VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME, //
-    VK_KHR_EXTERNAL_FENCE_FD_EXTENSION_NAME,     //
+	VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME, //
+	VK_KHR_EXTERNAL_FENCE_FD_EXTENSION_NAME, //
 
 #elif defined(XRT_GRAPHICS_SYNC_HANDLE_IS_WIN32_HANDLE) // Not optional
 
@@ -120,25 +123,25 @@ static const char *optional_device_extensions[] = {
 #endif
 
 #ifdef VK_KHR_global_priority
-    VK_KHR_GLOBAL_PRIORITY_EXTENSION_NAME,
+	VK_KHR_GLOBAL_PRIORITY_EXTENSION_NAME,
 #endif
 #ifdef VK_KHR_image_format_list
-    VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME,
+	VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME,
 #endif
 #ifdef VK_KHR_maintenance1
-    VK_KHR_MAINTENANCE_1_EXTENSION_NAME,
+	VK_KHR_MAINTENANCE_1_EXTENSION_NAME,
 #endif
 #ifdef VK_KHR_maintenance2
-    VK_KHR_MAINTENANCE_2_EXTENSION_NAME,
+	VK_KHR_MAINTENANCE_2_EXTENSION_NAME,
 #endif
 #ifdef VK_KHR_timeline_semaphore
-    VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
+	VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
 #endif
 #ifdef VK_EXT_calibrated_timestamps
-    VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
+	VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
 #endif
 #ifdef VK_EXT_robustness2
-    VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
+	VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
 #endif
 };
 
@@ -160,7 +163,7 @@ compositor_init_vulkan(struct ems_compositor *c)
 
 	// every backend needs at least the common extensions
 	struct u_string_list *required_instance_ext_list =
-	    u_string_list_create_from_array(instance_extensions_common, ARRAY_SIZE(instance_extensions_common));
+		u_string_list_create_from_array(instance_extensions_common, ARRAY_SIZE(instance_extensions_common));
 
 	struct u_string_list *optional_instance_ext_list = u_string_list_create();
 
@@ -174,10 +177,10 @@ compositor_init_vulkan(struct ems_compositor *c)
 	}
 
 	struct u_string_list *required_device_extension_list =
-	    u_string_list_create_from_array(required_device_extensions, ARRAY_SIZE(required_device_extensions));
+		u_string_list_create_from_array(required_device_extensions, ARRAY_SIZE(required_device_extensions));
 
 	struct u_string_list *optional_device_extension_list =
-	    u_string_list_create_from_array(optional_device_extensions, ARRAY_SIZE(optional_device_extensions));
+		u_string_list_create_from_array(optional_device_extensions, ARRAY_SIZE(optional_device_extensions));
 
 	struct comp_vulkan_arguments vk_args = {};
 
@@ -189,9 +192,9 @@ compositor_init_vulkan(struct ems_compositor *c)
 	vk_args.optional_device_extensions = optional_device_extension_list;
 	vk_args.log_level = c->settings.log_level;
 	vk_args.only_compute_queue = false; // Regular GFX
-	vk_args.selected_gpu_index = -1;    // Auto
-	vk_args.client_gpu_index = -1;      // Auto
-	vk_args.timeline_semaphore = true;  // Flag is optional, not a hard requirement.
+	vk_args.selected_gpu_index = -1; // Auto
+	vk_args.client_gpu_index = -1; // Auto
+	vk_args.timeline_semaphore = true; // Flag is optional, not a hard requirement.
 
 	struct comp_vulkan_results vk_res = {};
 	bool bundle_ret = comp_vulkan_init_bundle(vk, &vk_args, &vk_res);
@@ -455,39 +458,39 @@ pack_blit_and_encode(struct ems_compositor *c,
 			VkImage srcImage = sc->vkic.images[data->sub.image_index].handle;
 
 			VkImageSubresourceRange view_subresource_range = {
-			    VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, data->sub.array_index, 1,
+				VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, data->sub.array_index, 1,
 			};
 
 			// Barrier to make the source image back what it was before.
-			vk_cmd_image_barrier_locked(              //
-			    vk,                                   // vk_bundle
-			    cmd,                                  // cmd_buffer
-			    srcImage,                             // image
-			    VK_ACCESS_TRANSFER_READ_BIT,          // srcAccessMask
-			    VK_ACCESS_SHADER_READ_BIT,            // dstAccessMask
-			    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, // oldImageLayout
-			    srcImageOldLayout,                    // newImageLayout
-			    VK_PIPELINE_STAGE_TRANSFER_BIT,       // srcStageMask
-			    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, // dstStageMask
-			    view_subresource_range);              // subresourceRange
+			vk_cmd_image_barrier_locked( //
+				vk, // vk_bundle
+				cmd, // cmd_buffer
+				srcImage, // image
+				VK_ACCESS_TRANSFER_READ_BIT, // srcAccessMask
+				VK_ACCESS_SHADER_READ_BIT, // dstAccessMask
+				VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, // oldImageLayout
+				srcImageOldLayout, // newImageLayout
+				VK_PIPELINE_STAGE_TRANSFER_BIT, // srcStageMask
+				VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, // dstStageMask
+				view_subresource_range); // subresourceRange
 		}
 
 		VkImageSubresourceRange first_color_level_subresource_range = {
-		    VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1,
+			VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1,
 		};
 
 		// Barrier transfer image to host so we can safely read back.
-		vk_cmd_image_barrier_locked(              //
-		    vk,                                   // vk_bundle
-		    cmd,                                  // cmd_buffer
-		    wrap->image,                          // image
-		    VK_ACCESS_TRANSFER_WRITE_BIT,         // srcAccessMask
-		    VK_ACCESS_HOST_READ_BIT,              // dstAccessMask
-		    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, // oldImageLayout
-		    VK_IMAGE_LAYOUT_GENERAL,              // newImageLayout
-		    VK_PIPELINE_STAGE_TRANSFER_BIT,       // srcStageMask
-		    VK_PIPELINE_STAGE_HOST_BIT,           // dstStageMask
-		    first_color_level_subresource_range); // subresourceRange
+		vk_cmd_image_barrier_locked( //
+			vk, // vk_bundle
+			cmd, // cmd_buffer
+			wrap->image, // image
+			VK_ACCESS_TRANSFER_WRITE_BIT, // srcAccessMask
+			VK_ACCESS_HOST_READ_BIT, // dstAccessMask
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, // oldImageLayout
+			VK_IMAGE_LAYOUT_GENERAL, // newImageLayout
+			VK_PIPELINE_STAGE_TRANSFER_BIT, // srcStageMask
+			VK_PIPELINE_STAGE_HOST_BIT, // dstStageMask
+			first_color_level_subresource_range); // subresourceRange
 	}
 
 	// Done submitting commands.
@@ -581,16 +584,16 @@ ems_compositor_predict_frame(struct xrt_compositor *xc,
 	int64_t null_present_slop_ns = 0;
 	int64_t null_min_display_period_ns = 0;
 
-	u_pc_predict(                        //
-	    c->upc,                          // upc
-	    now_ns,                          // now_ns
-	    out_frame_id,                    // out_frame_id
-	    out_wake_time_ns,                // out_wake_up_time_ns
-	    &null_desired_present_time_ns,   // out_desired_present_time_ns
-	    &null_present_slop_ns,           // out_present_slop_ns
-	    out_predicted_display_time_ns,   // out_predicted_display_time_ns
-	    out_predicted_display_period_ns, // out_predicted_display_period_ns
-	    &null_min_display_period_ns);    // out_min_display_period_ns
+	u_pc_predict( //
+		c->upc, // upc
+		now_ns, // now_ns
+		out_frame_id, // out_frame_id
+		out_wake_time_ns, // out_wake_up_time_ns
+		&null_desired_present_time_ns, // out_desired_present_time_ns
+		&null_present_slop_ns, // out_present_slop_ns
+		out_predicted_display_time_ns, // out_predicted_display_time_ns
+		out_predicted_display_period_ns, // out_predicted_display_period_ns
+		&null_min_display_period_ns); // out_min_display_period_ns
 
 	return XRT_SUCCESS;
 }
@@ -607,8 +610,7 @@ ems_compositor_mark_frame(struct xrt_compositor *xc,
 	EMS_COMP_TRACE(c, "MARK_FRAME %i", point);
 
 	switch (point) {
-	case XRT_COMPOSITOR_FRAME_POINT_WOKE:
-		u_pc_mark_point(c->upc, U_TIMING_POINT_WAKE_UP, frame_id, when_ns);
+	case XRT_COMPOSITOR_FRAME_POINT_WOKE: u_pc_mark_point(c->upc, U_TIMING_POINT_WAKE_UP, frame_id, when_ns);
 		return XRT_SUCCESS;
 	default: assert(false);
 	}
@@ -671,7 +673,8 @@ ems_compositor_layer_commit(struct xrt_compositor *xc, xrt_graphics_sync_handle_
 			struct comp_swapchain *right = (struct comp_swapchain *)layer.sc_array[1];
 
 			pack_blit_and_encode(c, frame_id, begin_ns, lvd, rvd, left, right, layer.data.flip_y);
-		} break;
+		}
+		break;
 		case XRT_LAYER_PROJECTION: {
 			const struct xrt_layer_projection_data *stereo = &layer.data.proj;
 			const struct xrt_layer_projection_view_data *lvd = &stereo->v[0];
@@ -681,8 +684,10 @@ ems_compositor_layer_commit(struct xrt_compositor *xc, xrt_graphics_sync_handle_
 			struct comp_swapchain *right = (struct comp_swapchain *)layer.sc_array[1];
 
 			pack_blit_and_encode(c, frame_id, begin_ns, lvd, rvd, left, right, layer.data.flip_y);
-		} break;
-		default: U_LOG_E("Unhandled layer type %d", layer.data.type); break;
+		}
+		break;
+		default: U_LOG_E("Unhandled layer type %d", layer.data.type);
+			break;
 		}
 	}
 
@@ -853,8 +858,8 @@ ems_compositor_create_system(ems_instance &emsi, struct xrt_system_compositor **
 	 * Main init sequence.
 	 */
 
-	if (!compositor_init_pacing(c) ||         //
-	    !compositor_init_vulkan(c) ||         //
+	if (!compositor_init_pacing(c) || //
+	    !compositor_init_vulkan(c) || //
 	    !compositor_init_sys_info(c, xdev) || //
 	    !compositor_init_info(c)) {
 		EMS_COMP_DEBUG(c, "Failed to init compositor %p", (void *)c);
@@ -868,11 +873,11 @@ ems_compositor_create_system(ems_instance &emsi, struct xrt_system_compositor **
 	readback_extent.width = READBACK_W;
 
 	vk_image_readback_to_xf_pool_create( //
-	    &c->base.vk,                     // vk_bundle
-	    readback_extent,                 // extent
-	    &c->pool,                        // out_pool
-	    XRT_FORMAT_R8G8B8X8,             // xrt_format
-	    VK_FORMAT_R8G8B8A8_UNORM);       // vk_format
+		&c->base.vk, // vk_bundle
+		readback_extent, // extent
+		&c->pool, // out_pool
+		XRT_FORMAT_R8G8B8X8, // xrt_format
+		VK_FORMAT_R8G8B8A8_UNORM); // vk_format
 
 	u_var_add_root(c, "Electric Maple Server compositor", 0);
 	u_var_add_sink_debug(c, &c->debug_sink, "Debug Sink");
@@ -884,12 +889,12 @@ ems_compositor_create_system(ems_instance &emsi, struct xrt_system_compositor **
 	                              &c->gstreamer_pipeline);
 
 	ems_gstreamer_src_create_with_pipeline( //
-	    c->gstreamer_pipeline,              //
-	    READBACK_W,                         //
-	    READBACK_H,                         //
-	    XRT_FORMAT_R8G8B8X8,                //
-	    EMS_VIDEO_APPSRC_NAME,              //
-	    &c->gstreamer_src);                 //
+		c->gstreamer_pipeline, //
+		READBACK_W, //
+		READBACK_H, //
+		XRT_FORMAT_R8G8B8X8, //
+		EMS_VIDEO_APPSRC_NAME, //
+		&c->gstreamer_src); //
 
 	// Bounce image for scaling.
 	{
@@ -904,12 +909,12 @@ ems_compositor_create_system(ems_instance &emsi, struct xrt_system_compositor **
 		VkResult ret;
 
 		ret = vk_create_image_simple( //
-		    &c->base.vk,              // vk_bundle
-		    extent,                   // extent
-		    format,                   // format
-		    usage,                    // usage
-		    &c->bounce.device_memory, // out_mem
-		    &c->bounce.image);        // out_image
+			&c->base.vk, // vk_bundle
+			extent, // extent
+			format, // format
+			usage, // usage
+			&c->bounce.device_memory, // out_mem
+			&c->bounce.image); // out_image
 		if (ret != VK_SUCCESS) {
 			EMS_COMP_DEBUG(c, "vk_create_image_simple: %s", vk_result_string(ret));
 		}

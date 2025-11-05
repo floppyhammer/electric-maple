@@ -13,6 +13,9 @@
  * @ingroup drv_ems
  */
 
+
+#include "ems_hmd.h"
+
 #include <memory>
 
 #include "ems_callbacks.h"
@@ -26,7 +29,7 @@
 #include <thread>
 
 #include "electricmaple.pb.h"
-#include "ems_server_internal.h"
+#include "ems_instance.h"
 #include "math/m_api.h"
 #include "math/m_mathinclude.h"
 #include "os/os_time.h"
@@ -56,14 +59,14 @@
 static constexpr uint64_t kFixedAssumedLatencyUs = 50 * U_TIME_1MS_IN_NS;
 
 /// Casting helper function
-static inline struct ems_hmd *
-ems_hmd(struct xrt_device *xdev)
+static ems_hmd *
+ems_hmd(xrt_device *xdev)
 {
 	return (struct ems_hmd *)xdev;
 }
 
 static void
-ems_hmd_destroy(struct xrt_device *xdev)
+ems_hmd_destroy(xrt_device *xdev)
 {
 	struct ems_hmd *eh = ems_hmd(xdev);
 
@@ -80,17 +83,17 @@ ems_hmd_destroy(struct xrt_device *xdev)
 }
 
 static xrt_result_t
-ems_hmd_update_inputs(struct xrt_device *xdev)
+ems_hmd_update_inputs(xrt_device *xdev)
 {
 	// Empty, you should put code to update the attached input fields (if any)
 	return XRT_SUCCESS;
 }
 
 static xrt_result_t
-ems_hmd_get_tracked_pose(struct xrt_device *xdev,
-                         enum xrt_input_name name,
+ems_hmd_get_tracked_pose(xrt_device *xdev,
+                         xrt_input_name name,
                          int64_t at_timestamp_ns,
-                         struct xrt_space_relation *out_relation)
+                         xrt_space_relation *out_relation)
 {
 	struct ems_hmd *eh = ems_hmd(xdev);
 
@@ -133,13 +136,13 @@ ems_hmd_get_tracked_pose(struct xrt_device *xdev,
 }
 
 static xrt_result_t
-ems_hmd_get_view_poses(struct xrt_device *xdev,
-                       const struct xrt_vec3 *default_eye_relation,
+ems_hmd_get_view_poses(xrt_device *xdev,
+                       const xrt_vec3 *default_eye_relation,
                        int64_t at_timestamp_ns,
                        uint32_t view_count,
-                       struct xrt_space_relation *out_head_relation,
-                       struct xrt_fov *out_fovs,
-                       struct xrt_pose *out_poses)
+                       xrt_space_relation *out_head_relation,
+                       xrt_fov *out_fovs,
+                       xrt_pose *out_poses)
 {
 	return u_device_get_view_poses(xdev, default_eye_relation, at_timestamp_ns, view_count, out_head_relation,
 	                               out_fovs, out_poses);
@@ -152,7 +155,7 @@ to_xrt_vec3(const em_proto_Vec3 &v)
 }
 
 static void
-ems_hmd_handle_data(enum ems_callbacks_event event, const em_UpMessageSuper *messageSuper, void *userdata)
+ems_hmd_handle_data(ems_callbacks_event event, const em_UpMessageSuper *messageSuper, void *userdata)
 {
 	auto *eh = (struct ems_hmd *)userdata;
 
@@ -166,7 +169,7 @@ ems_hmd_handle_data(enum ems_callbacks_event event, const em_UpMessageSuper *mes
 		return;
 	}
 
-	struct xrt_pose pose = {};
+	xrt_pose pose = {};
 	pose.position = to_xrt_vec3(message->tracking.head_pose.position);
 
 	pose.orientation.w = message->tracking.head_pose.orientation.w;
@@ -177,34 +180,36 @@ ems_hmd_handle_data(enum ems_callbacks_event event, const em_UpMessageSuper *mes
 	// TODO handle timestamp, etc
 
 #ifndef USE_PREDICTION
-	std::lock_guard lock(eh->received->mutex);
-	eh->received->pose = pose;
-	eh->received->updated = true;
+	{
+		std::lock_guard lock(eh->received->mutex);
+		eh->received->pose = pose;
+		eh->received->updated = true;
+	}
 #else
-	const uint64_t now = os_monotonic_get_ns();
+	const uint64_t timestamp = os_monotonic_get_ns() - kFixedAssumedLatencyUs;
 
 	xrt_space_relation rel = XRT_SPACE_RELATION_ZERO;
 	rel.pose = pose;
 	math_quat_normalize(&rel.pose.orientation);
-	rel.relation_flags = (enum xrt_space_relation_flags)(
+	rel.relation_flags = (xrt_space_relation_flags)(
 		XRT_SPACE_RELATION_POSITION_VALID_BIT | XRT_SPACE_RELATION_POSITION_TRACKED_BIT |
 		XRT_SPACE_RELATION_ORIENTATION_VALID_BIT | XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT);
 	if (message->tracking.has_head_linear_velocity) {
 		rel.linear_velocity = to_xrt_vec3(message->tracking.head_linear_velocity);
 		rel.relation_flags =
-			(enum xrt_space_relation_flags)(
+			(xrt_space_relation_flags)(
 				rel.relation_flags | XRT_SPACE_RELATION_LINEAR_VELOCITY_VALID_BIT);
 	}
 	if (message->tracking.has_head_angular_velocity) {
 		rel.angular_velocity = to_xrt_vec3(message->tracking.head_angular_velocity);
 		rel.relation_flags =
-			(enum xrt_space_relation_flags)(
+			(xrt_space_relation_flags)(
 				rel.relation_flags | XRT_SPACE_RELATION_ANGULAR_VELOCITY_VALID_BIT);
 	}
 	{
-		std::lock_guard<std::mutex> lock(eh->received->mutex);
+		std::lock_guard lock(eh->received->mutex);
 		eh->received->rel = rel;
-		eh->received->timestamp = now - kFixedAssumedLatencyUs;
+		eh->received->timestamp = timestamp;
 		eh->received->updated = true;
 	}
 #endif
@@ -215,16 +220,12 @@ ems_hmd_create(ems_instance &emsi)
 {
 	// We only want the HMD parts and one input.
 	// Also disable Monado's built-in tracking algorithms.
-	enum u_device_alloc_flags flags =
+	u_device_alloc_flags flags =
 		(enum u_device_alloc_flags)(U_DEVICE_ALLOC_HMD | U_DEVICE_ALLOC_TRACKING_NONE);
 
 	struct ems_hmd *eh = U_DEVICE_ALLOCATE(struct ems_hmd, flags, 1, 0);
 
 	eh->received = std::make_unique<ems_hmd_recvbuf>();
-
-#ifdef USE_PREDICTION
-	m_relation_history_create(&eh->pose_history, nullptr);
-#endif
 
 	// Functions.
 	eh->base.update_inputs = ems_hmd_update_inputs;
@@ -237,10 +238,12 @@ ems_hmd_create(ems_instance &emsi)
 	eh->base.device_type = XRT_DEVICE_TYPE_HMD;
 	eh->base.tracking_origin = &emsi.tracking_origin;
 	eh->base.supported.orientation_tracking = true;
-	eh->base.supported.position_tracking = false;
+	eh->base.supported.position_tracking = true;
 
 	// Private data.
-#ifndef USE_PREDICTION
+#ifdef USE_PREDICTION
+	m_relation_history_create(&eh->pose_history, nullptr);
+#else
 	eh->pose = xrt_pose{xrt_quat XRT_QUAT_IDENTITY, xrt_vec3{0.0f, 1.6f, 0.0f}};
 #endif
 
@@ -262,13 +265,13 @@ ems_hmd_create(ems_instance &emsi)
 	// TODO: Find out the remote device's actual FOV.
 	//  Or maybe remove this because I think get_view_poses lets us set the FOV dynamically.
 
-	struct xrt_fov fov_left = {
+	xrt_fov fov_left = {
 		-0.316011f,
 		0.361546f,
 		0.225283f,
 		-0.165940f,
 	};
-	struct xrt_fov fov_right = {
+	xrt_fov fov_right = {
 		-0.345102f,
 		0.345085f,
 		0.223300f,
@@ -279,8 +282,8 @@ ems_hmd_create(ems_instance &emsi)
 	eh->base.hmd->distortion.fov[1] = fov_right;
 
 	// TODO: Ditto, figure out the device's actual resolution
-	const int panel_w = 1920;
-	const int panel_h = 1080;
+	const int panel_w = 1280;
+	const int panel_h = 800;
 
 	// Single "screen" (always the case)
 	eh->base.hmd->screens[0].w_pixels = panel_w * 2;

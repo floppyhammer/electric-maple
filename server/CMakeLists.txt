@@ -5,7 +5,7 @@
 cmake_minimum_required(VERSION 3.10.2)
 
 if (WIN32)
-    set(CMAKE_TOOLCHAIN_FILE "C:/Users/tannh/Env/vcpkg/scripts/buildsystems/vcpkg.cmake")
+    set(CMAKE_TOOLCHAIN_FILE "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/vcpkg/scripts/buildsystems/vcpkg.cmake")
 endif ()
 
 project(electric-maple VERSION 0.0.1)
