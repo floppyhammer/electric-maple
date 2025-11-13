@@ -48,6 +48,8 @@
 
 #define USE_MANUAL_NTP
 
+#define USE_DECODEBIN3
+
 struct em_sc_sample
 {
 	struct em_sample base;
